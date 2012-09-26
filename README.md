@@ -17,11 +17,14 @@ from source.
 3) Given the source distribution with top-level directory "jcarafe", enter this
    directory and do the following:
 
-   a) Build jcarafe-core:
+       a) Build jcarafe-core:
        cmd> sbt "project jcarafe-core" javacc proguard
 
        This command will build a compact executable jar file in:
        jcarafe-core/target/scala_2.9.1/jcarafe-core_2.9.1-0.9.8.x.min.jar
+
+   [[ NOTE: There are an excessive number of warnings that appear right now for
+      this proguard build. This is normal. ]]
 
    b) Build jcarafe-ext:
        cmd> sbt "project jcarafe-ext" assembly
