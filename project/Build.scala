@@ -79,6 +79,7 @@ object JCarafeBuild extends Build {
   val myManaged = file("jcarafe-core") / "src" / "main" / "java" / "org" / "mitre" / "jcarafe" / "lexer"
 
   private def srcGeneratorTask = (javaCCFiles in Compile) map { inFiles =>
+    IO.createDirectory(myManaged)
     val outDirTargets = outDirTargetFiles map { myManaged / _ }
     inFiles foreach {file => ("java -cp " + javaccClassPath + " javacc -OUTPUT_DIRECTORY="+myManaged.absolutePath+" "+file.toString) ! }
     outDirTargets.toSeq
