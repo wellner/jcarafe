@@ -34,19 +34,13 @@ object JCarafeBuild extends Build {
   import Dependencies._
 
   lazy val root = Project(id = "jcarafe",
-                            base = file(".")) aggregate(jcarafeCore, jcarafeExt, jcarafeDna, jcarafeGm)
+                            base = file(".")) aggregate(jcarafeCore, jcarafeExt)
 
   lazy val jcarafeCore = Project(id = "jcarafe-core",
 				    base = file("jcarafe-core"), settings=projSettings)
 
   lazy val jcarafeExt = Project(id = "jcarafe-ext",
 				   base = file("jcarafe-ext"), settings=buildSettings) dependsOn(jcarafeCore)
-
-  lazy val jcarafeDna = Project(id = "jcarafe-dna",
-				   base = file("jcarafe-dna"), settings=buildSettings) dependsOn(jcarafeCore)
-
-  lazy val jcarafeGm = Project(id = "jcarafe-gm",
-                                  base = file("jcarafe-gm"), settings=buildSettings) dependsOn(jcarafeCore)
 
   val outDirTargetFiles = Set(
     "GenToker.java",
@@ -69,8 +63,6 @@ object JCarafeBuild extends Build {
   lazy val runJavaCC = TaskKey[Seq[File]]("javacc")
   lazy val javaCCFiles = TaskKey[Seq[File]]("javacc-files")
 
-  //val javaccConfig = config("javacc")
-  
   private def javaCCFilesTask = (baseDirectory) map { (base: File) =>
       val fp = file("jcarafe-core") / "src" / "main" / "javacc" / "org" / "mitre" / "jcarafe" / "lexer" ** "*.jj"
       fp.get
@@ -83,18 +75,11 @@ object JCarafeBuild extends Build {
     val outDirTargets = outDirTargetFiles map { myManaged / _ }
     inFiles foreach {file => ("java -cp " + javaccClassPath + " javacc -OUTPUT_DIRECTORY="+myManaged.absolutePath+" "+file.toString) ! }
     outDirTargets.toSeq
-    /*							       
-    val cachedFun = FileFunction.cached(cache / "javaccGenSources", inStyle=FilesInfo.lastModified,outStyle=FilesInfo.exists) { (in: Set[File]) =>
-      inFiles foreach {file => ("java -cp " + javaccClassPath + " javacc -OUTPUT_DIRECTORY="+dir.absolutePath+" "+file.toString) ! }
-      outDirTargets }
-    cachedFun(inFiles.toSet).toSeq
-    */
    }
 
   def projSettings = buildSettings ++ Seq(
     javaCCFiles in Compile <<= javaCCFilesTask,
     runJavaCC in Compile <<= srcGeneratorTask
-    //sourceGenerators in Compile <+= runJavaCC in Compile
   )
 
 }
