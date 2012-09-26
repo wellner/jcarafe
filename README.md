@@ -14,10 +14,18 @@ from source.
 
 2) Place the "sbt" shell script or "sbt.bat" file in your path
 
-3) Given the source distribution with top-level directory "jcarafe", enter this
-   directory and do the following:
+3) Build jcarafe-core: 
 
-       a) Build jcarafe-core:
+       cmd> cd jcarafe/
+
+4) Build jcarafe-ext:
+       cmd> sbt "project jcarafe-ext" assembly
+
+       This command will be an "uber jar" file in:
+       jcarafe-ext/target/jcarafe-ext-assembly-0.9.8.x.jar
+
+5) [Optional] Build a "compact" jar file.  
+
        cmd> sbt "project jcarafe-core" javacc proguard
 
        This command will build a compact executable jar file in:
@@ -26,18 +34,15 @@ from source.
    [[ NOTE: There are an excessive number of warnings that appear right now for
       this proguard build. This is normal. ]]
 
-   b) Build jcarafe-ext:
-       cmd> sbt "project jcarafe-ext" assembly
 
-       This command will be an "uber jar" file in:
-       jcarafe-ext/target/jcarafe-ext-assembly-0.9.8.x.jar
+Step (3) above will produce a single .jar file with all the class files 
+found in jcarafe-core.  
 
+Step (4) generates a jar file that includes a number of extensions of jCarafe and 
+additional utility algorithms. This step is optional.
 
-(3a) above will produce a compact jar file appropriate for using core jCarafe
+Step (5) provides a compact jar file appropriate for using core jCarafe
 functionality, namely training and applying phrase extraction models.
-
-(3b) generates a jar file that includes a number of extensions of jCarafe and 
-additional utility algorithms.
 
 =====================================
 Generating Source-level Documentation
