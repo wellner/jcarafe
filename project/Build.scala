@@ -1,6 +1,7 @@
 import sbt._
 import Keys._
 
+
 object BuildSettings { 
   val buildOrganization = "org.mitre"
   val buildVersion = "0.9.8.4.RC9"
