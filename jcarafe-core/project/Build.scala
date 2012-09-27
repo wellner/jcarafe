@@ -4,8 +4,8 @@ import java.io.File
 
 object BuildSettings { 
   val buildOrganization = "org.mitre"
-  val buildVersion = "0.9.8.2"
-  val buildScalaVersion = "2.9.1"
+  val buildVersion = "0.9.8.4"
+  val buildScalaVersion = "2.9.2"
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := buildOrganization,
     version := buildVersion,

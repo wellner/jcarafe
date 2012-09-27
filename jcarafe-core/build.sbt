@@ -6,9 +6,7 @@ libraryDependencies += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.5.0"
 
 libraryDependencies += "org.scala-tools.sbinary" % "sbinary_2.9.0" % "0.4.0"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.0" % "1.6.1" % "test"
-
-libraryDependencies += "commons-lang" % "commons-lang" % "2.6" 
+libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
 
 seq(assemblySettings: _*)
 

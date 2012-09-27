@@ -5,7 +5,7 @@ import Keys._
 object BuildSettings { 
   val buildOrganization = "org.mitre"
   val buildVersion = "0.9.8.4.RC9"
-  val buildScalaVersion = "2.9.1"
+  val buildScalaVersion = "2.9.2"
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := buildOrganization,
     version := buildVersion,
@@ -21,7 +21,7 @@ object Resolvers {
 object Dependencies { 
   val jacksonCore     = "org.codehaus.jackson" % "jackson-core-asl" % "1.5.0"
   val jacksonMapper   = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.5.0"
-  val sjson           = "org.scala-tools.sbinary" % "sbinary" % "0.4.1"
+  val sbinary         = "org.scala-tools.sbinary" % "sbinary" % "0.4.1"
   val testing         = "org.scalatest" % "scalatest" % "1.6.1" % "test"
 }
 
@@ -30,7 +30,7 @@ object JCarafeBuild extends Build {
 
   import BuildSettings._
   import Resolvers._
-  import Dependencies._
+  //import Dependencies._
 
   lazy val root = Project(id = "jcarafe",
                             base = file(".")) aggregate(jcarafeCore, jcarafeExt)

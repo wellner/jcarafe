@@ -2,15 +2,9 @@ import AssemblyKeys._
 
 name := "jcarafe-ext"
 
-libraryDependencies += "org.mitre" % "jcarafe-core_2.9.1" % "0.9.8.4.RC1"
+libraryDependencies += "org.mitre" % "jcarafe-core_2.9.2" % "0.9.8.4.RC9"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.1" % "1.6.1" % "test"
-
-libraryDependencies += "net.sf.trove4j" % "trove4j" % "3.0.2"
-
-resolvers += "Scala-Tools Maven2 Snapshot Repository" at "http://scala-tools.org/repo-snapshots"
-
-resolvers += "mitre-chatter-repository" at "http://rcf.mitre.org/project/chatter/repo"
+libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
 
 seq(assemblySettings: _*)
 
