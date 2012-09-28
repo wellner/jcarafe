@@ -45,3 +45,6 @@ This will generate source-level documentation in the following directories:
   jcarafe/jcarafe-core/target/scala-2.9.2/api
   jcarafe/jcarafe-ext/target/scala-2.9.2/api
 
+=====================================
+Using Proguard
+=====================================
