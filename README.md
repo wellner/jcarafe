@@ -21,7 +21,7 @@ from source.
 
        cmd> sbt "project jcarafe-core" javacc "project jcarafe" assembly
 
-This command will generate the "uber jar" files 
+This command will generate the jar files 
 
        jcarafe-core/target/jcarafe-core-assembly-0.9.8.x.jar
        jcarafe-ext/target/jcarafe-ext-assembly-0.9.8.x.jar
@@ -42,8 +42,8 @@ Enter the top-level "jcarafe/" directory and execute the following SBT command:
 
 This will generate source-level documentation in the following directories:
 
-  jcarafe/jcarafe-core/target/scala-2.9.2/api
-  jcarafe/jcarafe-ext/target/scala-2.9.2/api
+        jcarafe/jcarafe-core/target/scala-2.9.2/api
+        jcarafe/jcarafe-ext/target/scala-2.9.2/api
 
 =====================================
 Using Proguard
