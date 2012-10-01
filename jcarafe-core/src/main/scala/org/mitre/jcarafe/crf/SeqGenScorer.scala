@@ -178,6 +178,10 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
         }
         totalTokenEntropy += getEntropy(inst.condProbTbl)
       }
+      if(s.length>0) {
+        updateSets(systemSets,curSysType,startSysIndex,s.length-1,globalIndex)
+        updateSets(goldSets,curGoldType,startGoldIndex,s.length-1,globalIndex)
+      }
       globalIndex += s.length
       globalConfidenceCorrelation = (s.seqPosteriorProbability, (1.0 - (seqTokIncorrect.toDouble / s.length)), totalTokenEntropy, s.length, 0.0) :: globalConfidenceCorrelation
     }
