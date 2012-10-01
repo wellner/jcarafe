@@ -105,7 +105,7 @@ abstract class FactoredTrainer[O](opts:Options) extends Trainer[O](opts) with Li
   }
 
   def trainModel(dCrf: Trainable, seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
-    val accessSeq = new MemoryAccessSeq(seqs)	
+    val accessSeq = new MemoryAccessSeq(seqs,opts.seed)	
     val coreModel = dCrf.train(accessSeq,opts.maxIters,modelIterFn)
     val m = getModel((sGen.getMaxSegmentSize + 1), coreModel)
     writeModel(m,new java.io.File(opts.model.get))
@@ -161,7 +161,7 @@ abstract class GenericNonFactoredTrainer[O](adj: Boolean, opts: Options) extends
   }
 
   def trainModel(dCrf: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
-    val accessSeq = new MemoryAccessSeq(seqs)	
+    val accessSeq = new MemoryAccessSeq(seqs,opts.seed)	
     val coreModel = dCrf.train(accessSeq,opts.maxIters,modelIterFn)
     val fm : LongAlphabet = sGen.frep.faMap 
     // XXX - need to yet write a separate model compactor for nonfactored models
