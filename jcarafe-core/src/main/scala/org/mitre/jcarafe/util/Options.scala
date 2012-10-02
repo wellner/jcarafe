@@ -91,6 +91,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--input-file"     desc "Input file"
   "--tagset"         desc "Tagset specification file"
   "--tag"            multi "Specific simple tag/label"
+  "--seed"           desc "Seed random sampling"
   //"--recode" multi "Recode sequences"
   "--num-states"     desc "Number of states for non-factored model"
   "--seq-boundary"   multi "Sequence boundary label/tag"
@@ -247,6 +248,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var sgd                             = optHandler.check("--sgd")
   var momentum                        = optHandler.get("--momentum") match {case Some(v) => v.toDouble case None => 0.0}
   var maxIters : Int                  = optHandler.get("--max-iters") match {case Some(v) => v.toInt case None => if (psa || sgd) 10 else 200 }
+  var seed : Option[Int]              = optHandler.get("--seed")
   var batchSize : Int                 = optHandler.get("--batch-size") match {case Some(v) => v.toInt case None => 1} 
   var CValue : Double                 = optHandler.get("--l1-C") match {case Some(v) => v.toDouble case None => 0.1} 
 

@@ -63,18 +63,24 @@ abstract class AccessSeq {
   def getSeqs: Seq[InstanceSequence]
 }
   //class CachedAccessSeq(fs: Array[String]) extends AccessSeq
-class MemoryAccessSeq(iseqs: Seq[InstanceSequence]) extends AccessSeq {
+class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) extends AccessSeq {
   var seqs = iseqs //permuteSeq(iseqs.filter{s => s.length > 0})
   def getSeqs = iseqs
   def apply(i:Int) = seqs(i).iseq
   def length = seqs.length
+  val (randomSelector) = {
+    seed match {
+	case Some(x) =>	new util.Random(x)
+	case None => new util.Random()
+	}
+  }
 
   def accessSingleInstance(i:Int) = apply(i)(0)
 
   private def permuteArray[A](a: Array[A]) = {
     var i = a.length - 1
     while (i >= 0) {
-      val j = util.Random.nextInt(i+1) 
+      val j = randomSelector.nextInt(i+1) 
       val t = a(i)
       a(i) = a(j)
       a(j) = t
