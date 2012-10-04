@@ -346,10 +346,11 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
         case Tag(t,b) :: r => 
 	  val ltag = t.startsWith("<lex") || t.startsWith("</lex")
           //if (ltag && opts.keepToks) {specialTok = true; specialTokTag = Some(t)}
+        	  val (l,attmap) = getLabelAndAttrsFromTag(t)
 	  if (ltag) { specialTok = true; specialTokTag = Some(t)}
-          else if (printExistingTags && !ltag) os.write(t)
+          else if (printExistingTags && !ltag && (!opts.stripOriginalTags || !opts.tagset.isWithin(l,attmap))) os.write(t)
+
           if (!b) { // if it's a close tag and a boundary tag, set ignore to true
-        	  val (l,_) = getLabelAndAttrsFromTag(t)
         	  if (!ignoreFlag && opts.boundaries.labelMatch(l)) ignoreFlag = true
           }
           traverse(r) 
