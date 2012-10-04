@@ -310,6 +310,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.rawDecode_=(rawDecode)
     no.report_=(report)
     no.required_=(required)
+    no.seed_=(seed)
     no.selfInducedIterations_=(selfInducedIterations)
     no.semiCrf_=(semiCrf)
     no.sgd_=(sgd)
