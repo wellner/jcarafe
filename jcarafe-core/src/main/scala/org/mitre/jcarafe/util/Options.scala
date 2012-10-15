@@ -92,6 +92,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--tagset"         desc "Tagset specification file"
   "--tag"            multi "Specific simple tag/label"
   "--seed"           desc "Seed random sampling"
+  "--strip"          flag "Strip original tags if present when outputting decoded files"
   //"--recode" multi "Recode sequences"
   "--num-states"     desc "Number of states for non-factored model"
   "--seq-boundary"   multi "Sequence boundary label/tag"
@@ -201,6 +202,8 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
       case None => 
         new Tagset(optHandler.getAll("--tag").foldLeft(Set.empty:Set[AbstractLabel]){(ac,s) => ac + parseTagSpec(s)})}
   
+  var stripOriginalTags = optHandler.check("--strip")
+
   var boundaries : Tagset = 
     new Tagset(optHandler.getAll("--seq-boundary").foldLeft(Set.empty:Set[AbstractLabel]){(ac,s) => ac + parseTagSpec(s)})
 
@@ -316,8 +319,10 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.sgd_=(sgd)
     no.streaming_=(streaming)
     no.tagset_=(tagset)
+    no.stripOriginalTags_=(stripOriginalTags)
     no.tokenizerPatterns_=(tokenizerPatterns)
     no.train_=(train)
+    no.seed_=(seed)
     no.unlabeledInputDir_=(unlabeledInputDir)
     no.useSpaces_=(useSpaces)
     no.weightedFeatureMap_=(weightedFeatureMap)
