@@ -4,7 +4,7 @@ import Keys._
 
 object BuildSettings { 
   val buildOrganization = "org.mitre"
-  val buildVersion = "0.9.8.4.RC9"
+  val buildVersion = "0.9.8.4.RC10"
   val buildScalaVersion = "2.9.2"
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := buildOrganization,
@@ -16,6 +16,7 @@ object BuildSettings {
 object Resolvers { 
   val scalaSnapshots = "Scala-Tools Maven2 Snapshot Repository" at "http://scala-tools.org/repo-snapshots"  
   val scalanlpRepo   = "ScalaNLP Maven2" at "http://repo.scalanlp.org/repo/"
+  val internalRepo    = "mitre-chatter-repository" at "http://rcf.mitre.org/project/chatter/repo"
 }
 
 object Dependencies { 
@@ -24,7 +25,6 @@ object Dependencies {
   val sbinary         = "org.scala-tools.sbinary" % "sbinary" % "0.4.1"
   val testing         = "org.scalatest" % "scalatest" % "1.6.1" % "test"
 }
-
 
 object JCarafeBuild extends Build {
 
