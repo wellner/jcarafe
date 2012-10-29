@@ -25,6 +25,8 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--file-processing" flag "Use file-based pre-processing"
   "--no-tags" flag "Do not attempt to process SGML/XML tags"
   "--train" flag "Training mode"
+  "--psa" flag "Use PSA-based stochastic gradient descent"
+  "--sgd" flag "Use 'standard' stochastic gradient descent"
   "--model" desc "Model file"
   "--fspec" desc "Feature spec"
   "--evaluate"           desc "Evaluate decoder on gold-standard test data"  
@@ -46,12 +48,14 @@ class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
   def close() = is.close
 }
 
-class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None, val srcInfo: Option[String] = None) extends AbstractInstance(label, orig, -1) {
-  def this(l: Int, o: Int, mv: Array[CompactFeature]) = this(l, o, Some(mv))
+class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None, val srcInfo: Option[String] = None, weight: Double = 1.0) extends AbstractInstance(label, orig, -1) {
+  def this(l: Int, o: Int, meVec: Array[CompactFeature]) = this(l,o,Some(meVec))
   type FType = CompactFeature
   val maxentBuffer = new ArrayBuffer[CompactFeature]
   def getCompVec = throw new RuntimeException("Not implemented for efficiency")
   def getCompactVec: Array[CompactFeature] = getCacheMEVec
+  
+  override lazy val instWeight = weight
 
   private def getCacheMEVec: Array[CompactFeature] = maxentVec match {
     case None =>
@@ -173,6 +177,7 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
     val scores = classScoresNormalized(nls, predNFS, lambdas, instFeatures).toArray
     var k = 0
     val il = instFeatures.length
+    val w = el.instWeight
     while (k < il) {
       var l = 0
       val inst = instFeatures(k)
@@ -182,14 +187,14 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
         val actualIndex = fid + offset
         val v = inst(l)
         if (l == trueLabel) {
-          gradient(actualIndex) -= v
+          gradient(actualIndex) -= v * w
         }
-        gradient(actualIndex) += scores(l) * v
+        gradient(actualIndex) += scores(l) * v * w
         l += 1
       }
       k += 1
     }
-    log(scores(trueLabel))
+    log(scores(trueLabel)) * w
   }
 
   override def getGradient(seqAccessor: AccessSeq): Option[Double] = getGradient(true, seqAccessor)
@@ -431,7 +436,7 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
 
   type DeserializationT = MaxEntDeserialization
 
-  def toSources(d: DeserializationT) = throw new RuntimeException("UNIMPLEMENTED")
+  def toSources(d: DeserializationT) : Seqs = throw new RuntimeException("UNIMPLEMENTED")
 
   def deserializeFromFile(file: String): DeserializationT = {
     new MaxEntDeserialization(new java.io.File(file))
@@ -970,7 +975,7 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
   def batchTrain: String = new String(serializeAsBytes(batchTrainToModel))
 
   def batchTrainToModel: MaxEntModel = batchTrainToModel(getObsSeqs.toSeq)
-
+  
   def batchTrainToModel(obsSeq: Seq[ObsSource[List[(FeatureId, Double)]]]): MaxEntModel = {
     val seqs = sGen.extractFeatures(new SourceSequence[List[(FeatureId, Double)]](obsSeq))
     val me = new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner
@@ -979,6 +984,10 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
 
   def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence): MaxEntModel = {
     val me = new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner
+    train(me, Seq(instSeq))
+  }
+  
+  def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence, me: Crf with CrfLearner): MaxEntModel = {
     train(me, Seq(instSeq))
   }
 

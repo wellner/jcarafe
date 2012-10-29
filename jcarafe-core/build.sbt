@@ -12,9 +12,7 @@ seq(assemblySettings: _*)
 
 mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger")
 
-publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
-
-publishMavenStyle := true
+// publishTo += Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
 
 // seq(ProguardPlugin.proguardSettings :_*)
 

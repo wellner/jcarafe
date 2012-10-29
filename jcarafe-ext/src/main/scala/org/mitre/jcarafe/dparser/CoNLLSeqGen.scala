@@ -53,10 +53,11 @@ trait CoNLLSeqGen extends SeqGen[String] {
   
   def toSources(d: DeserializationT): Seqs = {
     var sourceBuffer: ListBuffer[SourceSequence[String]] = new ListBuffer
-    val splitChar = if (opts.useSpaces) ' ' else '\t'
+    var elemId = 0
     d.elements.foreach { seq =>
       val tmpBuf = new ListBuffer[ObsSource[String]]
       seq foreach { line =>
+        try {
         line match {
           case id :: string :: _ :: pos :: _ :: _ :: gov :: label :: _ =>
             val ii = id.toInt
@@ -65,6 +66,7 @@ trait CoNLLSeqGen extends SeqGen[String] {
             tmpBuf += createSource(rGov, string, Map("pos" -> pos))
           case _ =>
         }
+        } catch {case e => throw new RuntimeException("failed reading element " + elemId + " => " + line)}
       }
       if (tmpBuf.size > 0) {
         val seq = tmpBuf.toIndexedSeq

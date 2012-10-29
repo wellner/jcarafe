@@ -337,7 +337,7 @@ trait PsaLearner extends SparseTrainable with CrfLearner {
     initialize()
     accessSeq.repermute()
     if (!quiet) {
-      println("\nStochastic Gradient Descent Training (with PSA) over " + accessSeq.length + " sequences")
+      println("\nStochastic Gradient Descent Training (with PSA) over " + accessSeq.length + " instances")
       println("\t maxEpochs= " + maxEpochs + "; batchSize= " + batchSize + "; max_iters= " + max_iters)
       println("\t The eta's are initialized to " + etas(0))
       if (momentum > 0.0) println("Momentum coefficient = " + momentum)
@@ -391,7 +391,7 @@ trait PsaLearner extends SparseTrainable with CrfLearner {
           case None =>
         }
         println("Epoch " + (t / accessSeq.length) + " complete (of " + maxEpochs + ")") //This statement may be incorrect for batchSize > 1?
-        println("Log-likelihood for Epoch: " + epochLL)
+        if (epochLL > 0.001) println("Log-likelihood for Epoch: " + epochLL)
         epochLL = 0.0
       }
     }

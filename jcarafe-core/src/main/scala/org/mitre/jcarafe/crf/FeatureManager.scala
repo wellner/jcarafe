@@ -851,11 +851,6 @@ abstract class FeatureManager[Obs](val iString: String) {
     for (fn1 <- fns1; fn2 <- fns2) {
       val fs1 = fn1(s, sarr, pos).features
       val fs2 = fn2(s, sarr, pos).features
-      println("There are " + fs1.length + " features from set1 and " + fs2.length + " features from set2")
-      println("Set1: ")
-      fs1 foreach println
-      println("Set2: ")
-      fs2 foreach println
       for (p1 <- fs1; p2 <- fs2)
         npairs += BuiltFeature(p1) @@@ p2
     }

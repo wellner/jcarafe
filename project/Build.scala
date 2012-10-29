@@ -16,7 +16,7 @@ object BuildSettings {
 object Resolvers { 
   val scalaSnapshots = "Scala-Tools Maven2 Snapshot Repository" at "http://scala-tools.org/repo-snapshots"  
   val scalanlpRepo   = "ScalaNLP Maven2" at "http://repo.scalanlp.org/repo/"
-  val internalRepo    = "mitre-chatter-repository" at "http://rcf.mitre.org/project/chatter/repo"
+  val internalRepo   = Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")
 }
 
 object Dependencies { 

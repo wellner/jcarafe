@@ -22,14 +22,43 @@ import org.mitre.jcarafe.util._
 */
 class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iString) with RegexParsers {
 
+  var ii = 0
+  def genSym = {
+    val r = "f_"+ii
+    ii += 1
+    r
+  }
   parseString(iString)
-  def topExprs : Parser[List[FeatureFn]] = repsep(topExpr,"""[;\r\n]+""".r) ~ ";" ^^ {case (e~_) => e}
-  def topExpr : Parser[FeatureFn] = 
-    fname ~ ("as" | ":") ~ fullExpr ~ opt("TRANSITION"|"NEURAL"|"MULTI") ^^ 
-    {case (l~_~f~t) => t match {case Some("TRANSITION") => FeatureFn(l,f,true) 
+  
+  def topExprs : Parser[List[FeatureFn]] = repsep(topExpr,"""[;\r\n]+""".r) ~ ";" ^^ {case (e~_) => e filter {_.isDefined} map {_.get}}
+  
+  def topExpr : Parser[Option[FeatureFn]] = topExpr0 | topExpr1 | topExpr2
+  
+  def topExpr0 : Parser[Option[FeatureFn]] = comment ^^ {_ => None}
+
+  def topExpr1 : Parser[Option[FeatureFn]] = 
+    fname ~ ("as" | ":") ~ fullExpr ~ opt("TRANSITION"|"NEURAL"|"MULTI") ~ opt(comment) ^^ 
+    {case (l~_~f~t~_) => 
+      val fFun = t match {case Some("TRANSITION") => FeatureFn(l,f,true) 
 				case Some("NEURAL") => FeatureFn(l,f,false,NNFeature) 
 				case Some("MULTI") => FeatureFn(l,f,false,MultiFeature)
-				case _ => FeatureFn(l,f,false)}}  
+				case _ => FeatureFn(l,f,false)}
+      Some(fFun)
+      }
+  
+  def topExpr2 : Parser[Option[FeatureFn]] = 
+    fullExpr ~ opt("TRANSITION"|"NEURAL"|"MULTI") ~ opt(comment) ^^ 
+    {case (f~t~_) =>
+      val l = genSym
+      val fFun = t match {
+      	case Some("TRANSITION") => FeatureFn(l,f,true) 
+      	case Some("NEURAL") => FeatureFn(l,f,false,NNFeature) 
+      	case Some("MULTI") => FeatureFn(l,f,false,MultiFeature)
+      	case _ => FeatureFn(l,f,false)}
+      Some(fFun)
+      }  
+  
+  def comment : Parser[String] = """#.*""".r
 
   def fname : Parser[String] = """[A-z0-9_\.:-]+""".r
   

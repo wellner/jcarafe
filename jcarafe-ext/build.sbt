@@ -8,9 +8,11 @@ libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
 
 seq(assemblySettings: _*)
 
-publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
+//resolvers += Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")
 
-publishMavenStyle := true
+//publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
+
+//publishMavenStyle := true
 
 // seq(ProguardPlugin.proguardSettings :_*)
 

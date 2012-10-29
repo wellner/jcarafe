@@ -21,7 +21,20 @@ trait NonFactoredMaxEntCore {
 }
 
 class RankInstance(probDist: Array[Double]) extends NonFactoredCrfInstance(-1,-1,1) {
-  for (i <- 0 until probDist.length) {
+  val len = probDist.length
+  private def normalize(probDist: Array[Double]) = {
+    var sum = 0.0
+    var c = 0; while (c < len) {
+      sum += probDist(c)
+      c += 1
+    }
+    c = 0; while (c < len) {
+      probDist(c) /= sum
+      c += 1
+    }
+  }
+  normalize(probDist)
+  for (i <- 0 until len) {
     condProbTbl += (i -> probDist(i)) // initialize probability dist
   }
 }
@@ -29,6 +42,7 @@ class RankInstance(probDist: Array[Double]) extends NonFactoredCrfInstance(-1,-1
 abstract class NonFactoredMaxEnt(nls: Int, nfs: Int, gPrior: Double) extends MaxEnt(nls, nfs, gPrior) with NonFactoredMaxEntCore {
   
   override def gradOfElement(el: AbstractInstance) = {
+    
     val instFeatures = el.getCompVec
     val trueLabel = el.label
     val scores = classScoresNormalizedNF(el.getRange, nfs, lambdas, instFeatures(0)).toArray
@@ -129,7 +143,7 @@ class NonFactoredMaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorit
 
 class RankReadInst(val p: Double, val lab: String, val features: List[(String,Double)])
 
-trait MaxEntSeqGenGeneral extends MaxEntSeqGen[Array[RankReadInst]] {
+trait MaxEntSeqGenGeneral extends MaxEntSeqGenCore[Array[RankReadInst]] {
 
   val instBreak = "----.*".r
   val nonEndLine = "[^\n\r]+".r
@@ -173,9 +187,9 @@ trait MaxEntSeqGenGeneral extends MaxEntSeqGen[Array[RankReadInst]] {
     os.close()
   }
 
-  /*
   override def toSources(lines: DeserializationT) : Seqs = {
-    val tmpBuf = new scala.collection.mutable.ListBuffer[ObsSource[Array[RankReadInst]]]
+    //val tmpBuf = new scala.collection.mutable.ListBuffer[ObsSource[Array[RankReadInst]]]
+    val tmpBuf = new scala.collection.mutable.ListBuffer[SourceSequence[Array[RankReadInst]]]
     val localBuf = new scala.collection.mutable.ListBuffer[RankReadInst]
     var al = ""
     val instr = lines.is
@@ -185,7 +199,7 @@ trait MaxEntSeqGenGeneral extends MaxEntSeqGen[Array[RankReadInst]] {
         case Some(_) => 
           if (!localBuf.isEmpty) {
             val rankReads: Array[RankReadInst] = localBuf.toArray
-            tmpBuf += createSource(SLabel("label"),rankReads,false)
+            tmpBuf += new SourceSequence(Seq(createSource(SLabel("label"),rankReads,false)))
             localBuf.clear
           }
         case None =>
@@ -200,10 +214,10 @@ trait MaxEntSeqGenGeneral extends MaxEntSeqGen[Array[RankReadInst]] {
       }
       al = instr.readLine()
     }
-    if (!localBuf.isEmpty) tmpBuf += createSource(SLabel("label"),localBuf.toArray,false) 
-    List(new SourceSequence(tmpBuf.toSeq)) : Seqs // singleton list returned here
+    if (!localBuf.isEmpty) tmpBuf += new SourceSequence(Seq(createSource(SLabel("label"),localBuf.toArray,false))) 
+    tmpBuf.toIndexedSeq : Seqs 
   }
-  */
+
 }
 
 class NonFactoredMaxEntClassifier(argv: Array[String]) {
@@ -213,15 +227,15 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
 
   lazy val trainer = new Trainer[Array[RankReadInst]](opts) with LinearCRFTraining[Array[RankReadInst]] {
     type TrSeqGen = NonFactoredRankTrainingSeqGen
-    val sGen = new NonFactoredRankTrainingSeqGen(opts) with MaxEntSeqGenCore[Array[RankReadInst]]
+    val sGen = new NonFactoredRankTrainingSeqGen(opts) with MaxEntSeqGenGeneral
    	  
     def trainModel(me: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
         val accessSeq = new MemoryAccessSeq(seqs)	
-   	val coreModel = me.train(accessSeq)
-   	val m = new NonFactoredModel(sGen.getModelName,sGen.getLexicon, sGen.getWordProps ,1,coreModel,sGen.faMap,sGen.getNumberOfStates)
-        //opts.modelDump match {case Some(md) => m.print(new java.io.File(md)) case None => }
-   	writeModel(m,new java.io.File(opts.model.get))
+   	    val coreModel = me.train(accessSeq)
+   	    val m = new NonFactoredModel(sGen.getModelName,sGen.getLexicon, sGen.getWordProps ,1,coreModel,sGen.faMap,sGen.getNumberOfStates)
+   	    writeModel(m,new java.io.File(opts.model.get))
       }
+    
     override def train() = {
       val seqs : Seq[InstanceSequence] = sGen.createSeqsFromFiles  // this has to happen before generating CRF
       val me = new NonFactoredMaxEnt(2,sGen.faMap.size,opts.gaussian) with CondLogLikelihoodLearner
@@ -232,7 +246,8 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
   lazy val decoder = new Decoder[Array[RankReadInst]](true,opts) {
     type M = NonFactoredModel
     val model : NonFactoredModel = readModel(opts.model match {case Some(s) => new java.io.File(s) case None => throw new RuntimeException("Invalid model")})
-    val sGen = new NonFactoredRankDecodingSeqGen(model,opts) with MaxEntSeqGenCore[Array[RankReadInst]]
+    //val sGen = new NonFactoredRankDecodingSeqGen(model,opts) with MaxEntSeqGenCore[Array[RankReadInst]]
+    val sGen = new NonFactoredRankDecodingSeqGen(model,opts) with MaxEntSeqGenGeneral
     override def decodeToAnnotations(s: String) : Array[Annotation] = throw new RuntimeException("Unavailable method")
     override def decode() = decodeSeqsFromFiles(new NonFactoredMaxEntDecodingAlgorithm(model.crf))
     setDecoder(false)

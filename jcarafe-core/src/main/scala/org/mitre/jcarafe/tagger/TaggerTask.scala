@@ -44,7 +44,7 @@ abstract class TaggerTask[Obs](argv: Array[String]) {
       val eval = opts.evaluate match { case Some(_) => true case None => false }
       decoder.decode()
       decoder.cleanUp()
-      if (eval) decoder.sGen.getAccuracy
+      if (eval) println("Token(element)-level accuracy: " + decoder.sGen.getAccuracy)
     }
   }
 }

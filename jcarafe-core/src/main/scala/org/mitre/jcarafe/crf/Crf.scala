@@ -240,7 +240,6 @@ extends Trainable {
     scale(len-1) = curNls
     assign(beta(len-1),((_:Double) => 1 / scale(len-1)))
     var i = len - 1
-    var icheck = false
     while (i > 0) {
       computeScores(iseq(i).getCompVec,true)
       Array.copy(beta(i), 0, tmp, 0, curNls)

@@ -49,7 +49,6 @@ class ProjectiveDependencyParser(argv: Array[String]) extends TaggerTask[String]
   lazy val decoder = new NonFactoredDecoder[String](true,opts) {
     val model = readModel(opts.model.get)
     model.fixAlphabet(true)
-    println("loaded in model: " + opts.model.get)
     opts.modelDump match {case Some(mf) => model.print(new java.io.File(mf)) case None => }
     override lazy val viterbiDecoder = new ProjectiveMstInference(model.crf)
     val mgr = new DynamicDepParserFeatureManager(model.fspec,model.numStates)

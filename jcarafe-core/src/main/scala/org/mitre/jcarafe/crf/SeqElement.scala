@@ -43,6 +43,8 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
   def getCompVec: Array[Array[Feature]]
   def addSelf(l: Long) = {}
   def selfUserVec: Set[Long] = Set()
+  lazy val instWeight : Double = 1.0
+  
 }
 
 class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends AbstractInstance(label, orig, segId) {
