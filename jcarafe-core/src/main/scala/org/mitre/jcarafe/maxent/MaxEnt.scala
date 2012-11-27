@@ -48,7 +48,9 @@ class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
   def close() = is.close
 }
 
-class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None, val srcInfo: Option[String] = None, weight: Double = 1.0) extends AbstractInstance(label, orig, -1) {
+class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None, 
+    val srcInfo: Option[String] = None, weight: Double = 1.0) 
+extends AbstractInstance(label, orig, -1) {
   def this(l: Int, o: Int, meVec: Array[CompactFeature]) = this(l,o,Some(meVec))
   type FType = CompactFeature
   val maxentBuffer = new ArrayBuffer[CompactFeature]
@@ -407,6 +409,7 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
   }
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
+  def createMEInstance(l: Int, o: Int, w: Double): MaxEntInstance = new MaxEntInstance(l, o, weight=w)
   def createMEInstance(l: Int, o: Int, src: String) = new MaxEntInstance(l,o,srcInfo=Some(src))
 
 }
@@ -595,19 +598,23 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     }
     InstSeq(iseq)
   }
+  val numReg = """^[0-9]+\.?[0-9]+$|^\.[0-9]+$""".r
 
   protected def buildInstance(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
       l.split(" ").toList match {
-        case lab :: fs =>
-          val src = createSource(SLabel(lab), (fs map { el =>
+        case first :: second :: rest =>
+          val (weight,label,features) = 
+            if (numReg.findFirstIn(first).isDefined) (first.toDouble, second, rest)
+            else (1.0,first,(second :: rest))
+          val src = createSource(SLabel(label), (features map { el =>
             el.split(":").toList match {
               case a :: b :: Nil => (FeatureId(a), b.toDouble)
               case a :: _ => (FeatureId(a), 1.0)
               case Nil => throw new RuntimeException("Feature vector parse failed")
             }
           }), false)
-          val inst = frep.createMEInstance(src.label, src.label)
+          val inst = frep.createMEInstance(src.label, src.label, weight)
           addInFeatures(inst, src)
           Some(inst)
         case _ => None

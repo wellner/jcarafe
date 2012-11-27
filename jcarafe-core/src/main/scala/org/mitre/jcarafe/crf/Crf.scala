@@ -420,9 +420,10 @@ with SparseTrainable
 
   protected def reset(l: Int) : Unit = reset(false, l)
   
-  def getGradient(seqAccessor: AccessSeq) = {
+  def getGradient(seqAccessor: AccessSeq) : Option[Double] = {
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
+    var totalLL = 0.0
     //var normFactor = 0
     for (i <- curPos until curPos + asize) {
       val j = i % seqAccessor.length
@@ -433,14 +434,17 @@ with SparseTrainable
         reset(iseq.length)
         gradient.foreach {case (k,v) => v.e_=(0.0)} // reset expectations to zero
         backwardPass(iseq)
-        forwardPass(iseq)
+        var sll = forwardPass(iseq)
         val pzx = vecSum(curA)
         val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
+        sll -= math.log(zx)
+        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
         for ((k,cell) <- gradient) {
           cell.g_= (cell.g - (cell.e / zx))
           val cabs = math.abs(cell.g)
           if (cabs > gradNormalizer) { gradNormalizer = cabs }
         }
+        totalLL -= sll
       }
     }
     curPos += asize
@@ -455,8 +459,7 @@ with SparseTrainable
       cell.g_= (cell.g - lambdas(k) * invSigSqr)
     }
     }
-    
-    None
+    Some(totalLL)
   }
 }  
 

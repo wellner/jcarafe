@@ -176,7 +176,6 @@ abstract class DenseSemiCrf(nls: Int, nfs: Int, segSize: Int, gPrior: Double) ex
           k += 1
         }
         d += 1
-        
       }
       i += 1
     }
@@ -248,7 +247,7 @@ abstract class StochasticSemiCrf(nls: Int, nfs: Int, segSize: Int, opts: Options
     seqLogLi
   }
 
-  override def getGradient(seqAccessor: AccessSeq) = {
+  override def getGradient(seqAccessor: AccessSeq) : Option[Double] = {
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     for (i <- curPos until curPos + asize) {

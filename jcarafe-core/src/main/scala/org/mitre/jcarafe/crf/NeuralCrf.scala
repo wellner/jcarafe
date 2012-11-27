@@ -280,7 +280,7 @@ abstract class NeuralStochasticCrf(nls: Int,
     seqLogLi
   }
   
-  override def getGradient(seqAccessor: AccessSeq) = {
+  override def getGradient(seqAccessor: AccessSeq) : Option[Double] = {
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     /*

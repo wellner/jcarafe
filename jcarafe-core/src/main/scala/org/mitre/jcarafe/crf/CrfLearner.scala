@@ -80,12 +80,14 @@ trait SgdLearner extends SparseTrainable with CrfLearner {
 
   val p_alpha = pAlpha //Some possible values include: 0.9, 0.85, 0.8
   val eta_0 = eta //Some possible values include: 1.0, 0.5, 0.2, 0.1
+  
 
   def train(accessSeq: AccessSeq, x: Int,modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var eta_t = eta_0 //Dummy value (indicates type). The value will be replaced.
     val N: Double = accessSeq.length //Force N to be floating point so that 't/N' is done in floating point and not as truncated or rounded-off integer division
     var converged = false
     var t = 0
+    var epochLL = 0.0
     val max_iters = accessSeq.length * maxEpochs / batchSize
     initialize()
     accessSeq.repermute()
@@ -102,7 +104,8 @@ trait SgdLearner extends SparseTrainable with CrfLearner {
       //eta_t = eta_0 * scala.math.pow(p_alpha, (batchSize * t / N))
       curPos = (t * batchSize) % accessSeq.length
       gradient.clear() // clear map on each iteration
-      getGradient(accessSeq)
+      val sll = getGradient(accessSeq)
+      epochLL += sll.getOrElse(0.0)
       previousDeltas match {
         case Some(prevs) =>
           for ((k, v) <- gradient) {
@@ -118,6 +121,8 @@ trait SgdLearner extends SparseTrainable with CrfLearner {
       t += 1
       if ((t % accessSeq.length) == 0 && (t > 0)) {
         println("Epoch " + (t / accessSeq.length) + " complete (of " + maxEpochs + ")") //This statement may be incorrect for batchSize > 1?
+        if (epochLL > 0.001) println("Log-likelihood for Epoch: " + epochLL)
+        epochLL = 0.0
         accessSeq.repermute()
       }
     }
@@ -154,6 +159,7 @@ trait SgdLearnerWithL1 extends SparseTrainable with CrfLearner {
     var eta_t = eta_0 //Dummy value (indicates type). The value will be replaced.
     val N: Double = accessSeq.length //Force N to be floating point so that 't/N' is done in floating point and not as truncated or rounded-off integer division
     var u = 0.0 //Maximum cumulative regularization magnitude so far
+    var epochLL = 0.0
     val previousDeltas: Option[Array[Double]] = if (momentum > 0.0) Some(Array.fill(numParams)(0.0)) else None
     var converged = false
     var t = 0
@@ -173,8 +179,8 @@ trait SgdLearnerWithL1 extends SparseTrainable with CrfLearner {
       u += (eta_t * batchSize * C / N) //Have u accumulate "eta_t*C" each time all the training sequences have been checked
       curPos = (t * batchSize) % accessSeq.length
       gradient.clear() // clear map on each iteration
-      getGradient(accessSeq)
-
+      val sll = getGradient(accessSeq)
+      epochLL += sll.getOrElse(0.0)
       for ((k, v) <- gradient) {
         previousDeltas match {
           case Some(prevs) =>
@@ -192,6 +198,9 @@ trait SgdLearnerWithL1 extends SparseTrainable with CrfLearner {
       }
       t += 1
       if ((t % accessSeq.length) == 0 && (t > 0)) println("Epoch " + (t / accessSeq.length) + " complete (of " + maxEpochs + "). Most + gradient so far= " + most_pos_grad_val_so_far + "; most - gradient so far= " + most_neg_grad_val_so_far) //This statement may be incorrect for batchSize > 1?
+      if (epochLL > 0.001) println("Log-likelihood for Epoch: " + epochLL)
+      epochLL = 0.0      
+      
     }
     if (!quiet) {
       println("\n...Training completed in " + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")
@@ -227,6 +236,7 @@ trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
     var t = 0
     val max_iters = accessSeq.length * maxEpochs / batchSize
     val num_zero_val = big_m / (big_m + k + small_m)
+    var epochLL = 0.0
     //Knowing the most positive and negative gradient values encountered may help with setting C, the regularization rate, in the future.
     var most_pos_grad_val_so_far = 0.0
     var most_neg_grad_val_so_far = 0.0
@@ -244,7 +254,8 @@ trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
     while ((!converged) && (t < max_iters)) {
       curPos = (t * batchSize) % accessSeq.length
       gradient.clear // clear map on each iteration
-      getGradient(accessSeq)
+      val sll = getGradient(accessSeq)
+      epochLL += sll.getOrElse(0.0)
       for ((k, v) <- gradient) {
         previousDeltas match {
           case Some(prevs) =>
@@ -302,6 +313,8 @@ trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
       } else if (((t + 1) % n) == 0) Array.copy(lambdas, 0, params_n, 0, numParams)
       t += 1
       if ((t % accessSeq.length) == 0 && (t > 0)) println("Epoch " + (t / accessSeq.length) + " complete (of " + maxEpochs + ")")
+      if (epochLL > 0.001) println("Log-likelihood for Epoch: " + epochLL)
+        epochLL = 0.0
     }
     if (!quiet) {
       println("\n...Training completed in " + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")

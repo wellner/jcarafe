@@ -14,6 +14,7 @@ sealed abstract class AbstractLabel extends java.io.Serializable {
   override def toString = labelString
   def hasValue(s: String) : Option[(String,String)] = None
   def hasValue(sl: List[String]) : Option[(String,String)] = None
+  def hasAttributeWithWildCard(s: String) : Option[(String,String)] = None
 }
 
 case class ILabel(val v: Int) extends AbstractLabel {
@@ -49,10 +50,15 @@ case class Label(val l: String, val atts: Map[String,String]) extends AbstractLa
     s.toString
   }
   override def hasValue(s: String) : Option[(String,String)] = {
-	  atts.find {case (_,v) => v == s}
+    val v = atts.find {case (_,v) => v == s}
+    println("Checking whether label " + this + " has value = " + s)
+    v
   }
   override def hasValue(sl: List[String]) : Option[(String,String)] = {
 	  sl.foldLeft(None: Option[(String,String)]) {(ac,v) => hasValue(v)}
+  }
+  override def hasAttributeWithWildCard(s: String) : Option[(String,String)] = {
+    atts.find {case (a,v) => a == s && v == "*"}
   }
 } 
 

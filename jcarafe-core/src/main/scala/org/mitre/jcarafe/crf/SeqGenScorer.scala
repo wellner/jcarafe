@@ -144,6 +144,8 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
     e
   }
   
+  val wrongLabel = SLabel("=NOVEL=")
+  
   override def evaluateSequences(seqs: Seq[InstanceSequence]) = {
     var startSysIndex = -1
     var curSysType = invLa(0)
@@ -157,7 +159,7 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
         totalTokCnt += 1
         if (!(inst.label == inst.orig)) {totalIncorrectTok += 1; seqTokIncorrect += 1}
         val newSysAct = invLa(inst.label)
-        val newGoldAct = invLa(inst.orig) 
+        val newGoldAct = invLa.get(inst.orig).getOrElse(wrongLabel) // if this label doesn't map, ass
         val newSysType = trueLabel(newSysAct) 
         val newGoldType = trueLabel(newGoldAct)
         updateTokenSet(systemTokens,newSysType,i,globalIndex)
