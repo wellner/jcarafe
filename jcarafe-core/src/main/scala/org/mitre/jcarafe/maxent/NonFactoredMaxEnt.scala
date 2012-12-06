@@ -229,7 +229,7 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
     type TrSeqGen = NonFactoredRankTrainingSeqGen
     val sGen = new NonFactoredRankTrainingSeqGen(opts) with MaxEntSeqGenGeneral
    	  
-    def trainModel(me: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
+    def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
         val accessSeq = new MemoryAccessSeq(seqs)	
    	    val coreModel = me.train(accessSeq)
    	    val m = new NonFactoredModel(sGen.getModelName,sGen.getLexicon, sGen.getWordProps ,1,coreModel,sGen.faMap,sGen.getNumberOfStates)
@@ -238,7 +238,7 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
     
     override def train() = {
       val seqs : Seq[InstanceSequence] = sGen.createSeqsFromFiles  // this has to happen before generating CRF
-      val me = new NonFactoredMaxEnt(2,sGen.faMap.size,opts.gaussian) with CondLogLikelihoodLearner
+      val me = new NonFactoredMaxEnt(2,sGen.faMap.size,opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       trainModel(me, seqs) 
     }
   }

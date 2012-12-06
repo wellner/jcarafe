@@ -7,8 +7,8 @@ package org.mitre.jcarafe.crf
 import org.mitre.jcarafe.util.Options
 
 trait DenseWorker extends DenseCrf {
-  override def train(a:AccessSeq) = throw new RuntimeException("Class doesn't support training")
-  override def train(a:AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = throw new RuntimeException("Class doesn't support training")
+  override def train(a:AccessSeq[AbstractInstance]) = throw new RuntimeException("Class doesn't support training")
+  override def train(a:AccessSeq[AbstractInstance], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = throw new RuntimeException("Class doesn't support training")
 }
 
 class DenseCrfWorker(lambdas: Array[Double], nls: Int,nfs: Int,segSize: Int,gPrior: Double) 
@@ -37,9 +37,9 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
     }
   }
 
-  protected def getGradient(numProcesses: Int, seqAccessor: AccessSeq) : Option[Double] = {
+  protected def getGradient(numProcesses: Int, seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = {
     val accessors = seqAccessor.splitAccessor(numProcesses).toArray
-    val returns = new Mapper(accessors,{accessor: AccessSeq =>
+    val returns = new Mapper(accessors,{accessor: AccessSeq[AbstractInstance] =>
       val crf = getWorker(lambdas,nls,nfs,segSize,gPrior)
       val localLL = crf.getGradient(false,accessor)
       (crf.gradient,localLL)
@@ -61,13 +61,13 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
 }
 
 class DenseParallelCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, gPrior: Double) extends DenseCrf(nls,nfs,segSize,gPrior)
-with ParCrf[DenseCrfWorker] with CondLogLikelihoodLearner {
+with ParCrf[DenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance]{
   
   def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new DenseCrfWorker(lambdas,nls,nfs,segSize,gPrior)
   }
 
-  override def getGradient(seqAccessor: AccessSeq) : Option[Double] = getGradient(numPs,seqAccessor)
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = getGradient(numPs,seqAccessor)
 }
 
 class NeuralDenseParallelCrf(numPs: Int,
@@ -78,11 +78,11 @@ class NeuralDenseParallelCrf(numPs: Int,
 			     nNfs: Int = 0,
 			     nGates: Int = 2) 
 extends NeuralDenseCrf(nls,nfs,segSize,opts,nNfs,nGates)
-with ParCrf[NeuralDenseCrfWorker] with CondLogLikelihoodLearner {
+with ParCrf[NeuralDenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
   def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new NeuralDenseCrfWorker(lambdas, nls, nfs, ss, gPrior, nNfs, nGates, opts)
   }
 
-  override def getGradient(seqAccessor: AccessSeq) : Option[Double] = getGradient(numPs,seqAccessor)
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = getGradient(numPs,seqAccessor)
 }

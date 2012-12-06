@@ -12,7 +12,7 @@ class PsaWorker[T <: StochasticCrf](val estimator: T) extends Actor {
   def act() = {
     Actor.loop {
       react {
-	case accessSeq: AccessSeq =>
+	case accessSeq: AccessSeq[AbstractInstance] =>
 	  val core = estimator.train(accessSeq) // "train", just a single pass
 	  reply(SectionUpdate(core.params,estimator.etas)) // return parameters
 	case newParams: SectionUpdate =>
@@ -41,10 +41,10 @@ trait ParallelStochastic[T <: StochasticCrf] extends StochasticCrf {
   val psaWorkers : Vector[Actor] = Vector.tabulate(numWorkers){_ => 
     new PsaWorker(getWorker).start}
 
-  override def train(accessSeq: AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
+  override def train(accessSeq: AccessSeq[AbstractInstance], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
     println("\nConcurrent Stochastic Gradient Descent Training (with PSA) over " + accessSeq.length + " sequences")
     println("\t The eta's are initialized to " + etas(0) + " [val etas = Array.fill(nfs)(initialLearningRate)]")
-    val accessors : IndexedSeq[AccessSeq] = accessSeq.splitAccessor(numWorkers).toIndexedSeq
+    val accessors : IndexedSeq[AccessSeq[AbstractInstance]] = accessSeq.splitAccessor(numWorkers).toIndexedSeq
     var t = 0
     val newLambdas = Array.fill(nfs)(0.0)
     val newEtas = Array.fill(nfs)(1.0)
@@ -76,6 +76,6 @@ class ParStochasticCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) extends 
     nOpts.gaussian = Double.MaxValue
     nOpts.batchSize = 1
     nOpts.CValue = 0.1
-    new StochasticCrf(nls, nfs, segSize, nOpts) with PsaLearner
+    new StochasticCrf(nls, nfs, segSize, nOpts) with PsaLearner[AbstractInstance]
   }
 }

@@ -44,9 +44,9 @@ class Evaluator(val opts: Options, val seqGen: MaxEntTrainingSeqGen) {
         println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
         new DenseParallelMaxEnt(numPs, seqGen.getNumberOfStates,seqGen.getNumberOfFeatures,opts.gaussian)
       } else if (opts.psa) {
-    	  new SparseMaxEnt(seqGen.getNumberOfStates,seqGen.getNumberOfFeatures,opts) with PsaLearner
+    	  new SparseMaxEnt(seqGen.getNumberOfStates,seqGen.getNumberOfFeatures,opts) with PsaLearner[AbstractInstance]
       }
-      else new MaxEnt(seqGen.getNumberOfStates,seqGen.getNumberOfFeatures,opts.gaussian) with CondLogLikelihoodLearner
+      else new MaxEnt(seqGen.getNumberOfStates,seqGen.getNumberOfFeatures,opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
   }
 
   def trainAndEvaluate(training: Seq[AbstractInstance], testing: Seq[AbstractInstance]) : Array[Array[Int]] = {

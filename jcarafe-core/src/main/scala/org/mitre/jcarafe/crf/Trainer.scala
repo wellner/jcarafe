@@ -16,7 +16,7 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
    */
   val sGen : TrSeqGen
   
-  def trainModel(dCrf: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) : Unit
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) : Unit
 
   def trainingRoutine(seqs: Seq[InstanceSequence]) : Unit
 
@@ -53,20 +53,20 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] {
         CrfInstance.maxSegSize = s // "global" value for maximum seg size
 	if (opts.psa) 
 	  if (opts.l1)
-        new StochasticSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts) with PsaLearnerWithL1
+        new StochasticSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts) with PsaLearnerWithL1[AbstractInstance]
 	  else
-	    new StochasticSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts) with PsaLearner
+	    new StochasticSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts) with PsaLearner[AbstractInstance]
 	else
-	  new DenseSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts.gaussian) with CondLogLikelihoodLearner 
+	  new DenseSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       }
       else if (opts.psa)
         if (opts.l1)
-          new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with PsaLearnerWithL1
+          new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with PsaLearnerWithL1[AbstractInstance]
         else
 	  if (opts.parallel) 
 	    new ParStochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts)
           else
-            new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with PsaLearner
+            new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with PsaLearner[AbstractInstance]
       else if (opts.parallel) {
         val numPs = opts.numThreads match {
           case None => Runtime.getRuntime.availableProcessors * 4/5 // leave a CPU or two free
@@ -76,16 +76,16 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] {
       } 
       else if (opts.sgd) {
 	if (opts.l1) 
-	  new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with SgdLearnerWithL1
+	  new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with SgdLearnerWithL1[AbstractInstance]
 	else
-	  new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with SgdLearner
+	  new StochasticCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts) with SgdLearner[AbstractInstance]
       } 
       else {
     	if (opts.semiCrf) {  
     	  val s = sGen.getMaxSegmentSize
           CrfInstance.maxSegSize = s // "global" value for maximum seg size
-          new DenseSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts.gaussian) with CondLogLikelihoodLearner }
-    	else new DenseCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts.gaussian) with CondLogLikelihoodLearner
+          new DenseSemiCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,(s+1),opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance] }
+    	else new DenseCrf(sGen.getNumberOfStates,sGen.getNumberOfFeatures,1,opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       }
     if (adjust) dCrf.adjustible_=(true)
     trainModel(dCrf,seqs)
@@ -104,7 +104,7 @@ abstract class FactoredTrainer[O](opts:Options) extends Trainer[O](opts) with Li
     if (opts.l1) Model.compactModel(stM) else stM
   }
 
-  def trainModel(dCrf: Trainable, seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs,opts.seed)	
     val coreModel = dCrf.train(accessSeq,opts.maxIters,modelIterFn)
     val m = getModel((sGen.getMaxSegmentSize + 1), coreModel)
@@ -160,7 +160,7 @@ abstract class GenericNonFactoredTrainer[O](adj: Boolean, opts: Options) extends
     }
   }
 
-  def trainModel(dCrf: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs,opts.seed)	
     val coreModel = dCrf.train(accessSeq,opts.maxIters,modelIterFn)
     val fm : LongAlphabet = sGen.frep.faMap 

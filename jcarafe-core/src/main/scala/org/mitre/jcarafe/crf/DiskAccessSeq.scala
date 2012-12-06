@@ -4,6 +4,6 @@
 
 package org.mitre.jcarafe.crf
 
-abstract class DiskAccessSeq(iseqs: Seq[InstanceSequence]) extends AccessSeq {
+abstract class DiskAccessSeq(iseqs: Seq[InstanceSequence]) extends AccessSeq[AbstractInstance] {
   
 }

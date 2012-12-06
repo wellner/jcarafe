@@ -142,12 +142,12 @@ class DenseMaxEntWorker(override val lambdas: Array[Double], nls: Int, nfs: Int,
   extends MaxEnt(nls, nfs, gPrior) with DenseWorker
 
 class DenseParallelMaxEnt(numPs: Int, nls: Int, nfs: Int, gPrior: Double) extends MaxEnt(nls, nfs, gPrior)
-  with ParCrf[DenseMaxEntWorker] with CondLogLikelihoodLearner {
+  with ParCrf[DenseMaxEntWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
   def getWorker(lambdas: Array[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) =
     new DenseMaxEntWorker(lambdas, nls, nfs, gPrior)
 
-  override def getGradient(seqAccessor: AccessSeq): Option[Double] = getGradient(numPs, seqAccessor)
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(numPs, seqAccessor)
 }
 
 /*
@@ -157,7 +157,7 @@ class DenseParallelMaxEnt(numPs: Int, nls: Int, nfs: Int, gPrior: Double) extend
  * by-passed to make things simpler and more efficient for MaxEnt.
  * 
 */
-class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, gPrior) with MaxEntCore with CondLogLikelihoodLearner {
+class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, gPrior) with MaxEntCore with CondLogLikelihoodLearner[AbstractInstance] {
 
   val predNFS = nfs / nls
 
@@ -199,8 +199,8 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
     log(scores(trueLabel)) * w
   }
 
-  override def getGradient(seqAccessor: AccessSeq): Option[Double] = getGradient(true, seqAccessor)
-  override def getGradient(l2: Boolean, seqAccessor: AccessSeq): Option[Double] = {
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(true, seqAccessor)
+  override def getGradient(l2: Boolean, seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     val sl = seqAccessor.length
     var logLi = if (l2) regularize() else 0.0
     forIndex(sl) { i =>
@@ -248,8 +248,8 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
     log(scores(trueLabel))
   }
 
-  override def getGradient(seqAccessor: AccessSeq) = getGradient(true, seqAccessor)
-  def getGradient(l2: Boolean, seqAccessor: AccessSeq) = {
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) = getGradient(true, seqAccessor)
+  def getGradient(l2: Boolean, seqAccessor: AccessSeq[AbstractInstance]) = {
     val asize = batchSize
     val sl = seqAccessor.length
     var gradNormalizer = 0.0
@@ -271,7 +271,7 @@ class MaxEntMemoryAccessSeq(iseqs: Seq[InstanceSequence]) extends MemoryAccessSe
 
   override def accessSingleInstance(i: Int): AbstractInstance = apply(0)(i)
   override def length = apply(0).length // length of the single sequence
-  override def splitAccessor(n: Int): Seq[AccessSeq] = {
+  override def splitAccessor(n: Int): Seq[AccessSeq[AbstractInstance]] = {
     assert(seqs.length == 1) // should just be a single sequence in this case
     val seq = seqs(0)
     val ns = if ((seq.length % n) == 0) seq.length / n else (seq.length / n) + 1
@@ -649,7 +649,7 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
   override val sGen: TrSeqGen = new DiskBasedMaxEntTrainingSeqGen(opts)
   import MaxEntSerializer._
 
-  def trainModelWithDiskAccess(me: Trainable) = {
+  def trainModelWithDiskAccess(me: Trainable[AbstractInstance]) = {
     val dc = opts.diskCache match { case Some(dir) => dir case None => "/tmp" }
     println("training with disk access over: " + sGen.cnt + " instances")
     val accessSeq = new MaxEntDiskAccessSeq(dc, 0, (sGen.cnt - 1))
@@ -658,7 +658,7 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
     writeModel(m, new java.io.File(opts.model.get))
   }
 
-  override def trainModel(m: Trainable, seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = trainModelWithDiskAccess(m)
+  override def trainModel(m: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = trainModelWithDiskAccess(m)
 
   override def train = {
     sGen.createInstancesOnDisk // build instances and cache to disk
@@ -673,10 +673,10 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
       } else if (opts.psa) {
         println("PSA training....")
         if (opts.l1)
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
         else
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearner
-      } else new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
+      } else new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModelWithDiskAccess(me)
   }
 
@@ -690,7 +690,7 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
   def this() = this(new MEOptions(Array(), new MaxEntOptionHandler(Array())))
   type TrSeqGen = MaxEntTrainingSeqGen
   val sGen: TrSeqGen = if (opts.fileBased) new FileBasedMaxEntTrainingSeqGen(opts) else new MaxEntTrainingSeqGen(opts)
-  override def trainModel(me: Trainable, seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
+  override def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     if (opts.dumpInstances.isDefined) {
       val ofile = new java.io.FileWriter(opts.dumpInstances.get)
       seqs foreach { iseq =>
@@ -720,10 +720,10 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
         new DenseParallelMaxEnt(numPs, sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian)
       } else if (opts.psa) {
         if (opts.l1)
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
         else
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearner
-      } else new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
+      } else new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
   }
   
   override def train = {
@@ -967,12 +967,12 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
     seqTbl map { case (k, v) => v }
   }
 
-  def trainModelToString(me: Trainable, seqs: Seq[InstanceSequence]): String = {
+  def trainModelToString(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence]): String = {
     val m = train(me, seqs)
     new String(serializeAsBytes(m))
   }
 
-  def train(me: Trainable, seqs: Seq[InstanceSequence]): MaxEntModel = {
+  def train(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence]): MaxEntModel = {
     seqs foreach {iseq => iseq.iseq foreach {ai => ai.label = ai.orig}}  // make sure the label is set ot original label here
     val accessSeq = new MaxEntMemoryAccessSeq(seqs)
     val coreModel = me.train(accessSeq, opts.maxIters)
@@ -985,12 +985,12 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
   
   def batchTrainToModel(obsSeq: Seq[ObsSource[List[(FeatureId, Double)]]]): MaxEntModel = {
     val seqs = sGen.extractFeatures(new SourceSequence[List[(FeatureId, Double)]](obsSeq))
-    val me = new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner
+    val me = new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
     train(me, Seq(seqs))
   }
 
   def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence): MaxEntModel = {
-    val me = new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner
+    val me = new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
     train(me, Seq(instSeq))
   }
   

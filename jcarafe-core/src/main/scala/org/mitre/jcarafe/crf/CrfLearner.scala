@@ -21,9 +21,9 @@ trait CrfLearner {
   }
 }
 
-trait CondLogLikelihoodLearner extends DenseTrainable with CrfLearner {
+trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
 
-  def train(accessSeq: AccessSeq, max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  def train(accessSeq: AccessSeq[T], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var diagco = false
     val diag = Array.fill(numParams)(0.0)
     val eps = 1.0e-3
@@ -76,13 +76,13 @@ From "Stochastic Gradient Descent Training for L1-regularized Log-linear Models 
 By Y. Tsuruoka, J. Tsujji and S. Ananiadou (ACL 2009).
    Alex Yeh, 2009Nov
 */
-trait SgdLearner extends SparseTrainable with CrfLearner {
+trait SgdLearner[T] extends SparseTrainable[T] with CrfLearner {
 
   val p_alpha = pAlpha //Some possible values include: 0.9, 0.85, 0.8
   val eta_0 = eta //Some possible values include: 1.0, 0.5, 0.2, 0.1
   
 
-  def train(accessSeq: AccessSeq, x: Int,modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  def train(accessSeq: AccessSeq[T], x: Int,modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var eta_t = eta_0 //Dummy value (indicates type). The value will be replaced.
     val N: Double = accessSeq.length //Force N to be floating point so that 't/N' is done in floating point and not as truncated or rounded-off integer division
     var converged = false
@@ -148,14 +148,14 @@ From "Stochastic Gradient Descent Training for L1-regularized Log-linear Models 
 By Y. Tsuruoka, J. Tsujji and S. Ananiadou (ACL 2009).
    Alex Yeh, 2009Dec
 */
-trait SgdLearnerWithL1 extends SparseTrainable with CrfLearner {
+trait SgdLearnerWithL1[T] extends SparseTrainable[T] with CrfLearner {
 
   val p_alpha = pAlpha //Some possible values include: 0.9, 0.85, 0.8
   val eta_0 = eta //Some possible values include: 1.0, 0.5, 0.2, 0.1
   val q = Array.fill(numParams)(0.0) //q(k): total amount of regularization used so far on lambda(k) to try to minimize its magnitude
   //The total is an arithmetic sum, with positive and negative amounts canceling each other.
 
-  def train(accessSeq: AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  def train(accessSeq: AccessSeq[T], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var eta_t = eta_0 //Dummy value (indicates type). The value will be replaced.
     val N: Double = accessSeq.length //Force N to be floating point so that 't/N' is done in floating point and not as truncated or rounded-off integer division
     var u = 0.0 //Maximum cumulative regularization magnitude so far
@@ -216,7 +216,7 @@ trait SgdLearnerWithL1 extends SparseTrainable with CrfLearner {
 2009Dec.: Adapted for PSA from "Stochastic Gradient Descent Training for L1-regularized Log-linear Models with Cumulative Penalty"
 By Y. Tsuruoka, J. Tsujji and S. Ananiadou (ACL 2009).
 */
-trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
+trait PsaLearnerWithL1[T] extends SparseTrainable[T] with CrfLearner {
   val p_alpha = 0.9999
   val p_beta = 0.99
   val n = periodSize
@@ -230,7 +230,7 @@ trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
   val uVec_last_update_t = Array.fill(numParams)(-1) //For the kth value, the iteration during which the last update to uVec(k) was performed. Initially, uVec is deemed to be last updated just before the first iteration (iteration i=0).
   val q = Array.fill(numParams)(0.0) //q(k): total amount of regularization used so far on lambda(k) to try to minimize its magnitude
 
-  def train(accessSeq: AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  def train(accessSeq: AccessSeq[T], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     val big_n_for_l1: Double = accessSeq.length //Force 'big_n_for_l1' ('N' in the paper) to be floating point so that 't/big_n_for_l1' is done in floating point and not as truncated or rounded-off integer division
     var converged = false
     var t = 0
@@ -328,7 +328,7 @@ trait PsaLearnerWithL1 extends SparseTrainable with CrfLearner {
   }
 }
 
-trait PsaLearner extends SparseTrainable with CrfLearner {
+trait PsaLearner[T] extends SparseTrainable[T] with CrfLearner {
 
   val p_alpha = 0.9999
   val p_beta = 0.99
@@ -340,7 +340,7 @@ trait PsaLearner extends SparseTrainable with CrfLearner {
   val big_m = ((p_alpha + p_beta) * k) / (p_alpha - p_beta)
   val small_m = (2 * (1 - p_alpha) * k) / (p_alpha - p_beta)
 
-  def train(accessSeq: AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  def train(accessSeq: AccessSeq[T], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var converged = false
     var t = 0
     val max_iters = accessSeq.length * maxEpochs / batchSize

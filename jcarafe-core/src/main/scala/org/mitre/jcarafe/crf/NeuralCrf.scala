@@ -15,6 +15,7 @@ object NeuralCrf {
 
   type Matrix = Array[Array[Double]]
   type Tensor = Array[Matrix]
+  type T = AbstractInstance
 
   def apply(sgen: SeqGen[_], opts: Options) = {
     val nls = sgen.getNumberOfStates
@@ -26,23 +27,23 @@ object NeuralCrf {
     //println("nGates = " + nGates)
     if (opts.sgd)
       if (opts.l1)
-	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with SgdLearnerWithL1
+	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with SgdLearnerWithL1[T]
       else
-	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with SgdLearner
+	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with SgdLearner[T]
     else if (opts.psa)
       if (opts.l1)
-	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearnerWithL1
+	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearnerWithL1[T]
       else if (opts.parallel)
 	new ParStochasticNeuralCrf(nls,nTotalFeatures,1,opts,nnfs,nGates)
       else 
-	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearner
+	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearner[T]
     else {
       if (opts.parallel) {
 	val nthds = opts.numThreads match {case Some(v) => v case None => 2}
 	new NeuralDenseParallelCrf(nthds,nls,nTotalFeatures,1,opts,nnfs,nGates)
       }
       else
-	new NeuralDenseCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with CondLogLikelihoodLearner
+	new NeuralDenseCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with CondLogLikelihoodLearner[T]
     }
   }
 }
@@ -280,7 +281,7 @@ abstract class NeuralStochasticCrf(nls: Int,
     seqLogLi
   }
   
-  override def getGradient(seqAccessor: AccessSeq) : Option[Double] = {
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = {
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     /*
@@ -358,7 +359,7 @@ with ParallelStochastic[NeuralStochasticCrf] {
     newOpts.gaussian = Double.MaxValue
     newOpts.batchSize = 1
     newOpts.CValue = 0.1
-    new NeuralStochasticCrf(nls,nfs,segSize,newOpts,nNfs,nGates) with PsaLearner
+    new NeuralStochasticCrf(nls,nfs,segSize,newOpts,nNfs,nGates) with PsaLearner[AbstractInstance]
   }
 }
 

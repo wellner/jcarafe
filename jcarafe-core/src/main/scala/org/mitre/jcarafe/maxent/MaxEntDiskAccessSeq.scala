@@ -4,7 +4,7 @@
 
 package org.mitre.jcarafe.maxent
 
-import org.mitre.jcarafe.crf.{MemoryAccessSeq, AccessSeq}
+import org.mitre.jcarafe.crf.{MemoryAccessSeq, AccessSeq, AbstractInstance}
 
 
 class MaxEntDiskAccessSeq(val diskCache: String, val st: Int, val en: Int) extends MaxEntMemoryAccessSeq(Seq()) {
@@ -15,7 +15,7 @@ class MaxEntDiskAccessSeq(val diskCache: String, val st: Int, val en: Int) exten
   }
 
   override def length = en - st
-  override def splitAccessor(n: Int) : Seq[AccessSeq] = {
+  override def splitAccessor(n: Int) : Seq[AccessSeq[AbstractInstance]] = {
     throw new RuntimeException("splitAccessor unsupported with MaxEntDiskAccessSeq")
   }
 }

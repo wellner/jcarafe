@@ -82,7 +82,7 @@ class PosteriorCrf(nls: Int, nfs: Int, segSize: Int) extends DenseCrf(nls, nfs, 
 
   var alphas: Matrix = Array.fill(1, nls)(0.0) // need to keep alphas to compute marginals
 
-  def train(accessSeq: AccessSeq, x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = throw new RuntimeException("Training not supported with posterior CRF")
+  def train(accessSeq: AccessSeq[AbstractInstance], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = throw new RuntimeException("Training not supported with posterior CRF")
 
   val faWeightMap = new HashMap[Long, Array[Double]]
 

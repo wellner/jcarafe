@@ -24,7 +24,7 @@ class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePos
   def this(dyn: Boolean, crf: CoreModel) = this(dyn, 1, crf) 
   def this(crf:CoreModel) = this(1,crf)
 
-  val posteriorCrf : Option[DenseCrf] = if (computePosterior) Some(new DenseCRFConfidences(crf) with CondLogLikelihoodLearner) else None
+  val posteriorCrf : Option[DenseCrf] = if (computePosterior) Some(new DenseCRFConfidences(crf) with CondLogLikelihoodLearner[AbstractInstance]) else None
 
   def getCopyOf = new Viterbi(this.dynamic, this.segSize, this.crf)
 
