@@ -51,7 +51,6 @@ case class Label(val l: String, val atts: Map[String,String]) extends AbstractLa
   }
   override def hasValue(s: String) : Option[(String,String)] = {
     val v = atts.find {case (_,v) => v == s}
-    println("Checking whether label " + this + " has value = " + s)
     v
   }
   override def hasValue(sl: List[String]) : Option[(String,String)] = {

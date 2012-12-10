@@ -200,7 +200,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         if (stack.isEmpty) curTok.typ_=(SLabel("lex"))
         else {
           val t = stack.top
-          if ((curTok.contained(t) && (curTok.st == t.st)) || (curTok.st < t.st && curTok.en <= t.en && curTok.en >= t.st)) {
+          if ((curTok.contained(t) && (curTok.st == t.st)) || (curTok.st < t.st && curTok.en <= t.en && curTok.en > t.st)) {
             curTok.beg = true
             curTok.typ_=(t.typ)
           } else {
@@ -243,7 +243,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     tokLists.reverse map { el: List[Annotation] =>
       val sss = seqOfTokArr(el.toArray).toSeq
       createSourceSequence(sss)
-    } // new SourceSequence(seqOfTokArr(el.toArray).toSeq)}
+    } 
   }
 
   def getAState(l: AbstractLabel, v: Boolean) = if (addBeginStates) getState(l, v) else l
