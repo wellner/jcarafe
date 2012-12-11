@@ -2,7 +2,7 @@ package org.mitre.jcarafe.dparser
 
 import org.mitre.jcarafe.crf.{Trainer,InstanceSequence,CondLogLikelihoodLearner,NonFactoredSerializer,
   GenericNonFactoredTrainer, NonFactoredFeatureRep, NonFactoredTrainingSeqGen, NonFactoredDecoder,
-  DecodingNonFactoredFeatureRep,NonFactoredDecodingSeqGen, PsaLearner, SeqGenScorer, WordProperties,CoreModel,LongAlphabet,NonFactoredModel
+  DecodingNonFactoredFeatureRep,NonFactoredDecodingSeqGen, PsaLearner, SeqGenScorer, WordProperties,CoreModel,LongAlphabet,NonFactoredModel,AbstractInstance
 }
 import org.mitre.jcarafe.tagger.TaggerTask
 
@@ -15,11 +15,11 @@ trait ProjectiveMstCrfTraining[O] extends Trainer[O] {
     println("Number of features = " + sGen.getNumberOfFeatures)
     val mstCrf =
       if (opts.psa)
-        new StochasticProjectiveMstCrf(sGen.getNumberOfFeatures, opts) with PsaLearner
+        new StochasticProjectiveMstCrf(sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
       else if (opts.parallel) 
         new ProjectiveMstCrfParallel(opts.numThreads.get, sGen.getNumberOfFeatures, opts.gaussian)
       else
-    	new ProjectiveMstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner
+    	new ProjectiveMstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModel(mstCrf,seqs,modelIterate)
   }
 }

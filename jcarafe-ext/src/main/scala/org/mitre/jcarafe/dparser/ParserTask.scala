@@ -13,7 +13,7 @@ trait MstCrfTraining[O] extends Trainer[O] {
   def trainingRoutine(seqs: Seq[InstanceSequence]) = {
     println("Processed " + seqs.length + " sentences . . . beginning parameter estimation..\n")
     println("Number of features = " + sGen.getNumberOfFeatures)
-    val mstCrf = new MstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner
+    val mstCrf = new MstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModel(mstCrf,seqs)
   }
 }

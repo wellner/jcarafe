@@ -94,7 +94,7 @@ abstract class ProjectiveMst {
   }
 }
 
-abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extends ProjectiveMst with DenseTrainable {
+abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extends ProjectiveMst with DenseTrainable[AbstractInstance] {
 
   /**
    * These are the model parameters
@@ -188,7 +188,7 @@ abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extend
     }
   }
 
-  def getGradient(li: Boolean, seqAccessor: AccessSeq): Option[Double] = {
+  def getGradient(li: Boolean, seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     var logLi = if (li) (regularize()) else 0.0 // this also resets the gradient
     for (j <- 0 until seqAccessor.length) {
       val seq = seqAccessor(j)
@@ -197,10 +197,10 @@ abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extend
     Some(-logLi)
   }
 
-  def getGradient(seqAccessor: AccessSeq): Option[Double] = getGradient(true, seqAccessor)
+  def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(true, seqAccessor)
 }
 
-abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, modelIterFn: Option[String => Unit] = None) extends ProjectiveMst with SparseTrainable {
+abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, modelIterFn: Option[String => Unit] = None) extends ProjectiveMst with SparseTrainable[AbstractInstance] {
 
   val quiet = false
 
@@ -248,7 +248,7 @@ abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, model
 
   val gNormMax = 600.0
 
-  def getGradient(seqAccessor: AccessSeq): Option[Double] = {
+  def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     var totalLL = 0.0
@@ -489,9 +489,9 @@ trait ParMstCrf extends ProjectiveMstCrf {
     }
   }
 
-  def getGradient(numProcesses: Int, seqAccessor: AccessSeq): Option[Double] = {
+  def getGradient(numProcesses: Int, seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     val accessors = seqAccessor.splitAccessor(numProcesses).toArray
-    val returns = new Mapper(accessors, { accessor: AccessSeq =>
+    val returns = new Mapper(accessors, { accessor: AccessSeq[AbstractInstance] =>
       val crf = getWorker(lambdas, nfs, gPrior)
       val localLL = crf.getGradient(false, accessor) // need to do the right thing with regularization
       (crf.gradient, localLL)
@@ -510,15 +510,15 @@ trait ParMstCrf extends ProjectiveMstCrf {
   }
 }
 
-class ProjectiveMstCrfParallel(numPs: Int, nfs: Int, gPrior: Double = 100.0) extends ProjectiveMstCrf(nfs, gPrior) with ParMstCrf with CondLogLikelihoodLearner {
+class ProjectiveMstCrfParallel(numPs: Int, nfs: Int, gPrior: Double = 100.0) extends ProjectiveMstCrf(nfs, gPrior) with ParMstCrf with CondLogLikelihoodLearner[AbstractInstance] {
 
   def getWorker(ls: Array[Double], nfs: Int, Prior: Double) = {
     new ProjectiveMstCrf(nfs, gPrior) {
       override val lambdas = ls
-      def train(a: AccessSeq) = throw new RuntimeException("Class doesn't support training")
-      def train(a: AccessSeq, x: Int, mi: Option[(CoreModel,Int) => Unit]) = throw new RuntimeException("Class doesn't support training")
+      def train(a: AccessSeq[AbstractInstance]) = throw new RuntimeException("Class doesn't support training")
+      def train(a: AccessSeq[AbstractInstance], x: Int, mi: Option[(CoreModel,Int) => Unit]) = throw new RuntimeException("Class doesn't support training")
     }
   }
 
-  override def getGradient(seqAccessor: AccessSeq): Option[Double] = getGradient(numPs, seqAccessor)
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(numPs, seqAccessor)
 }

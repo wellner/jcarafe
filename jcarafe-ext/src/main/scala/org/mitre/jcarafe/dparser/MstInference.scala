@@ -8,7 +8,7 @@ import org.mitre.jcarafe.util.FastLoops._
 import org.mitre.jcarafe.jama._
 
 
-abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTrainable {
+abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTrainable[AbstractInstance] {
 
   import org.mitre.jcarafe.util.FastLoops._
 
@@ -89,7 +89,7 @@ abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTra
     }
   }
 
-  def getGradient(seqAccessor: AccessSeq) : Option[Double] = {
+  def getGradient(seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = {
     var logLi = regularize()
     for (j <- 0 until seqAccessor.length) {
       val seq = seqAccessor(j)
