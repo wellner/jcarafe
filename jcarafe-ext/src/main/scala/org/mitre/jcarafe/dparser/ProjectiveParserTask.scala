@@ -44,6 +44,7 @@ class ProjectiveDependencyParser(argv: Array[String]) extends TaggerTask[String]
         val m = new NonFactoredModel(sGen.getModelName, sGen.getLexicon, sGen.getWordProps, 1,cm,sGen.frep.faMap, opts.numStates.get)
         writeModel(m,new java.io.File(opts.model.get+"_"+i))
         })
+    def xValidate() : Unit = throw new RuntimeException("X-validation not yet supported with Projective Dependency Parser")
   }
   
   lazy val decoder = new NonFactoredDecoder[String](true,opts) {

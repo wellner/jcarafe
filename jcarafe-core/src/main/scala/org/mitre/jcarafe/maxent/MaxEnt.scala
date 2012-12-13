@@ -271,7 +271,7 @@ class MaxEntMemoryAccessSeq(iseqs: Seq[InstanceSequence]) extends MemoryAccessSe
 
   override def accessSingleInstance(i: Int): AbstractInstance = apply(0)(i)
   override def length = apply(0).length // length of the single sequence
-  override def splitAccessor(n: Int): Seq[AccessSeq[AbstractInstance]] = {
+  override def splitAccessor(n: Int): Seq[MemoryAccessSeq] = {
     assert(seqs.length == 1) // should just be a single sequence in this case
     val seq = seqs(0)
     val ns = if ((seq.length % n) == 0) seq.length / n else (seq.length / n) + 1
@@ -732,7 +732,7 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
     trainModel(me, seqs)
   }
 
-  def xValidate = {
+  override def xValidate = {
     val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
     val evaluator = new Evaluator(opts, sGen)
     evaluator.addInstances(seqs(0))

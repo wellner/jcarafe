@@ -93,6 +93,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--tag"            multi "Specific simple tag/label"
   "--seed"           desc "Seed random sampling"
   "--strip"          flag "Strip original tags if present when outputting decoded files"
+  "--folds"          desc "Number of folds"  
   //"--recode" multi "Recode sequences"
   "--num-states"     desc "Number of states for non-factored model"
   "--seq-boundary"   multi "Sequence boundary label/tag"
@@ -259,7 +260,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var selfInducedIterations           = optHandler.get("--ss-iters") match {case Some(v) => v.toInt case None => 0} 
   var unlabeledInputDir               = optHandler.get("--unlabeled-input-dir")
 
-  var xValFolds                       = optHandler.get("--folds")
+  var xValFolds                       = optHandler.get("--folds") map {x => x.toInt}
   var report                          = optHandler.get("--report")
   var inducedFVecsFile                = optHandler.get("--weighted-feature-vectors")
   var posteriors                      = optHandler.check("--confidences")

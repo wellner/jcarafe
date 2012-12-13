@@ -31,6 +31,7 @@ class DependencyParser(argv: Array[String]) extends TaggerTask[String](argv) {
     val mgr = new DynamicDepParserFeatureManager(opts.nonFactoredFeatureSpec.get,nstates)
     val fr = new NonFactoredFeatureRep[String](mgr,false,opts.numStates.getOrElse(0),true)
     val sGen = new NonFactoredTrainingSeqGen[String] (fr, opts) with XmlParserSeqGen 
+    def xValidate() : Unit = throw new RuntimeException("X-validation not yet supported for MST Parser")
   }
   
   lazy val decoder = new NonFactoredDecoder[String](true,opts) {

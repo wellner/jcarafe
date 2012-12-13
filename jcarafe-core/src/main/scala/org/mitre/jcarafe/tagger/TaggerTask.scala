@@ -39,6 +39,9 @@ abstract class TaggerTask[Obs](argv: Array[String]) {
     if (opts.train) {
       opts.diskCache match { case Some(d) => if (opts.train) org.mitre.jcarafe.crf.CrfInstance.diskCache = Some(d) case None => }
       trainer.train()
+    } else if (opts.xValFolds.isDefined) {
+      val nf = opts.xValFolds.get
+      trainer.xValidate()
     } else {
       decoder.setDecoder(true) // ensure decoder is set
       val eval = opts.evaluate match { case Some(_) => true case None => false }
@@ -182,7 +185,7 @@ class StdTaggerTask(val opts: Options) {
   }
 
   def process() = {
-    opts.checkRequired("--model")
+    if (opts.xValFolds.isEmpty) opts.checkRequired("--model")
     if (opts.train) {
       val trainer = getTrainer()
       if (opts.preModels.length > 0) {
@@ -190,7 +193,11 @@ class StdTaggerTask(val opts: Options) {
       } else {
         trainer.train()
       }
-    } else {
+    } else if (opts.xValFolds.isDefined) {
+      val trainer = getTrainer()
+      trainer.xValidate()
+    } 
+    else {
       val eval = opts.evaluate match { case Some(_) => true case None => false }
       val start = System.nanoTime
       if (opts.preModels.size > 0) {

@@ -1,11 +1,12 @@
 package org.mitre.jcarafe.dparser
 
 import org.scalatest.Spec
+import org.mitre.jcarafe.crf.AbstractInstance
 
 class TestMstInference extends Spec {
   
   def processInputGraph(sm: Array[Array[Double]]) = {
-    val mstCrf = new org.mitre.jcarafe.dparser.ProjectiveMstCrf(10,1.0) with org.mitre.jcarafe.crf.CondLogLikelihoodLearner
+    val mstCrf = new org.mitre.jcarafe.dparser.ProjectiveMstCrf(10,1.0) with org.mitre.jcarafe.crf.CondLogLikelihoodLearner[AbstractInstance]
       val betas = mstCrf.getInsideProbabilities(sm)
       val alphas = mstCrf.getOutsideProbabilities(sm,betas)
       val ln = sm.length

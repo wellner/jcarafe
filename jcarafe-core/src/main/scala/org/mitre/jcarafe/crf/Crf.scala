@@ -60,9 +60,9 @@ trait AccessSeq[T] {
   def length: Int
   def repermute(): Unit
   def splitAccessor(n: Int): Seq[AccessSeq[T]]
+  def getAllSplits(n: Int) : Seq[(AccessSeq[T],AccessSeq[T])]
   def accessSingleInstance(i: Int): T
 }
-//def getSeqs: Seq[InstanceSequence]
 
 //class CachedAccessSeq(fs: Array[String]) extends AccessSeq
 class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) extends AccessSeq[AbstractInstance] {
@@ -97,10 +97,21 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
   }
   def repermute() = seqs = permuteSeq(seqs)
 
-  def splitAccessor(n: Int): Seq[AccessSeq[AbstractInstance]] = {
+  def splitAccessor(n: Int): Seq[MemoryAccessSeq] = {
     val ns = if ((seqs.length % n) == 0) seqs.length / n else (seqs.length / n) + 1
     for (j <- 0 until n) yield {
       new MemoryAccessSeq(seqs.slice(j * ns, seqs.length min ((j + 1) * ns)))
+    }
+  }
+  def getAllSplits(n: Int) : Seq[(MemoryAccessSeq, MemoryAccessSeq)] = {
+    val folds = splitAccessor(n)
+    for (i <- 0 until n) yield {
+      val tst = folds(i)
+      val instBuf = new collection.mutable.ArrayBuffer[InstanceSequence]
+      for (j <- 0 until n; if (j != i)) {
+        instBuf ++= folds(j).getSeqs
+      }
+      (new MemoryAccessSeq(instBuf.toSeq), tst)
     }
   }
 }
@@ -126,6 +137,14 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   def this(nls: Int, nfs: Int) = this(nls, nfs, 1)
 
   def getCoreModel() = new CoreModel(lambdas, numParams, nls, nNfs, nGates)
+  
+  def resetParameters() : Unit = {
+    val l = lambdas.length
+    var i = 0; while (i < l) {
+      lambdas(i) = 0.0
+      i += 1
+    }
+  }
 
   /**
    * When set to <code>true</code>, the Crf will allow the state-space to be dynamically
@@ -326,7 +345,6 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
     for (k <- 0 until iseq.length) sll -= math.log(scale(k))
     var i = 0
     while (i < nfs) {
-      //println("constraint: " + gradient(i) + " and expectation: " + (featureExpectations(i) / zx))
       gradient(i) += featureExpectations(i) / zx; i += 1
     }
     sll
@@ -374,6 +392,14 @@ abstract class StochasticCrf(lambdas: Array[Double],
   val eta = initialLearningRate
   val gradient: HashMap[Int, DoubleCell] = new HashMap[Int, DoubleCell]()
   var curPos: Int = 0
+  
+  override def resetParameters() : Unit = {
+    super.resetParameters()
+    var i = 0; while (i < nfs) {
+      etas(i) = initialLearningRate
+      i += 1
+    }
+  } 
 
   // used for parallel training methods
   def setNewParams(ls: Array[Double]) = Array.copy(ls, 0, lambdas, 0, nfs)
@@ -424,12 +450,10 @@ abstract class StochasticCrf(lambdas: Array[Double],
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     var totalLL = 0.0
-    //var normFactor = 0
     for (i <- curPos until curPos + asize) {
       val j = i % seqAccessor.length
       val iseq = seqAccessor(j)
       val sl = iseq.length
-      //normFactor += sl
       if (sl > 0) {
         reset(iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero

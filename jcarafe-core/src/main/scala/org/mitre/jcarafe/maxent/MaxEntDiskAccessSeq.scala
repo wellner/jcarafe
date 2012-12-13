@@ -15,7 +15,7 @@ class MaxEntDiskAccessSeq(val diskCache: String, val st: Int, val en: Int) exten
   }
 
   override def length = en - st
-  override def splitAccessor(n: Int) : Seq[AccessSeq[AbstractInstance]] = {
+  override def splitAccessor(n: Int) : Seq[MemoryAccessSeq] = {
     throw new RuntimeException("splitAccessor unsupported with MaxEntDiskAccessSeq")
   }
 }
