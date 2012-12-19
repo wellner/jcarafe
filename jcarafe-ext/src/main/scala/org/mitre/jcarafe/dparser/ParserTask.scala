@@ -16,6 +16,8 @@ trait MstCrfTraining[O] extends Trainer[O] {
     val mstCrf = new MstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModel(mstCrf,seqs)
   }
+  
+  def xValidateFromSeqs(seqs: Seq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
 }
 
 abstract class NonFactoredMstTrainer[O](adj: Boolean, o: Options) extends GenericNonFactoredTrainer[O](adj,o) with MstCrfTraining[O] 

@@ -2,7 +2,8 @@ package org.mitre.jcarafe.dparser
 
 import org.mitre.jcarafe.crf.{Trainer,InstanceSequence,CondLogLikelihoodLearner,NonFactoredSerializer,
   GenericNonFactoredTrainer, NonFactoredFeatureRep, NonFactoredTrainingSeqGen, NonFactoredDecoder,
-  DecodingNonFactoredFeatureRep,NonFactoredDecodingSeqGen, PsaLearner, SeqGenScorer, WordProperties,CoreModel,LongAlphabet,NonFactoredModel,AbstractInstance
+  DecodingNonFactoredFeatureRep,NonFactoredDecodingSeqGen, PsaLearner, SeqGenScorer, WordProperties,CoreModel,LongAlphabet,NonFactoredModel,AbstractInstance,
+  SourceSequence
 }
 import org.mitre.jcarafe.tagger.TaggerTask
 
@@ -22,6 +23,8 @@ trait ProjectiveMstCrfTraining[O] extends Trainer[O] {
     	new ProjectiveMstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModel(mstCrf,seqs,modelIterate)
   }
+  
+  def xValidateFromSeqs(seqs: Seq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
 }
 
 class ProjectiveDependencyParser(argv: Array[String]) extends TaggerTask[String](argv) {
