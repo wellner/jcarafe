@@ -9,7 +9,7 @@ import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 import org.mitre.jcarafe.util._
 
-trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
+trait SeqGenScorer[Obs] extends SeqGen[Obs] {
 
   type Lab = AbstractLabel 
   val goldSets = new HashMap[AbstractLabel,Set[Annotation]] 
@@ -17,6 +17,7 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
   val goldTokens = new HashMap[AbstractLabel,Set[Int]]
   val systemTokens = new HashMap[AbstractLabel,Set[Int]]
   var globalIndex = 0
+  var appendScores = false
 
   var globalConfidenceCorrelation = List[(Double,Double,Double,Int,Double)]() // confidence, token score, tag score
 
@@ -39,13 +40,13 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
     }
   
   override def getAccuracy : Double = {
-    val of = new java.io.File(decodingOpts.evaluate match {case Some(f) => f case None => throw new RuntimeException("Invalid evaluation output file")})
-    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(of)), "UTF-8")
+    val of = new java.io.File(opts.evaluate match {case Some(f) => f case None => throw new RuntimeException("Invalid evaluation output file")})
+    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(of,appendScores)), "UTF-8")
     var totalSharedPhrases = 0
     var totalGoldPhrases = 0
     var totalSysPhrases = 0
     val maxItemLen = goldSets.foldLeft(0){(ac,v) => if (v._1.toString.length > ac) v._1.toString.length else ac }
-    os.write("%20s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n".format("","Prec","Rec","F1","Total","Shared","Missing","Spurious"))
+    os.write("%35s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n".format("","Prec","Rec","F1","Total","Shared","Missing","Spurious"))
     goldSets foreach {case(lab,set) =>
       if (!(lab.toString == "lex")) {
       val sysSet = systemSets.get(lab) match {case Some(s) => s case None => new HashSet[Annotation]}
@@ -53,7 +54,7 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
       val totalSys = sysSet.size
       val sharedSet = sysSet.intersect(set) // create intersection
       val shared = sharedSet.size
-      os.write("%20s".format(lab.toString))
+      os.write("%35s".format(lab.toString))
       val p = if (totalSys > 0) (shared.toDouble / totalSys.toDouble) else 0.0
       val r = if (totalGold > 0) (shared.toDouble / totalGold.toDouble) else 0.0
       totalSharedPhrases += shared
@@ -66,11 +67,12 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
     val tp = if (totalSysPhrases > 0) totalSharedPhrases.toDouble / totalSysPhrases.toDouble else 0.0
     val tr = if (totalGoldPhrases > 0) totalSharedPhrases.toDouble / totalGoldPhrases.toDouble else 0.0
     val tf = 2 * tp * tr / (tp + tr) 
-    os.write("%20s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n\n".format("TOTAL", tp, tr, tf, totalGoldPhrases, totalSharedPhrases, (totalGoldPhrases - totalSharedPhrases),(totalSysPhrases - totalSharedPhrases)))
+    os.write("%35s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n\n".format("TOTAL", tp, tr, tf, totalGoldPhrases, totalSharedPhrases, (totalGoldPhrases - totalSharedPhrases),(totalSysPhrases - totalSharedPhrases)))
     os.write("-------------- TOKEN LEVEL METRICS ---------------\n")
     var totalSharedTokens = 0
     var totalGoldTokens = 0
     var totalSysTokens = 0
+    os.write("%35s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n".format("","Prec","Rec","F1","Total","Shared","Missing","Spurious"))
     goldTokens foreach {case(lab,set) =>
       if (!(lab.toString == "lex")) {
       val sysSet = systemTokens.get(lab) match {case Some(s) => s case None => new HashSet[Int]}
@@ -78,7 +80,7 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
       val totalSys = sysSet.size
       val sharedSet = sysSet.intersect(set) // create intersection
       val shared = sharedSet.size
-      os.write("%20s".format(lab.toString))
+      os.write("%35s".format(lab.toString))
       val p = if (totalSys > 0) (shared.toDouble / totalSys.toDouble) else 0.0
       val r = if (totalGold > 0) (shared.toDouble / totalGold.toDouble) else 0.0
       totalSharedTokens += shared
@@ -91,10 +93,10 @@ trait SeqGenScorer[Obs] extends DecodingSeqGen[Obs] {
     val tp_T = if (totalSysTokens > 0) totalSharedTokens.toDouble / totalSysTokens.toDouble else 0.0
     val tr_T = if (totalGoldTokens > 0) totalSharedTokens.toDouble / totalGoldTokens.toDouble else 0.0
     val tf_T = 2 * tp_T * tr_T / (tp_T + tr_T)
-    os.write("\n%20s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n\n".format("TOTAL", tp_T, tr_T, tf_T, totalGoldTokens, totalSharedTokens, (totalGoldTokens - totalSharedTokens),(totalSysTokens - totalSharedTokens)))
+    os.write("\n%35s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n\n".format("TOTAL", tp_T, tr_T, tf_T, totalGoldTokens, totalSharedTokens, (totalGoldTokens - totalSharedTokens),(totalSysTokens - totalSharedTokens)))
     val acc = super.getAccuracy 
     os.write("\nToken Accuracy\t" + acc + "\n")
-    if (decodingOpts.posteriors) {
+    if (opts.posteriors) {
       os.write("\n\nConfidence-Accuracy Table: \n\n");
       val rankings = getRankings(globalConfidenceCorrelation)
       rankings foreach {case (i,conf,tokA,tte,len,tagA) =>

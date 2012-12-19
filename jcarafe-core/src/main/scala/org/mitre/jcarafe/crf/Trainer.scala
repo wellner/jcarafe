@@ -35,6 +35,7 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
   }
 
   def xValidate(): Unit
+  def xValidateFromSeqs(seqs: Seq[SourceSequence[Obs]]) : Unit
 }
 
 trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
@@ -85,7 +86,15 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     val crf = getCrf
     if (adjust) crf.adjustible_=(true)
     val nf = opts.xValFolds.getOrElse(10)
-    xValidate(crf,new MemoryAccessSeq(seqs, opts.seed), opts.maxIters, nf)
+    xValidate(sGen,crf,new MemoryAccessSeq(seqs, opts.seed), opts.maxIters, nf)
+  }
+  
+  def xValidateFromSeqs(seqs: Seq[SourceSequence[Obs]]) = {
+    val aSeqs = sGen.extractFeatures(seqs)
+    val crf = getCrf
+    if (adjust) crf.adjustible_=(true)
+    val nf = opts.xValFolds.getOrElse(10)
+    xValidate(sGen,crf,new MemoryAccessSeq(aSeqs, opts.seed), opts.maxIters, nf)
   }
   
   def printHeader(seqs: Seq[InstanceSequence]) : Unit = {

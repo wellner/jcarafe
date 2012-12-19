@@ -87,11 +87,12 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
     predicateExpr | prefFnExpr | sufFnExpr | wdFnExpr | caseLessFnExpr | lexFnExpr | wdPropFnExpr | downWdPropFnExpr | wdScoreFnExpr |
     downLexFnExpr | nodeFnExpr | edgeFnExpr | regexpFnExpr | allTagFnExpr | antiPrefFnExpr | antiSufFnExpr | attributeFnExpr |
     weightedAttrExpr | distToLeftExpr | distToRightExpr | nodeFnSemiExpr | edgeFnSemiExpr | phraseFnExpr | semiAttributeFnExpr | phraseWdsExpr |
-    prefNGramExpr | sufNGramExpr | sentPosExpr | wdLenExpr | wdFnNormExpr | wdPropPrefixFnExpr
+    prefNGramExpr | sufNGramExpr | sentPosExpr | wdLenExpr | wdFnNormExpr | wdPropPrefixFnExpr | posFnExpr 
   
   def wdFnExpr : Parser[FeatureFn]           = "wdFn" ^^ {_ => wdFn}
   def wdFnNormExpr : Parser[FeatureFn]       = "wdNormFn" ^^ {_ => wdFnNorm _}
   def caseLessFnExpr : Parser[FeatureFn]     = "caselessWdFn" ^^ {_ => caselessWdFn}
+  def posFnExpr: Parser[FeatureFn]           = "preLabFn" ^^ {_ => _preLabFn _}
   def lexFnExpr : Parser[FeatureFn]          = "lexFn" ^^ {_ => lexFn}
   def downLexFnExpr : Parser[FeatureFn]      = "downLexFn" ^^ {_ => downLexFn}
   def wdPropFnExpr : Parser[FeatureFn]       = "wdPropFn" ^^ {_ => wordPropertiesFn(false) _ }

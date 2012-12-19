@@ -101,9 +101,9 @@ class StdTaggerTask(val opts: Options) {
   private def applyDecoders(preDecoders: Seq[StdDecoder], finalDecoder: StdDecoder, f: java.io.File, ofile: Option[java.io.File]): Unit =
     preDecoders match {
       case first :: rest =>
-        val deserial = first.sGen.deserializeFromFile(f)
+        //val deserial = first.sGen.deserializeFromFile(f)
         val srcs = first.decodeToSources(Set("lex"), "pre_", f)
-        preDecoders.foreach { d => d.decodeSources(Set("lex"), "pre_", srcs) }
+        rest foreach { d => d.decodeSources(Set("lex"), "pre_", srcs) }
         finalDecoder.decodeToFile(srcs, f, ofile) // final "second stage" decoder
       case Nil =>
     }
@@ -157,15 +157,49 @@ class StdTaggerTask(val opts: Options) {
     val st =
       new StdTrainer(opts) {
         val sGen = mode match {
-          case Text => new TrainingSeqGen[String](opts) with TextSeqGen
-          case Json => new TrainingSeqGen[String](opts) with JsonSeqGen
-          case Basic => new TrainingSeqGen[String](opts) with BasicSeqGen
+          case Text => 
+            if (opts.evaluate.isDefined) new TrainingSeqGen[String](opts) with TextSeqGen with SeqGenScorer[String] 
+            else  new TrainingSeqGen[String](opts) with TextSeqGen
+          case Json =>
+            if (opts.evaluate.isDefined) new TrainingSeqGen[String](opts) with JsonSeqGen with SeqGenScorer[String] 
+            else new TrainingSeqGen[String](opts) with JsonSeqGen
+          case Basic =>
+            if (opts.evaluate.isDefined) new TrainingSeqGen[String](opts) with BasicSeqGen with SeqGenScorer[String] 
+            else new TrainingSeqGen[String](opts) with BasicSeqGen
         }
       }
     st
   }
 
-  def trainWithPreDecoders(trainer: Trainer[String]) = {
+  def trainWithPreDecoders(trainer: Trainer[String], xval: Boolean = false) = {
+    val decoders = getPreDecoders() // get pre-decoders
+    val srcs =
+      decoders.zipWithIndex match {
+        case (first, i) :: rest =>
+          val srcs = first.decodeToSources(Set("lex"), "pre_")
+          rest.foreach { case (el, i) => el.decodeSources(Set("lex"), "pre_", srcs) }
+          Some(srcs)
+        case Nil => None
+      }
+    val trsrcs = trainer.sGen.createSourcesFromFiles.flatten
+    if (xval) {
+      srcs match {
+      case Some(s) =>
+        (trsrcs.toList zip s.toList) foreach { case (tseq, seq) => seq.updateLabels(tseq) }
+        trainer.xValidateFromSeqs(s)
+      case None => trainer.xValidateFromSeqs(trsrcs)
+      }
+    } else {
+    srcs match {
+      case Some(s) =>
+        (trsrcs.toList zip s.toList) foreach { case (tseq, seq) => seq.updateLabels(tseq) }
+        trainer.trainFromSeqs(s)
+      case None => trainer.trainFromSeqs(trsrcs)
+    }
+    }
+  }
+  
+  def xValidateWithPreDecoders(trainer: Trainer[String]) = {
     val decoders = getPreDecoders() // get pre-decoders
     val srcs =
       decoders.zipWithIndex match {
@@ -179,8 +213,8 @@ class StdTaggerTask(val opts: Options) {
     srcs match {
       case Some(s) =>
         (trsrcs.toList zip s.toList) foreach { case (tseq, seq) => seq.updateLabels(tseq) }
-        trainer.trainFromSeqs(s)
-      case None => trainer.trainFromSeqs(trsrcs)
+        trainer.xValidateFromSeqs(s)
+      case None => trainer.xValidateFromSeqs(trsrcs)
     }
   }
 
@@ -195,7 +229,11 @@ class StdTaggerTask(val opts: Options) {
       }
     } else if (opts.xValFolds.isDefined) {
       val trainer = getTrainer()
-      trainer.xValidate()
+      if (opts.preModels.length > 0) {
+        xValidateWithPreDecoders(trainer)
+      } else {
+        trainer.xValidate()
+      }
     } 
     else {
       val eval = opts.evaluate match { case Some(_) => true case None => false }

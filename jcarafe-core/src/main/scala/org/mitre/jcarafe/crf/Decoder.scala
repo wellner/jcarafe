@@ -56,8 +56,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     seqs foreach viterbiInstance.assignBestSequence
     sGen.seqsToString(dobj, seqs)
   }
-  
-  
+
   def decodeDeserializationToAnnotations(dobj: sGen.DeserializationT): Array[Annotation] = {
     val seqs = sGen.createSeqsWithInput(dobj)
     seqs foreach viterbiDecoder.assignBestSequence
@@ -230,11 +229,12 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     val iseqs = if (numDecWorkers > 1) applyToSeqsInParallel(seqs, decoder) else applyToSeqs(seqs, decoder)
     for (i <- 0 until seqs.length) {
       val lSeq = iseqs(i).iseq
+      val si = seqs(i)
       for (j <- 0 until lSeq.length) {
-        val subLab = sGen.invLa(lSeq(j).label).toString
-        if (!exceptions.contains(subLab)) {
-          seqs(i)(j).addInfo(id + subLab, "T")
-        }
+        val cc = si(j).preLabelCode
+        val nc = IncrementalMurmurHash.mix(lSeq(j).label, cc)
+        println("pre code update (i = " + i + ", j  = " + j + ") obs = " + si(j).obs.toString + " => " + sGen.invLa(lSeq(j).label))
+        si(j).preLabelCode_=(nc)
       }
     }
   }
@@ -323,7 +323,7 @@ class JsonDecoder(opts: Options, m: String, r: Option[java.io.InputStream]) exte
   def this(opts: Options, r: java.io.InputStream) = this(opts, "", Some(r))
   def this(opts: Options, m: String) = this(opts, m, None)
   def this(args: Array[String], m: String) = this(new Options(args), m)
-  val sGen = new FactoredDecodingSeqGen[String](model,opts) with JsonSeqGen 
+  val sGen = new FactoredDecodingSeqGen[String](model, opts) with JsonSeqGen
   setDecoder(true)
 }
 
@@ -338,12 +338,11 @@ class TextDecoder(opts: Options, m: String, r: Option[java.io.InputStream]) exte
   val sGen =
     if (opts.rawDecode) {
       new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen with StreamingDecoder {
-                override def deserializeFromFile(f: String) = {
-                  new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
-                }
-              }
-    }
-    else if (opts.streaming) new FactoredDecodingSeqGen[String](model) with TextSeqGen with StreamingDecoder
+        override def deserializeFromFile(f: String) = {
+          new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
+        }
+      }
+    } else if (opts.streaming) new FactoredDecodingSeqGen[String](model) with TextSeqGen with StreamingDecoder
     else new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen
   setDecoder(true)
 }
@@ -356,7 +355,7 @@ class BasicDecoder(opts: Options, m: String, r: Option[java.io.InputStream]) ext
   def this(opts: Options, m: String) = this(opts, m, None)
   def this(args: Array[String], m: String) = this(new Options(args), m)
 
-  val sGen = new FactoredDecodingSeqGen[String](model,opts) with BasicSeqGen
+  val sGen = new FactoredDecodingSeqGen[String](model, opts) with BasicSeqGen
   setDecoder(true)
 }
 

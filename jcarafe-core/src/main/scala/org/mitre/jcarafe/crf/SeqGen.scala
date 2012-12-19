@@ -312,6 +312,31 @@ abstract class SeqGen[Obs](val opts: Options) {
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean, i: Map[String, String]) = createSourceI(getIndex(l), o, beg, Some(i))
   def createSource(l: AbstractLabel, o: Obs, i: Map[String, String]) = createSourceI(getIndex(l), o, false, Some(i))
   def createSource(o: Obs, i: Map[String, String]) = createSourceI(-1, o, false, Some(i)) // label of -1 means that the label is missing/unknown
+  
+  // ---- Stuff for handling scoring/evaluation - possibly useful for Training time as well, so put this here rather than in DecodingSeqGen
+  var totalTokCnt = 0
+  var totalIncorrectTok = 0
+
+  def reset() = {
+    totalTokCnt = 0
+    totalIncorrectTok = 0
+  }
+
+  def cleanUp(): Unit = {}
+
+  def getAccuracy: Double = {
+    ((totalTokCnt.toDouble - totalIncorrectTok.toDouble) / totalTokCnt.toDouble)
+  }
+  
+  def evaluateSequences(seqs: Seq[InstanceSequence]) =
+    seqs foreach { s =>
+      for (i <- 0 until s.length) {
+        val inst = s.iseq(i)
+        totalTokCnt += 1
+        if (!(inst.label == inst.orig)) totalIncorrectTok += 1
+      }
+    }
+
 }
 
 trait FactoredSeqGen[Obs] extends SeqGen[Obs] {
@@ -439,31 +464,9 @@ abstract class DecodingSeqGen[Obs](model: Model, val decodingOpts: Options) exte
   val boundaries = decodingOpts.boundaries
   def setBegin() = this.addBeginStates_=(true)
 
-  var totalTokCnt = 0
-  var totalIncorrectTok = 0
-
   def extractFeatures(spSeq: SourceSequence[Obs]): InstanceSequence
 
-  def evaluateSequences(seqs: Seq[InstanceSequence]) =
-    seqs foreach { s =>
-      for (i <- 0 until s.length) {
-        val inst = s.iseq(i)
-        totalTokCnt += 1
-        if (!(inst.label == inst.orig)) totalIncorrectTok += 1
-      }
-    }
-
-  def reset() = {
-    totalTokCnt = 0
-    totalIncorrectTok = 0
-  }
-
-  def cleanUp(): Unit = {}
-
-  def getAccuracy: Double = {
-    ((totalTokCnt.toDouble - totalIncorrectTok.toDouble) / totalTokCnt.toDouble)
-  }
-
+  
   /**
    * Create a deserialized object from a raw string
    * @param string  A string representing a piece of text to process

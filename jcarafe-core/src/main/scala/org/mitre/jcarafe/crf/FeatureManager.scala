@@ -469,6 +469,18 @@ abstract class FeatureManager[Obs](val iString: String) {
    */
   def _wdFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = new FeatureReturn(sarr(pos).code)
 
+    /**
+   * Computes a feature as the hashed conjunction of ALL labels produced from pre-models
+   * @param  s        Segment length
+   * @param  sarr     SourceSequence of <code>ObsSource[Obs]</code> objects
+   * @param  pos      Current position within the sequence
+   * @return    A <code>FeatureReturn</code> with the pre-model labels hash-conjoined
+   */
+  def _preLabFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val pc = sarr(pos).preLabelCode
+    if (pc != 0L) new FeatureReturn(pc) else new FeatureReturn
+  }
+  
   val numRegex = """[0-9,.]*[0-9]+$""".r
 
   def wdFnNorm(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
@@ -1018,6 +1030,8 @@ object IncrementalMurmurHash {
     h ^= k
     h
   }
+  
+  def mix(s: String, k: Long) : Long = mix(hash(s),k)
 
   def hash(data: String): Long = hash(data, 0)
 
