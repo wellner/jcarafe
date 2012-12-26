@@ -267,14 +267,14 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
  * @param maxSegSize - passed to super constructor
  * @author Ben Wellner
 */
-class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, model: StdModel) extends FactoredFeatureRep[Obs]((model.segSize > 1)) {
+class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, model: StdModel, preDecoder: Boolean = false) extends FactoredFeatureRep[Obs]((model.segSize > 1)) {
 
-  def this(opts: Options, m: StdModel) = this(FeatureManager[Obs](opts, m), opts, m)
+  def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManager[Obs](opts, m, pre), opts, m)
 
   val fsetMap: OpenLongObjectHashMap = model.fsetMap
-  mgr.lex_=(opts.lexDir match { case Some(d) => Some(new BloomLexicon(d)) case None => model.lex })
-  mgr.wdProps_=(opts.wordPropFile match { case Some(f) => Some(new WordProperties(f)) case None => model.wdProps })
-  mgr.wdScores_=(opts.wordScoreFile match {case Some(f) => Some(new WordScores(f)) case None => model.wdScores})
+  mgr.lex_=(if (mgr.lex.isEmpty) model.lex else mgr.lex)
+  mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
+  mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
   mgr.inducedFeatureMap_=(model.inducedFs match {
     case Some(m) => println("got induced feature set: " + m.hmap.get.size); Some(m)
     case None => InducedFeatureMap()

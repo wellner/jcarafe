@@ -68,32 +68,32 @@ class StdTaggerTask(val opts: Options) {
     org.mitre.jcarafe.tokenizer.FastTokenizer.setTokenizerAugmenters(new java.io.File(f))
   }
 
-  def getDecoder(modelFile: String, eval: Boolean): StdDecoder = {
+  def getDecoder(modelFile: String, eval: Boolean, preModel: Boolean = false): StdDecoder = {
     val decoder =
       new StdDecoder(opts, modelFile) {
         val sGen = mode match {
           case Text =>
-            if (eval) new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen with SeqGenScorer[String]
+            if (eval) new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with SeqGenScorer[String]
             else if (opts.rawDecode)
-              new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen with StreamingDecoder {
+              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with StreamingDecoder {
                 override def deserializeFromFile(f: String) = new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
               }
             else if (opts.streaming)
-              new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen with StreamingDecoder
-            else new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen
+              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with StreamingDecoder
+            else new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen
           case Json =>
-            if (eval) new FactoredDecodingSeqGen[String](model, opts) with JsonSeqGen with SeqGenScorer[String]
-            else new FactoredDecodingSeqGen[String](model, opts) with JsonSeqGen
+            if (eval) new FactoredDecodingSeqGen[String](model, opts, preModel) with JsonSeqGen with SeqGenScorer[String]
+            else new FactoredDecodingSeqGen[String](model, opts, preModel) with JsonSeqGen
           case Basic =>
-            if (eval) new FactoredDecodingSeqGen[String](model, opts) with BasicSeqGen with SeqGenScorer[String]
-            else new FactoredDecodingSeqGen[String](model, opts) with BasicSeqGen
+            if (eval) new FactoredDecodingSeqGen[String](model, opts, preModel) with BasicSeqGen with SeqGenScorer[String]
+            else new FactoredDecodingSeqGen[String](model, opts, preModel) with BasicSeqGen
         }
       }
     decoder.setDecoder(true)
     decoder
   }
 
-  def getPreDecoders() = opts.preModels.map { file => getDecoder(file, false) }
+  def getPreDecoders() = opts.preModels.map { file => getDecoder(file, false, true) }
 
   private def applyDecoders(preDecoders: Seq[StdDecoder], finalDecoder: StdDecoder, f: String, ofile: Option[String]): Unit =
     applyDecoders(preDecoders, finalDecoder, new java.io.File(f), ofile map { new java.io.File(_) })

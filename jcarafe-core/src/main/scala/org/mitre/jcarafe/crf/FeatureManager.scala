@@ -941,7 +941,9 @@ object FeatureManager {
    * created.
    */
   def setLexicon[Obs](opts: Options, mgr: FeatureManager[Obs]) = {
-    mgr.lex match { case None => opts.lexDir match { case Some(d) => mgr.lex_=(Some(new BloomLexicon(d))) case None => } case Some(_) => }
+    mgr.lex match { 
+      case None => opts.lexDir match { case Some(d) => mgr.lex_=(Some(new BloomLexicon(d))) case None => } 
+      case Some(_) =>  }
   }
 
   def setWordProperties[Obs](opts: Options, mgr: FeatureManager[Obs]) = {
@@ -974,11 +976,13 @@ object FeatureManager {
     dm
   }
 
-  def getMgrDecode[Obs](opts: Options, model: Model): DynamicFeatureManager[Obs] = {
+  def getMgrDecode[Obs](opts: Options, model: Model, pre: Boolean): DynamicFeatureManager[Obs] = {
     val dm = new DynamicFeatureManager[Obs](model.fspec)
-    setLexicon(opts, dm)
-    setWordProperties(opts, dm)
-    setInducedFeatureMap(opts, dm)
+    if (!pre) { // don't override these using command-line options if this is a "pre-model"
+      setLexicon(opts, dm)
+      setWordProperties(opts, dm)
+      setInducedFeatureMap(opts, dm)
+    }
     dm
   }
 
@@ -1002,7 +1006,7 @@ object FeatureManager {
     }
   }
 
-  def apply[Obs](opts: Options, m: Model): FeatureManager[Obs] = getMgrDecode[Obs](opts, m)
+  def apply[Obs](opts: Options, m: Model, pre: Boolean = false): FeatureManager[Obs] = getMgrDecode[Obs](opts, m, pre)
 
 }
 

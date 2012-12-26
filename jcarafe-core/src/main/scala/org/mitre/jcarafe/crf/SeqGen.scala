@@ -513,9 +513,10 @@ abstract class NonFactoredDecodingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], va
 
 }
 
-abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], model: StdModel, decodingOpts: Options) extends DecodingSeqGen[Obs](model, decodingOpts) {
-  def this(m: StdModel, opts: Options) = this(new DecodingFactoredFeatureRep[Obs](opts, m), m, opts)
-  def this(model: StdModel) = this(model, new Options())
+abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], model: StdModel, decodingOpts: Options, preModel: Boolean = false) 
+extends DecodingSeqGen[Obs](model, decodingOpts) {
+  def this(m: StdModel, opts: Options, pre: Boolean = false) = this(new DecodingFactoredFeatureRep[Obs](opts, m, pre), m, opts)
+  def this(model: StdModel, pre: Boolean = false) = this(model, new Options(), pre)
 
   type FRepT = DecodingFactoredFeatureRep[Obs]
   val frep: FRepT = fr

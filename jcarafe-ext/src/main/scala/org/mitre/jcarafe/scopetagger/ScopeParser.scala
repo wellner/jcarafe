@@ -59,7 +59,7 @@ class ScopeParser(opts: Options) extends StdTaggerTask(opts) {
     }	
   }
 
-  override def getDecoder(modelFile: String, eval: Boolean) : StdDecoder = {
+  override def getDecoder(modelFile: String, eval: Boolean, preModel: Boolean = false) : StdDecoder = {
     new StdDecoder(opts) {
       val mgr = new ScopeFeatureManager(model.fspec)
       val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model)

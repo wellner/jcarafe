@@ -233,7 +233,6 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
       for (j <- 0 until lSeq.length) {
         val cc = si(j).preLabelCode
         val nc = IncrementalMurmurHash.mix(lSeq(j).label, cc)
-        println("pre code update (i = " + i + ", j  = " + j + ") obs = " + si(j).obs.toString + " => " + sGen.invLa(lSeq(j).label))
         si(j).preLabelCode_=(nc)
       }
     }

@@ -14,7 +14,7 @@ class PosteriorTaggerTask(opts: Options) extends StdTaggerTask(opts) {
 
   def this(argv: Array[String]) = this(new Options(argv))
 
-  override def getDecoder(modelFile: String, eval: Boolean) : StdDecoder = {
+  override def getDecoder(modelFile: String, eval: Boolean, preModel: Boolean = false) : StdDecoder = {
     val decoder = new PosteriorDecoder(opts,modelFile) {
       val selfInducibleFRep = new SelfInducibleDecodingFactoredFeatureRep[String](opts,model)
       val sGen = new FactoredDecodingSeqGen[String](selfInducibleFRep,model,opts) with TextSeqGen with StreamingDecoder {
