@@ -77,9 +77,6 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     if (this.lAlphabet.update(l) == this.otherIndex.getOrElse(-1)) l else BeginState(l)
   }
 
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT =
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-
   def gatherAnnots(json: JsonType, opts: Options) = {
     val signal = json match {
       case JsObject(o) =>

@@ -30,14 +30,9 @@ case class IgnoreBlock(s:String) extends Element { def getString = s }
 abstract class Tokenizer extends RegexParsers {
   override def skipWhitespace = false
   /* The 'Grammar' */
-  def expr : Parser[Element] = scriptTagBlock | whiteEnd | white | endPunct | hardEndPunct | abbrev | tag | tok | punct 
+  def expr : Parser[Element] = whiteEnd | white | endPunct | hardEndPunct | abbrev | tag | tok | punct 
   def exprs: Parser[List[Element]] = rep(expr)
   def tag = tagE | tagS
-  def scriptTagBlock : Parser[Element] = 
-    "<script" ~ tokSeq ~ delimEnd ~! """(.|\n)*?</script>""".r ^^ 
-    {case (s~ts~d~c) => 
-      val sb = new StringBuilder
-      sb ++ s; sb ++ ts; sb ++ d; sb ++ c; IgnoreBlock(sb.toString)}
   
   def tagS : Parser[Element] =  delimStartS ~ tokSeq ~ delimEnd ^^ {case (b~l~e) => Tag((b + (l + e)),true) }
   def tagE : Parser[Element] =  delimStartE ~ tokSeq ~ delimEnd ^^ {case (b~l~e) => Tag((b + (l + e)),false) } 

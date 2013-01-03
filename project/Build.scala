@@ -4,7 +4,7 @@ import Keys._
 
 object BuildSettings { 
   val buildOrganization = "org.mitre"
-  val buildVersion = "0.9.8.4.RC15"
+  val buildVersion = "0.9.8.4.RC16"
   val buildScalaVersion = "2.9.2"
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := buildOrganization,

@@ -63,9 +63,6 @@ trait XmlParserSeqGen extends SeqGen[String] {
     
   def initialize() : Unit = throw new RuntimeException("Unsupported method: initialize")
 
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = 
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-  
   /**
    * This Should actually work by having the decoder passed in to create seqs on the fly
    * This means the whole DOM traversal will be done once

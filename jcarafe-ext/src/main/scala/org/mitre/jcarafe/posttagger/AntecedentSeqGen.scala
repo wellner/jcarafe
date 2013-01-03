@@ -20,9 +20,6 @@ trait AntecedentSeqGen extends SeqGen[Array[PostTok]] with XmlConversions {
   def deserializeFromTokenSeq(s: Seq[String]) : DeserializationT = 
     throw new RuntimeException("Unsuppoted method: deserializeFromTokenSeq")
   
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = 
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-
   def constructTag(t: String) = {
     val sb = new StringBuffer
     sb append "<"; 

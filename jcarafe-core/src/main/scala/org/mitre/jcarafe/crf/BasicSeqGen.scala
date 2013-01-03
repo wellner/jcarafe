@@ -79,9 +79,6 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT =
     throw new RuntimeException("This method unsupported for Text mode currently")
 
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT =
-    throw new RuntimeException("This method unsupported for Basic mode currently: seqsToAttributedDeserialization")
-
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): Map[AbstractLabel, ListBuffer[Annotation]] =
     throw new RuntimeException("Unsupported method: seqsToAnnotations")
 

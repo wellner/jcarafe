@@ -484,9 +484,6 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): Map[AbstractLabel, ListBuffer[Annotation]] =
     throw new RuntimeException("Unsupported method: seqsToAnnotations")
 
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT =
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-
 }
 
 trait MaxEntSeqGen[Obs] extends MaxEntSeqGenCore[Obs] {

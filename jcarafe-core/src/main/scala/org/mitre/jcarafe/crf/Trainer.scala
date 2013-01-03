@@ -129,10 +129,8 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
 
   def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs, opts.seed)
-    println("got Access Seq")
     val coreModel = dCrf.train(accessSeq, opts.maxIters, modelIterFn)
     val m = getModel((sGen.getMaxSegmentSize + 1), coreModel)
-    println("Got model...")
     writeModel(m, new java.io.File(opts.model.get))
   }
 }

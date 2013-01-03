@@ -474,8 +474,6 @@ abstract class DecodingSeqGen[Obs](model: Model, val decodingOpts: Options) exte
    */
   def deserializeFromRawString(string: String): DeserializationT
 
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT
-
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT
 
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: String): Unit = seqsToFile(d, seqs, new File(f))

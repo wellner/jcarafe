@@ -76,9 +76,6 @@ trait XmlSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConve
   
   def deserializeFromString(string: String) : DeserializationT = new XmlSeqDeserialization(scala.xml.XML.load(new java.io.StringReader(string)))
   
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[Seq[SeqElement]]) : DeserializationT = 
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-
   def deserializeFromRawString(s: String) : DeserializationT = 
     throw new RuntimeException("Unsuppoted method: deserializeFromRawString")
   

@@ -38,9 +38,6 @@ trait PostTextSeqGen extends FactoredSeqGen[Array[String]] with XmlConversions {
   def deserializeFromTokenSeq(s: Seq[String]) : DeserializationT = 
     throw new RuntimeException("Unsuppoted method: deserializeFromTokenSeq")
   
-  def seqsToAttributedDeserialization(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = 
-    throw new RuntimeException("Unsuppoted method: seqsToAttributedDeserialization")
-
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT =
     throw new RuntimeException("This method unsupported for antecedent mode")
   
