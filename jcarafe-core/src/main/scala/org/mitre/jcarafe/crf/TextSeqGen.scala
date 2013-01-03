@@ -59,7 +59,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     }
   }
   
-  val lexAttributedTagSet = invLa.exists{case (i,v) => v.labelHead.equals("lex")}
+  val lexAttributedTagSet = invLa.exists{case (i,v) => v match {case Label(l,_) => l.equals("lex") case _ => false}}
   
   private def appearsToBeEndOfSequence(els: List[Element]) : Boolean = {
     els match {
@@ -278,15 +278,15 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
         }
       } else {
         toks match {
-          case Tag("<IGNORE>", _) :: r => if (printExistingTags) os.write("<IGNORE>"); ignoreFlag = true; traverse(r)
-          case Tag("<BREAK_IGNORE>", true) :: r => if (printExistingTags) os.write("<BREAK_IGNORE>"); ignoreFlag = true; traverse(r)
+          case Tag("<IGNORE>", _) :: r => os.write("<IGNORE>"); ignoreFlag = true; traverse(r)
+          case Tag("<BREAK_IGNORE>", true) :: r => os.write("<BREAK_IGNORE>"); ignoreFlag = true; traverse(r)
           case Tag(t, b) :: r =>
             val ltag = t.startsWith("<lex")
             val lEndTag = t.startsWith("</lex")
             val (l, attmap) = getLabelAndAttrsFromTag(t)
 
-            if (ltag && opts.keepToks) {specialTok = true; specialTokTag = Some(t)}
-            else if (printExistingTags && !ltag && !lEndTag && (!opts.stripOriginalTags || !opts.tagset.isWithin(l, attmap))) os.write(t)
+            if (ltag && (opts.keepToks || !opts.preProc)) {specialTok = true; specialTokTag = Some(t)}
+            else if (!ltag && !lEndTag && (!opts.stripOriginalTags || !opts.tagset.isWithin(l, attmap))) os.write(t)
             if (!b) { // if it's a close tag and a boundary tag, set ignore to true
               if (!ignoreFlag && opts.boundaries.labelMatch(l)) ignoreFlag = true
             }
