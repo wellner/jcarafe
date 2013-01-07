@@ -58,7 +58,9 @@ abstract class PosteriorDecoder(opts: Options, m: String) extends StdDecoder(opt
         val dir = new java.io.File(dirStr)
         val fs =
           dir.listFiles filter
-            { f: java.io.File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } }
+            { f: java.io.File =>
+              if (!f.isFile) false
+              else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } }
         val osuffix = opts.outSuffix match { case Some(o) => o case None => "" }
         fs foreach { f =>
           val deser = sGen.deserializeFromFile(f)

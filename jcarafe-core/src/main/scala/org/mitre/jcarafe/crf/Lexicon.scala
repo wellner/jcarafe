@@ -23,7 +23,7 @@ class HashLexicon(val dir: Option[java.io.File]) extends HashMap[String,List[Lon
   dir match {
     case Some(d) =>
       if (d.exists)
-    	  d.listFiles foreach build
+    	  d.listFiles foreach {f => if (f.isFile) build(f)}
       else throw new RuntimeException("Lexicon directory not found")
     case None => }
 

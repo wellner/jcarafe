@@ -257,7 +257,9 @@ abstract class SeqGen[Obs](val opts: Options) {
         }
         val dir = new File(dirStr)
         dir.listFiles.toSeq filter
-          { f: File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } map
+          { f: File =>
+            if (!f.isFile) false
+            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } map
           { f: File => toSources(f) }
       case None =>
         opts.inputFile match {
@@ -278,7 +280,9 @@ abstract class SeqGen[Obs](val opts: Options) {
         }
         val dir = new File(dirStr)
         dir.listFiles.toSeq filter
-          { f: File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } flatMap
+          { f: File =>
+            if (!f.isFile) false
+            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } flatMap
           { f: File => extractFeatures(toSources(f)) }
       case None =>
         opts.inputFile match {

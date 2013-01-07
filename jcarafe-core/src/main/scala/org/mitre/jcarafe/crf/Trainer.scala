@@ -164,7 +164,7 @@ abstract class GenericNonFactoredTrainer[O](adj: Boolean, opts: Options) extends
         val dir = new java.io.File(dirStr)
         dir.listFiles.toSeq filter
           { f: java.io.File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } foreach
-          { f: java.io.File => gatherFeatures(sGen.toSources(f)) }
+          { f: java.io.File => if (f.isFile) gatherFeatures(sGen.toSources(f)) }
       case None =>
         opts.inputFile match {
           case Some(f) =>

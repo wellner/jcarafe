@@ -30,7 +30,7 @@ public class DocumentClassifierTrainer {
 			throw new RuntimeException("Label has suspiciously long string length: " + label.length());
 		}
 		for (java.io.File file : dir.listFiles()) {
-		  trainer.addDocumentFileAsTrainingInstance(file, label);
+		  if (file.isFile()) trainer.addDocumentFileAsTrainingInstance(file, label);
 		}
 	}
 	

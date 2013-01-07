@@ -25,12 +25,12 @@ object ConvertJsonToInline {
       // check for end tags to emit
       if (!toEnd.isEmpty && i == toEnd.top.en) {
         val ts = toEnd.pop
-        os.write(ts.typ.labelTag(true))
+        os.write(ts.typ.labelTag(true,None))
       }
       if (!annots.isEmpty && i == annots.head.st) {
         val ts = annots.dequeue()
         toEnd push ts
-        os.write(ts.typ.labelTag(false))
+        os.write(ts.typ.labelTag(false,None))
       }
       os.write(sigArr(i))
     }

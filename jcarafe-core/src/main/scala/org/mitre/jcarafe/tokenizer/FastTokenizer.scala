@@ -364,10 +364,12 @@ object FastTokenizer {
             opts.get("--output-dir") match {
               case Some(odir) =>
                 dir.listFiles foreach {f: java.io.File =>
+                  if (f.isFile) {
                   println("Processing file: " + f)
                 val ofile = odir + "/" + f.getName
                 val ifile = idir + "/" + f.getName
                 processFile(jsonP,ifile,ofile,handleTags,Some(zoneset))
+                  }
                 }
               case None => println("Output directory expected"); sys.exit(2)
             }

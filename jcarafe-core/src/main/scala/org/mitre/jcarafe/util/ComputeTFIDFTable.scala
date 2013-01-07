@@ -84,9 +84,11 @@ object ComputeTFIDFTable {
       case Some(idir) =>
         val dir = new java.io.File(idir)
         dir.listFiles foreach { f: java.io.File =>
-          numDocs += 1
-          val ifile = idir + "/" + f.getName
-          processFile(ifile)
+          if (f.isFile) {
+            numDocs += 1
+            val ifile = idir + "/" + f.getName
+            processFile(ifile)
+          }
         }
       case None =>
     }

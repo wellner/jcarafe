@@ -59,7 +59,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     }
   }
   
-  val lexAttributedTagSet = invLa.exists{case (i,v) => v match {case Label(l,_) => l.equals("lex") case _ => false}}
+  val lexAttributedTagSet = invLa.exists{case (i,v) => v match {case SLabel(_) => false case l => l.labelHead.equals("lex")}}
   
   private def appearsToBeEndOfSequence(els: List[Element]) : Boolean = {
     els match {
@@ -79,7 +79,6 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     var ignore = false // flag whether we're within an ignore block
     var specialTok = false // flag whether we're within a special token
     var uncertain = false // flag indicating we're in a region without certainty 
-    var curPos = 0 // keeps current position within each sequence
     val specialBuf = new StringBuilder
     var localDeserialBuf = new ListBuffer[Element]
     var withinTag = false // simple check whether we're within a known tag
@@ -91,7 +90,6 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
       t match { case Some(t) => tmpBuf += createSource(getState(state, !c), t, !c, curAtts); curAtts = Map.empty case None => }
       if (tmpBuf.size > 0) {
         sourceBuffer += createSourceSequence(tmpBuf.toIndexedSeq, prevPos, docPos)
-        curPos = 0
         tmpBuf = new ListBuffer[ObsSource[String]]
         prevPos = docPos
       }
@@ -99,13 +97,14 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     def getAState(l: AbstractLabel, v: Boolean) = if (addBeginStates) getState(l, v) else l
     def gather(toks: List[Element], cont: Boolean): Unit = {
       docPos += 1
-      if (ignore)
+      if (ignore) {
         toks match {
           case Tag("</IGNORE>", false) :: r => ignore = false; gather(r, cont)
           case _ :: r => gather(r, cont)
           case Nil => Nil
         }
-      else if (specialTok) {
+      }
+      else if (specialTok) {        
         toks match {
           case Tag("</lex>", _) :: r =>
             val beg = posWithinTag < 1
@@ -126,7 +125,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
             if (endSeqOnNextToken) {endSeq(None,cont); endSeqOnNextToken = false}
             val (l, attmap) = getLabelAndAttrsFromTag(t) // parse tag to get label and attribute value pairs
             if (l == "lex") {
-              val attmapString: String = attmap.foldLeft("") { (ac, v) => ac + v._1 + "=" + v._2 }
+              //val attmapString: String = attmap.foldLeft("") { (ac, v) => ac + v._1 + "=" + v._2 }
               specialBuf.clear
               curAtts = attmap
               specialTok = true
@@ -154,7 +153,8 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
             }
             gather(r, false)
           case Tok(t) :: r =>
-            if (endSeqOnNextToken) {endSeq(None,cont); endSeqOnNextToken = false}
+            // icky way to do this - subtract of 1 from document position and then add it back
+            if (endSeqOnNextToken) {docPos -=1; endSeq(None,cont); endSeqOnNextToken = false; docPos += 1}
             if (opts.preProc) {
               posWithinTag += 1
               tmpBuf += createSource(getAState(state, !cont), t, !(cont), curAtts)
@@ -198,7 +198,9 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
   }
 
   def writeTok(write: Boolean, t: String, os: java.io.OutputStreamWriter): Unit = {
-    if (opts.keepToks && write) { 
+    
+    if (opts.keepToks && write) {
+      println("writing TOK")
       os.write("<lex>") 
       os.write(t)
       os.write("</lex>") } 
@@ -227,33 +229,43 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     var curLab = lexInd
     var specialTok = false
     val specialBuf = new StringBuilder
-    var specialTokTag: Option[String] = None
+    var specialTokTag: Option[(String,Map[String,String])] = None
     val labSeq = iSeq.iseq
-
+    
     def createNewTok(t: String, lexEnd: Boolean = false) = {
       if (cp < labSeq.length) {
         val ilab = labSeq(cp).label
         val lab = invLa(ilab)
         val nlabState = lab match { case BeginState(l) => l case a => a }
         val normLab = if (addBeginStates) lAlphabet.update(nlabState) else ilab
-        val isSpecialLex = { nlabState match { case Label(l, _) => l == "lex" case _ => false } } // always wrap each token in this case
+        val isSpecialLex = { nlabState match { case Label(l, _) => l.equals("lex") case _ => false } } // always wrap each token in this case
+        
         if ((((ilab != curLab) || (ilab != normLab)) && (ilab != lexInd)) || isSpecialLex) {
-          os.write(lab.labelTag(false))
-          val writeLex = specialTokTag match { case Some(t) => if (!lexAttributedTagSet) os.write(t); false case None => true } // print out lex tags here
+          
+          val writeLex = specialTokTag match { 
+            case Some((t,m)) =>
+              os.write(lab.labelTag(false,Some(m)))
+              if (!lexAttributedTagSet) os.write(t) 
+              false 
+            case None => 
+              os.write(lab.labelTag(false,None))
+              true } // print out lex tags here
           writeTok(writeLex, t, os)
         } else if (!isSpecialLex) {
-          val writeLex = specialTokTag match { case Some(t) => if (!lexAttributedTagSet) os.write(t); false case None => true } // print out lex tags here
+          val writeLex = specialTokTag match { case Some((t,_)) => if (!lexAttributedTagSet) os.write(t); false case None => true } // print out lex tags here
           writeTok(writeLex, t, os)
         } else writeTok(false, t, os)
         if (!isSpecialLex && lexEnd) { os.write("</lex>") }
         if (ilab != lexInd) {
           if (cp < labSeq.length - 1) {
             val nlab = labSeq(cp + 1).label
-            if (((nlab != ilab) && (nlab != normLab)) || StateCache.isBegin(nlab) || isSpecialLex) os.write(lab.labelTag(true))
-          } else os.write(lab.labelTag(true))
+            if (((nlab != ilab) && (nlab != normLab)) || StateCache.isBegin(nlab) || isSpecialLex) os.write(lab.labelTag(true,None))
+          } else os.write(lab.labelTag(true,None))
         }
         cp += 1
         curLab = normLab
+      } else {
+        System.err.println("WARNING: token " + t + " not printed at position: " + cp)
       }
     }
 
@@ -285,7 +297,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
             val lEndTag = t.startsWith("</lex")
             val (l, attmap) = getLabelAndAttrsFromTag(t)
 
-            if (ltag && (opts.keepToks || !opts.preProc)) {specialTok = true; specialTokTag = Some(t)}
+            if (ltag && (opts.keepToks || !opts.preProc)) {specialTok = true; specialTokTag = Some(t,attmap)}
             else if (!ltag && !lEndTag && (!opts.stripOriginalTags || !opts.tagset.isWithin(l, attmap))) os.write(t)
             if (!b) { // if it's a close tag and a boundary tag, set ignore to true
               if (!ignoreFlag && opts.boundaries.labelMatch(l)) ignoreFlag = true

@@ -205,10 +205,12 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
             { f: java.io.File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } }
         val osuffix = opts.outSuffix match { case Some(o) => o case None => "" }
         fs foreach { f =>
-          val ofile = opts.outputDir match { case Some(d) => Some(d + "/" + f.getName + osuffix) case None => None }
-          val deser = sGen.deserializeFromFile(f)
-          runDecoder(deser, decoder, ofile)
-          print(".")
+          if (f.isFile) {
+            val ofile = opts.outputDir match { case Some(d) => Some(d + "/" + f.getName + osuffix) case None => None }
+            val deser = sGen.deserializeFromFile(f)
+            runDecoder(deser, decoder, ofile)
+            print(".")
+          }
         }
       case None =>
         opts.inputFile match {

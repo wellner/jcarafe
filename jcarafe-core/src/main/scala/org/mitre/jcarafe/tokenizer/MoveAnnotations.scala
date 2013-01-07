@@ -36,6 +36,6 @@ object MoveAnnotations {
   
   def main(args: Array[String]) = {
     val dir = new java.io.File(args(0))
-    dir.listFiles foreach { processFile(_) }
+    dir.listFiles foreach { f => if (f.isFile) processFile(f) }
   }
 }
