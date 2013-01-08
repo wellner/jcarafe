@@ -202,7 +202,6 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
   def writeTok(write: Boolean, t: String, os: java.io.OutputStreamWriter): Unit = {
 
     if (opts.keepToks && write) {
-      println("writing TOK")
       os.write("<lex>")
       os.write(t)
       os.write("</lex>")
@@ -242,15 +241,14 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
         val isSpecialLex = { nlabState match { case Label(l, _) => l.equals("lex") case _ => false } } // always wrap each token in this case
 
         if ((((ilab != curLab) || (ilab != normLab)) && (ilab != lexInd)) || isSpecialLex) {
-
           val writeLex = specialTokTag match {
             case Some((t, m)) =>
-              os.write(lab.labelTag(false, Some(m)))
+              os.write(lab.labelTag(false, Some(m), (opts.keepToks && lexAttributedTagSet)))
               if (!lexAttributedTagSet) os.write(t)
               false
-            case None =>
+            case None => // there isn't any special tok tag info
               os.write(lab.labelTag(false, None))
-              true
+              !isSpecialLex // if it's a "lex" tag task, don't want to write out lex info with token (or it will be duplicated)
           } // print out lex tags here
           writeTok(writeLex, t, os)
         } else if (!isSpecialLex) {
@@ -299,7 +297,8 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
             val lEndTag = t.startsWith("</lex")
             val (l, attmap) = getLabelAndAttrsFromTag(t)
 
-            if (ltag && (opts.keepToks || !opts.preProc)) { specialTok = true; specialTokTag = Some(t, attmap) }
+            //if (ltag && (opts.keepToks || !opts.preProc)) { specialTok = true; specialTokTag = Some(t, attmap) }
+            if (ltag && lexAttributedTagSet) { specialTok = true; specialTokTag = Some(t, attmap) }
             else if (!ltag && !lEndTag && (!opts.stripOriginalTags || !opts.tagset.isWithin(l, attmap))) os.write(t)
             if (!b) { // if it's a close tag and a boundary tag, set ignore to true
               if (!ignoreFlag && opts.boundaries.labelMatch(l)) ignoreFlag = true
