@@ -8,6 +8,8 @@ class TFIDFOptions extends CommandLineHandler {
   "--output-file" desc "Outputfile"
   "--input-dir" desc "Input directory"
   "--idf" flag "Basic IDF instead of RIDF"
+  "--no-tags" flag "Do not process sgml/xml tags in the input"
+  "--tokenizer-patterns" desc "Split and Merge tokenizer post-processing patterns"
 }
 
 class IdfStats(val idf: Double, val ridf: Double)
@@ -30,8 +32,8 @@ object ComputeTFIDFTable {
     tbl.update(s, (c + 1))
   }
 
-  def processFile(ifile: String) = {
-    val toks = FastTokenizer.parseFile(ifile)
+  def processFile(ifile: String, notags: Boolean = false) = {
+    val toks = if (notags) FastTokenizer.parseFileNoTags(ifile) else FastTokenizer.parseFile(ifile)
     val ds = new collection.mutable.HashSet[String]
     toks foreach { case Tok(t) => ds += t; updateTable(t, tfTable) case _ => }
     ds foreach { s => updateTable(s, dfTable) }
@@ -74,12 +76,16 @@ object ComputeTFIDFTable {
   def main(args: Array[String]) = {
     val opts = new TFIDFOptions
     opts.process(args.toList)
+    opts.get("--tokenizer-patterns") foreach { f =>
+      org.mitre.jcarafe.tokenizer.FastTokenizer.setTokenizerAugmenters(new java.io.File(f))
+    }
     val ofile =
       opts.get("--output-file") match {
         case Some(f) => new java.io.File(f)
         case None => throw new RuntimeException("Expected output file")
       }
     var numDocs = 0
+    val notags = opts.check("--no-tags")
     opts.get("--input-dir") match {
       case Some(idir) =>
         val dir = new java.io.File(idir)
@@ -87,7 +93,7 @@ object ComputeTFIDFTable {
           if (f.isFile) {
             numDocs += 1
             val ifile = idir + "/" + f.getName
-            processFile(ifile)
+            processFile(ifile,notags)
           }
         }
       case None =>

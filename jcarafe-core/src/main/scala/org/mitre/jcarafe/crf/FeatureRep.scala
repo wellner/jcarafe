@@ -13,10 +13,12 @@ import cern.colt.map.OpenLongObjectHashMap;
 
 abstract class FeatureCore {
   def getName: String
+  def value: Double
 }
 
 class CompactFeature(val v: Double, val fid: Int, val classLabelWeights: Option[Array[Double]] = None) extends FeatureCore {
   def apply(i: Int) = classLabelWeights match { case Some(vec) => vec(i) case None => v }
+  def value = v
   def getName = ""
 }
 
@@ -129,6 +131,7 @@ class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fca
 
   def fdetail = fdetailSet
   def getName = fname.toString
+  def value = if (fdetailSet.isEmpty) 1.0 else fdetailSet.head.value
   override def toString = getName
 
   override def equals(other: Any): Boolean =

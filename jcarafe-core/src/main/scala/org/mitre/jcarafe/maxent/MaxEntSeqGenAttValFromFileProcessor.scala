@@ -11,15 +11,16 @@ trait MaxEntSeqGenAttValFromFileProcessor extends MaxEntSeqGen[List[(FeatureId, 
   //val sGen = new TrainingSeqGen[String](opts) with TextSeqGen
   val subSeqGen: SeqGen[String]
 
-  def gatherFeatures(seqs: Seq[InstanceSequence]): Set[String] =
-    seqs.foldLeft(Set(): Set[String]) { (cs, seq) => seq.iseq.foldLeft(cs) { (cs1, se) => se.userVec.foldLeft(cs1) { _ + _.getName } } }
+  def gatherFeatures(seqs: Seq[InstanceSequence]): Map[String,Double] = {
+    var fm : Map[String,Double] = Map()
+    seqs foreach { seq => seq.iseq foreach { se => se.userVec foreach {ft => fm += (ft.getName -> ft.value)}}}
+    fm
+  }
 
   def mapToMaxEntInstance(lab: String, fs: Seq[InstanceSequence], fileName: String) = {
-    val meFs: Set[String] = gatherFeatures(fs)
-    val src = createSource(SLabel(lab), meFs.toList map { fn => (new FeatureId(fn), 1.0) })
+    val meFs: Map[String,Double] = gatherFeatures(fs)
+    val src = createSource(SLabel(lab), meFs.toList map { case (fn,v) => (new FeatureId(fn), v) })
     val inst = frep.createMEInstance(src.label, src.label, fileName)
-    //frep.addMEFeature(inst, unkCode, 1.0)
-    //src.obs foreach {case (l,v) => frep.addMEFeature(inst,l.fnId,v)}
     addInFeatures(inst, src)
     inst
   }
