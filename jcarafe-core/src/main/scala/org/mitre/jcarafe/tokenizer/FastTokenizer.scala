@@ -328,8 +328,7 @@ object FastTokenizer {
      }
   
   def setTokenizerAugmenters(f: java.io.File) = {
-    val patternParser = new TokenizerPatternParser
-    val (cat,patterns) = patternParser.parseFile(f)
+    val (cat,patterns) = (new TokenizerPatternParser).parseFile(f)
     splittingAugmenter = patterns match {case Nil => None case a => Some(SplitTokenizerAugmenterPattern(a))}
     mergingAugmenter = patterns match {case Nil => None case a => Some(MergeTokenizerAugmenterPattern(a))}
   }

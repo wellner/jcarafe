@@ -31,9 +31,11 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--fspec" desc "Feature spec"
   "--evaluate"           desc "Evaluate decoder on gold-standard test data"  
   "--word-properties" desc "Word properties file"
+  "--word-scores" desc "Word scores file"
   "--parallel" flag "Parallelize feature expectation computation"
   "--nthreads" desc "Number of threads to use during CLL training (for computing feature expectations)"
   "--dump-instances" desc "When in file processing mode, this option specifies a file to dump the extracted classification instances out to"
+  "--tokenizer-patterns" desc "Split and Merge tokenizer post-processing patterns"
   "--weighted-feature-map" desc "Induce weighted feature map from auxillary data"
   "--ss-iters" desc "Number of iterations for self-induced feature parameterization"
   "--unlabeled-input-dir" desc "Directory containing files of unlabeled data for use with semi-supervised learning"
@@ -693,7 +695,10 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
       seqs foreach { iseq =>
         iseq.iseq foreach { ai =>
           ofile.write(ai.label.toString)
-          ai.getCompactVec foreach { cf => ofile.write(' '); ofile.write(cf.fid.toString) }
+          ai.getCompactVec foreach { cf => 
+            ofile.write(' '); ofile.write(cf.fid.toString)
+            if (cf.v < 0.999 || cf.v > 1.001) {ofile.write(':'); ofile.write(cf.v.toString)} 
+            }
           ofile.write('\n')
         }
       }
@@ -708,19 +713,22 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
   }
   
   def getMeEstimator = {
+    // if we're dumping out instances, just set the number of states to 2 to make the CRF class ok with it
+    // we won't use this to do actual training in this case so the inconsistency doesn't matter
+    val nstates = if (opts.dumpInstances.isDefined) 2 else sGen.getNumberOfStates
     if (opts.parallel) {
         val numPs = opts.numThreads match {
           case None => Runtime.getRuntime.availableProcessors * 4 / 5 // leave a CPU or two free
           case Some(n) => n
         }
         println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
-        new DenseParallelMaxEnt(numPs, sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian)
+        new DenseParallelMaxEnt(numPs, nstates, sGen.getNumberOfFeatures, opts.gaussian)
       } else if (opts.psa) {
         if (opts.l1)
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
+          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
         else
-          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
-      } else new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
+          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
+      } else new MaxEnt(nstates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
   }
   
   override def train = {
