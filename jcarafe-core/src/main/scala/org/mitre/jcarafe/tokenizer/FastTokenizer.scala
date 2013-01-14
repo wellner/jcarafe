@@ -42,53 +42,114 @@ object FastTokenizer {
   var splittingAugmenter : Option[SplitTokenizerAugmenterPattern] = None
   var mergingAugmenter: Option[MergeTokenizerAugmenterPattern] = None
   
-  private def parseLoop(parser: GenToker, tbuf: ListBuffer[Element]) = {
+  private def parseLoop(parser: GenToker, tbuf: ListBuffer[Element], keepLexTags: Boolean = false) = {
     var c = true
+    var withinPreExistingLex = false
+    val preExistingBuilder = new StringBuilder
     while (c) {
       val t : Token = parser.getNextToken()
       t.kind match {
         case EOF => c = false
-        case ENDPUNCT => tbuf append SoftEndTok(t.image)
-        case TAGSTART => tbuf append Tag(t.image,true)
-        case TAGEND => tbuf append Tag(t.image,false)
-        case PUNCT => tbuf append Tok(t.image)
-        case TOK => tbuf append Tok(t.image)
-        case ABBREV => tbuf append Tok(t.image)
-        case WHITE => tbuf append Ws(t.image)
-        case WHITEEND => tbuf append EndWs(t.image)
-        case _ => tbuf append Tok(t.image)
+        case ENDPUNCT => 
+          if (withinPreExistingLex) preExistingBuilder append t.image 
+          else tbuf append SoftEndTok(t.image)
+        case TAGSTART =>
+          val img = t.image
+          if (img.startsWith("<lex")) {
+            preExistingBuilder.clear()
+            withinPreExistingLex = true
+            if (keepLexTags) tbuf append Tag(t.image,true)
+          } else
+        	tbuf append Tag(t.image,true)
+        case TAGEND =>
+          val img = t.image
+          if (img.equals("</lex>")) {
+            val bb = preExistingBuilder.toString()
+            tbuf append Tok(bb)  
+            withinPreExistingLex = false
+            if (keepLexTags) tbuf append Tag(t.image,false)
+          } else tbuf append Tag(t.image,false)
+        case PUNCT =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
+        case TOK =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
+        case ABBREV => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
+        case WHITE =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Ws(t.image)
+        case WHITEEND =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append EndWs(t.image)
+        case _ =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
       }
     }
+    if (withinPreExistingLex) throw new RuntimeException("Lexer failed: open interpreted <lex..> tag without corresponding close tag")
   }
   
-  private def parseLoopSplitting(parser: GenToker, tbuf: ListBuffer[Element], splitter: SplitTokenizerAugmenterPattern) = {
+  private def parseLoopSplitting(parser: GenToker, tbuf: ListBuffer[Element], splitter: SplitTokenizerAugmenterPattern, keepLexTags: Boolean = false) = {
 	var c = true
+	var withinPreExistingLex = false
+	val preExistingBuilder = new StringBuilder
     while (c) {
       val t : Token = parser.getNextToken()
       t.kind match {
         case EOF => c = false
-        case ENDPUNCT => tbuf append SoftEndTok(t.image)
-        case TAGSTART => tbuf append Tag(t.image,true)
-        case TAGEND => tbuf append Tag(t.image,false)
-        case PUNCT => tbuf append Tok(t.image)
+        case ENDPUNCT =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append SoftEndTok(t.image)
+        case TAGSTART =>
+          val img = t.image
+          if (img.startsWith("<lex")) {
+            preExistingBuilder.clear()
+            withinPreExistingLex = true
+            if (keepLexTags) tbuf append Tag(t.image,true)
+          } else
+        	tbuf append Tag(t.image,true)
+        case TAGEND => 
+          val img = t.image
+          if (img.equals("</lex>")) {
+            val bb = preExistingBuilder.toString()
+            tbuf append Tok(bb)  
+            withinPreExistingLex = false
+            if (keepLexTags) tbuf append Tag(t.image,false)
+          } else tbuf append Tag(t.image,false)
+        case PUNCT =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
         case TOK =>
-          splitter.split(t.image,t.kind) foreach {tbuf append _}
-        case ABBREV => tbuf append Tok(t.image)
-        case WHITE => tbuf append Ws(t.image)
-        case WHITEEND => tbuf append EndWs(t.image)
-        case _ => tbuf append Tok(t.image)
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else splitter.split(t.image,t.kind) foreach {tbuf append _}
+        case ABBREV =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
+        case WHITE =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Ws(t.image)
+        case WHITEEND =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append EndWs(t.image)
+        case _ =>
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
       }
     }    
+	if (withinPreExistingLex) throw new RuntimeException("Lexer failed: open interpreted <lex..> tag without corresponding close tag")
   }
   
-  private def parse(scs: Reader) = {
+  private def parse(scs: Reader, keep: Boolean = false) = {
     //if (isSet) GenTokerTokenManager.ReInit(scs) else {val _ = new GenTokerTokenManager(scs); ()}
     isSet = true
     val parser = new GenToker(scs)
     val tbuf = new scala.collection.mutable.ListBuffer[Element]
     splittingAugmenter match {
-      case Some(splitter) => parseLoopSplitting(parser, tbuf, splitter)
-      case None => parseLoop(parser, tbuf)
+      case Some(splitter) => parseLoopSplitting(parser, tbuf, splitter, keep)
+      case None => parseLoop(parser, tbuf, keep)
     }
     applyMergePatterns(tbuf)
   }
@@ -99,8 +160,8 @@ object FastTokenizer {
       val t : Token = parser.getNextToken()
       t.kind match {
       case JsonTokerConstants.EOF => c = false
-        case JsonTokerConstants.ENDPUNCT => tbuf append SoftEndTok(t.image)
-        case JsonTokerConstants.PUNCT => tbuf append Tok(t.image)
+        case JsonTokerConstants.ENDPUNCT => 
+        case JsonTokerConstants.PUNCT => 
         case JsonTokerConstants.TOK => tbuf append Tok(t.image)
         case JsonTokerConstants.ABBREV => tbuf append Tok(t.image)
         case JsonTokerConstants.WHITE => tbuf append Ws(t.image)
@@ -112,6 +173,8 @@ object FastTokenizer {
   
   private def parseLoopNoTagsSplitting(parser: JsonToker, tbuf: ListBuffer[Element], splitter: SplitTokenizerAugmenterPattern) = {
     var c = true
+    var withinPreExistingLex = false
+	val preExistingBuilder = new StringBuilder
     while (c) {
       val t : Token = parser.getNextToken()
       t.kind match {
@@ -222,22 +285,55 @@ object FastTokenizer {
     val tbuf = new scala.collection.mutable.ListBuffer[Element]
     var c = true
     var ntoks = 0
+    var withinPreExistingLex = false
+	val preExistingBuilder = new StringBuilder    
     while (c) {
       val t : Token = parser.getNextToken()
       t.kind match {
         case EOF => c = false
-        case ENDPUNCT => printTok(true,t.image,os)
-        case TAGSTART => printTok(false,t.image,os)
-        case TAGEND => printTok(false,t.image,os)
-        case PUNCT => ntoks += 1; printTok(true,t.image,os)
-        case TOK => ntoks += 1; printTok(true,t.image,os)
-        case ABBREV => ntoks += 1; printTok(true,t.image,os)
-        case WHITE => printTok(false,t.image,os)
-        case WHITEEND => printTok(false,t.image,os)
-        case URL => ntoks += 1; printTok(true,t.image,os)
-        case _ => printTok(false,t.image,os)
+        case ENDPUNCT => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { ntoks += 1; printTok(true,t.image,os)}
+        case TAGSTART =>
+          val img = t.image
+          if (img.startsWith("<lex")) {
+            preExistingBuilder.clear()
+            withinPreExistingLex = true
+          } else printTok(false,t.image,os)
+        case TAGEND => 
+          val img = t.image
+          if (img.equals("</lex>")) {
+            val bb = preExistingBuilder.toString()
+            printTok(true,bb,os)
+            withinPreExistingLex = false
+          } else printTok(false,t.image,os)
+        case PUNCT => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else {
+            ntoks += 1
+            printTok(true,t.image,os)
+          }
+        case TOK => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else {ntoks += 1; printTok(true,t.image,os) }
+        case ABBREV => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else {ntoks += 1; printTok(true,t.image,os) }
+        case WHITE => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { printTok(false,t.image,os) }
+        case WHITEEND => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { printTok(false,t.image,os) }
+        case URL => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { ntoks += 1; printTok(true,t.image,os)}
+        case _ => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { printTok(false,t.image,os) }
       }
     }
+    if (withinPreExistingLex) throw new RuntimeException("Lexer failed: open interpreted <lex..> tag without corresponding close tag")
     ntoks
   }	
   
@@ -249,24 +345,51 @@ object FastTokenizer {
     val tbuf = new scala.collection.mutable.ListBuffer[Element]
     var c = true
     var ntoks = 0
+    var withinPreExistingLex = false
+	val preExistingBuilder = new StringBuilder
     while (c) {
       val t : Token = parser.getNextToken()
       t.kind match {
-        case ENDPUNCT => tbuf append SoftEndTok(t.image)
-        case TAGSTART => tbuf append Tag(t.image,true)
-        case TAGEND => tbuf append Tag(t.image,false)
-        case PUNCT => tbuf append Tok(t.image)
+        case ENDPUNCT => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append SoftEndTok(t.image)
+        case TAGSTART =>
+          val img = t.image
+          if (img.startsWith("<lex")) {
+            preExistingBuilder.clear()
+            withinPreExistingLex = true
+          } else tbuf append Tag(t.image,true)
+        case TAGEND => 
+          val img = t.image
+          if (img.equals("</lex>")) {
+            val bb = preExistingBuilder.toString()
+            tbuf append Tok(bb)
+            withinPreExistingLex = false
+          } else tbuf append Tag(t.image,false)
+        case PUNCT => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
         case TOK => 
-          if (splittingAugmenter.isDefined) {
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else { 
+            if (splittingAugmenter.isDefined) {
         	  splittingAugmenter.get.split(t.image,t.kind) foreach {tbuf append _}
           } else tbuf append Tok(t.image)
-        case ABBREV => tbuf append Tok(t.image)
-        case WHITE => tbuf append Ws(t.image)
-        case WHITEEND => tbuf append EndWs(t.image)
+          }
+        case ABBREV => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Tok(t.image)
+        case WHITE => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append Ws(t.image)
+        case WHITEEND => 
+          if (withinPreExistingLex) preExistingBuilder append t.image
+          else tbuf append EndWs(t.image)
         case EOF => c = false
-        case _ => tbuf append Tok(t.image)
+        case _ => if (withinPreExistingLex) preExistingBuilder append t.image else tbuf append Tok(t.image)
       }
     }
+    if (withinPreExistingLex) throw new RuntimeException("Lexer failed: open interpreted <lex..> tag without corresponding close tag")
     mergingAugmenter match {
       case Some(merger) =>
         val nbuf = new collection.mutable.ListBuffer[Element]
@@ -283,13 +406,14 @@ object FastTokenizer {
           case a => printTok(false, a.getString, os)
         }
     }
+    
   }
   
-  def parseString(s: String) = {
+  def parseString(s: String, keep: Boolean = false) = {
     //val sr = new java.io.StringReader(s)
     //scs match {case None => scs = Some(new SimpleCharStream(sr)) case Some(cs) => cs.ReInit(sr)}
     val reader = new InputStreamReader(new ByteArrayInputStream(s.getBytes), "UTF-8")
-    parse(reader)
+    parse(reader, keep)
   }
   
   def parseStringNoTags(s: String) = {
@@ -300,11 +424,11 @@ object FastTokenizer {
     r
   }
   
-  def parseFile(f:String) = {
+  def parseFile(f:String, keep: Boolean = false) = {
     val fstream = new java.io.FileInputStream(f)
     val reader = new InputStreamReader(fstream, "UTF-8")
     //scs match {case None => scs = Some(new SimpleCharStream(fstream, "UTF-8")) case Some(cs) => cs.ReInit(fstream,"UTF-8")}   
-    val r = parse(reader) 
+    val r = parse(reader, keep) 
     fstream.close
     r
   }
