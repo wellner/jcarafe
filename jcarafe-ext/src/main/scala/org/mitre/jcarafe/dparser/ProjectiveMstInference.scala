@@ -475,29 +475,17 @@ trait ParMstCrf extends ProjectiveMstCrf {
 
   def getWorker(lambdas: Array[Double], nfs: Int, gPrior: Double): ProjectiveMstCrf
 
-  class Mapper[A, B: ClassManifest](l: Seq[A], f: A => B) {
-    def pmap = {
-      val buffer = new Array[B](l.length)
-      val mappers =
-        for (idx <- (0 until l.length).toList) yield {
-          scala.actors.Futures.future {
-            buffer(idx) = f(l(idx))
-          }
-        }
-      for (mapper <- mappers) mapper()
-      buffer
-    }
-  }
-
   def getGradient(numProcesses: Int, seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     val accessors = seqAccessor.splitAccessor(numProcesses).toArray
-    val returns = new Mapper(accessors, { accessor: AccessSeq[AbstractInstance] =>
+    
+    def subFn(accessor: AccessSeq[AbstractInstance]) = {
       val crf = getWorker(lambdas, nfs, gPrior)
-      val localLL = crf.getGradient(false, accessor) // need to do the right thing with regularization
-      (crf.gradient, localLL)
-    })
+      val localLL = crf.getGradient(false,accessor)
+      (crf.gradient,localLL)
+    }
     var logLi = regularize()
-    val subLLs = returns.pmap map { (r: Tuple2[Array[Double], Option[Double]]) =>
+    val results = accessors.par map subFn
+    val subLLs = results map { (r: Tuple2[Array[Double], Option[Double]]) =>
       r match {
         case (grad, Some(ll)) =>
           var i = 0

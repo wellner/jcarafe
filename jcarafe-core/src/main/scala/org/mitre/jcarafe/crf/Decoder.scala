@@ -11,6 +11,7 @@ import org.mitre.jcarafe.util._
 import akka.actor._
 import akka.util.Timeout
 import akka.pattern.{ask,pipe}
+import java.util.concurrent.Executors
 
 abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   
@@ -21,7 +22,9 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   val model: M
   lazy val ss = model.segSize
   
-  implicit val ec = ExecutionContext.Implicits.global
+  val pool = Executors.newCachedThreadPool()
+  implicit val ec = ExecutionContext.fromExecutorService(pool)
+  
   //implicit val ec = ExecutionContext.fromExecutorService(new java.util.concurrent.ExecutorService) 
 
   lazy val viterbiDecoder: DecodingAlgorithm = Viterbi(dynamic, ss, model.crf, opts.posteriors)
@@ -128,7 +131,10 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def decodeToSources(exceptions: Set[String], id: String, s: String) = decodeSeqsToSourcesFromString(exceptions, id, s, viterbiDecoder)
 
   def decode(): Unit = decodeSeqsFromFiles(viterbiDecoder)
-  def cleanUp(): Unit = decoderWorkers foreach { _ ! None }
+  def cleanUp(): Unit = {
+    //decoderWorkers foreach { _ ! None }
+    pool.shutdown
+  }
 
   private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
     implicit val timeout = Timeout(5 seconds) // needed for `?` below
