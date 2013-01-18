@@ -56,8 +56,6 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     } else if (opts.psa)
       if (opts.l1)
         new StochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearnerWithL1[AbstractInstance]
-      else if (opts.parallel)
-        new ParStochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts)
       else
         new StochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
     else if (opts.parallel) {

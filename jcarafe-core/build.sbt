@@ -1,12 +1,18 @@
 name := "jcarafe-core"
 
+organization := "org.mitre"
+
+resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/"
+
 libraryDependencies += "org.codehaus.jackson" % "jackson-core-asl" % "1.5.0"
 
 libraryDependencies += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.5.0"
 
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2-SNAPSHOT"
+
 libraryDependencies += "org.scala-tools.sbinary" % "sbinary_2.9.0" % "0.4.0"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
+libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
 seq(assemblySettings: _*)
 

@@ -66,7 +66,7 @@ trait CoNLLSeqGen extends SeqGen[String] {
             tmpBuf += createSource(rGov, string, Map("pos" -> pos))
           case _ =>
         }
-        } catch {case e => throw new RuntimeException("failed reading element " + elemId + " => " + line)}
+        } catch {case e: Throwable => throw new RuntimeException("failed reading element " + elemId + " => " + line)}
       }
       if (tmpBuf.size > 0) {
         val seq = tmpBuf.toIndexedSeq

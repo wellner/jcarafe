@@ -42,6 +42,7 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
     var nrestarts = 0
     val t_s = System.nanoTime
     do {
+      iter += 1
       val Some(f) = getGradient(accessSeq)
       try {
         LBFGS.lbfgs(numParams, m, lambdas, f, gradient, diagco, diag, iprint, eps, xtol, iflag, false)
@@ -52,7 +53,6 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
           nrestarts += 1
           LBFGS.lbfgs(numParams, m, lambdas, f, gradient, diagco, diag, iprint, eps, xtol, iflag, true)
       }
-      iter += 1
     } while ((iter <= max_iters) && (iflag(0) > 0) && (nrestarts <= maxRestarts));
 
     println("\n...Training completed in " + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")

@@ -23,7 +23,7 @@ object Json {
     case vl: String => JsString(vl)
     case vl: Int => JsInt(vl)
     case vl: Double => JsDouble(vl)
-    case vl: java.util.ArrayList[Any] =>
+    case vl: java.util.ArrayList[_] =>
       val lb = new scala.collection.mutable.ListBuffer[Any]
       var i = 0
       while (i < vl.size) {
@@ -32,7 +32,7 @@ object Json {
       }
       val elements = lb.toList
       JsArray(elements map buildJson)
-    case vl: java.util.HashMap[String,Any] =>
+    case vl: java.util.HashMap[_,_] =>
       val lb = new scala.collection.mutable.ListBuffer[String]
       val arr = vl.keySet.toArray
       var i = 0

@@ -58,7 +58,7 @@ class StdTaggerTask(val opts: Options) {
 
   val mode = opts.mode match {
     case Some("inline") => Text case Some("json") => Json case Some("basic") => Basic
-    case None => Text
+    case _ => Text
   }
 
   if (opts.train) org.mitre.jcarafe.crf.CrfInstance.training = true

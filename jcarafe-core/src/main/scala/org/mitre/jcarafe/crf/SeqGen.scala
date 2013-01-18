@@ -68,9 +68,6 @@ object InstSeq {
           case s: Seq[NonFactoredCrfInstance] =>
             sbinary.Operations.toFile[Seq[NonFactoredCrfInstance]](s)(ofile)
             new NonFactoredCrfDiskInstanceSequence(ofile, st, en, s.length)
-          case s: Seq[CrfInstance] =>
-            sbinary.Operations.toFile[Seq[CrfInstance]](s)(ofile)
-            new CrfDiskInstanceSequence(ofile, st, en, s.length)
         }
       case None => new MemoryInstanceSequence(s, st, en)
     }

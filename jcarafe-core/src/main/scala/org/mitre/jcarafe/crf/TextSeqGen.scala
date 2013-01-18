@@ -14,7 +14,7 @@ import org.mitre.jcarafe.util._
 class TextSeqDeserialization(val elements: List[Element]) extends Deserialization {
   type T = List[Element]
 
-  lazy val indexed = elements.toIndexedSeq[Element]
+  lazy val indexed = elements.toIndexedSeq
 
   def getSlice(s: Int, e: Int) = new TextSeqDeserialization(indexed.slice(s, e).toList)
 }

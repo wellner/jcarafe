@@ -5,7 +5,6 @@
 package org.mitre.jcarafe.tokenizer
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
-import scala.util.parsing.syntax._
 import scala.util.parsing.input.Positional
 import scala.util.parsing.input.PagedSeqReader
 import scala.collection.immutable.PagedSeq

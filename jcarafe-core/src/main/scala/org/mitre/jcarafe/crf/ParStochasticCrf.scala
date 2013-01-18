@@ -4,14 +4,18 @@
 
 package org.mitre.jcarafe.crf
 import org.mitre.jcarafe.util.Options
-import scala.actors._
+import akka.actor._
 
-case class SectionUpdate(lambdas: Array[Double], etas: Array[Double]) 
+case class SectionUpdate(lambdas: Array[Double], etas: Array[Double])
 
+trait ParallelStochastic[T <: StochasticCrf] extends StochasticCrf {
+  throw new RuntimeException("Parallel Stochastic gradient learning not implemented")
+}
+
+
+/*
 class PsaWorker[T <: StochasticCrf](val estimator: T) extends Actor {
-  def act() = {
-    Actor.loop {
-      react {
+   def receive = {
 	case accessSeq: AccessSeq[AbstractInstance] =>
 	  val core = estimator.train(accessSeq) // "train", just a single pass
 	  reply(SectionUpdate(core.params,estimator.etas)) // return parameters
@@ -20,9 +24,7 @@ class PsaWorker[T <: StochasticCrf](val estimator: T) extends Actor {
 	  reply()
 	case _ => 
 	  exit()
-      }
-    }
-  }
+   }
 }
 
 
@@ -79,3 +81,4 @@ class ParStochasticCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) extends 
     new StochasticCrf(nls, nfs, segSize, nOpts) with PsaLearner[AbstractInstance]
   }
 }
+*/

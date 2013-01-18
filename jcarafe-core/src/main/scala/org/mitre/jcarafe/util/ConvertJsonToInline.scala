@@ -8,7 +8,7 @@ object ConvertJsonToInline {
   def convertFile(json: File, inline: File, tagsetFile: File) = {
     val tagset = Tagset.loadTagset(tagsetFile.getPath)
     val js = Json.constructJsonType(json)
-    val asets = js match {case JsObject(o) => try {o("asets")} catch {case _ => new JsArray(Nil)} case _ => new JsArray(Nil)}
+    val asets = js match {case JsObject(o) => try {o("asets")} catch {case _: Throwable => new JsArray(Nil)} case _ => new JsArray(Nil)}
     val sig = js match { 
       case JsObject(o) => 
         o("signal") match {case JsString(s) => s case _ => throw new RuntimeException("Expected signal to be a string")}

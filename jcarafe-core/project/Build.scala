@@ -2,33 +2,12 @@ import sbt._
 import Keys._
 import java.io.File
 
-object BuildSettings { 
-  val buildOrganization = "org.mitre"
-  val buildVersion = "0.9.8.4"
-  val buildScalaVersion = "2.9.2"
-  val buildSettings = Defaults.defaultSettings ++ Seq(
-    organization := buildOrganization,
-    version := buildVersion,
-    scalaVersion := buildScalaVersion
-  )
-}
-
-object Resolvers { 
-  val scalaSnapshots = "Scala-Tools Maven2 Snapshot Repository" at "http://scala-tools.org/repo-snapshots"  
-}
-
-object Dependencies { 
-  val jacksonCore     = "org.codehaus.jackson" % "jackson-core-lgpl" % "1.5.0"
-  val jacksonMapper   = "org.codehaus.jackson" % "jackson-mapper-lgpl" % "1.5.0"
-  val sjson           = "org.scala-tools.sbinary" % "sbinary" % "0.4.1"
-  val testing         = "org.scalatest" % "scalatest" % "1.6.1" % "test"
-}
 
 object JCarafe extends Build {
 
-  import BuildSettings._
-  import Resolvers._
-  import Dependencies._
+  //import BuildSettings._
+  //import Resolvers._
+  //import Dependencies._
 
   val outDirTargetFiles = Set(
     "GenToker.java",
@@ -72,7 +51,7 @@ object JCarafe extends Build {
     */
    }
 
-  def projSettings = buildSettings ++ Seq(
+  def projSettings = Defaults.defaultSettings ++ Seq(
     javaCCFiles in Compile <<= javaCCFilesTask,
     runJavaCC in Compile <<= srcGeneratorTask
     //sourceGenerators in Compile <+= runJavaCC in Compile

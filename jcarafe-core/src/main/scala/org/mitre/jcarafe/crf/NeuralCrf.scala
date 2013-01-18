@@ -33,8 +33,6 @@ object NeuralCrf {
     else if (opts.psa)
       if (opts.l1)
 	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearnerWithL1[T]
-      else if (opts.parallel)
-	new ParStochasticNeuralCrf(nls,nTotalFeatures,1,opts,nnfs,nGates)
       else 
 	new NeuralStochasticCrf(nls,nTotalFeatures,1,opts,nnfs,nGates) with PsaLearner[T]
     else {
@@ -344,6 +342,7 @@ abstract class NeuralStochasticCrf(nls: Int,
   }
 }
 
+/*
 class ParStochasticNeuralCrf(nls: Int, 
 				   nfs: Int, 
 				   segSize: Int, 
@@ -362,7 +361,7 @@ with ParallelStochastic[NeuralStochasticCrf] {
     new NeuralStochasticCrf(nls,nfs,segSize,newOpts,nNfs,nGates) with PsaLearner[AbstractInstance]
   }
 }
-
+*/
 
 object NeuralStochasticCrf {
 

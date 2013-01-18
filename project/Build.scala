@@ -2,35 +2,7 @@ import sbt._
 import Keys._
 
 
-object BuildSettings { 
-  val buildOrganization = "org.mitre"
-  val buildVersion = "0.9.8.5.b-01"
-  val buildScalaVersion = "2.9.2"
-  val buildSettings = Defaults.defaultSettings ++ Seq(
-    organization := buildOrganization,
-    version := buildVersion,
-    scalaVersion := buildScalaVersion
-  )
-}
-
-object Resolvers { 
-  val scalaSnapshots = "Scala-Tools Maven2 Snapshot Repository" at "http://scala-tools.org/repo-snapshots"  
-  val scalanlpRepo   = "ScalaNLP Maven2" at "http://repo.scalanlp.org/repo/"
-  val internalRepo   = Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")
-}
-
-object Dependencies { 
-  val jacksonCore     = "org.codehaus.jackson" % "jackson-core-asl" % "1.5.0"
-  val jacksonMapper   = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.5.0"
-  val sbinary         = "org.scala-tools.sbinary" % "sbinary" % "0.4.1"
-  val testing         = "org.scalatest" % "scalatest" % "1.6.1" % "test"
-}
-
 object JCarafeBuild extends Build {
-
-  import BuildSettings._
-  import Resolvers._
-  //import Dependencies._
 
   lazy val root = Project(id = "jcarafe",
                             base = file(".")) aggregate(jcarafeCore, jcarafeExt)
@@ -39,7 +11,7 @@ object JCarafeBuild extends Build {
 				    base = file("jcarafe-core"), settings=projSettings)
 
   lazy val jcarafeExt = Project(id = "jcarafe-ext",
-				   base = file("jcarafe-ext"), settings=buildSettings) dependsOn(jcarafeCore)
+				   base = file("jcarafe-ext")) dependsOn(jcarafeCore)
 
   val outDirTargetFiles = Set(
     "GenToker.java",
@@ -76,7 +48,7 @@ object JCarafeBuild extends Build {
     outDirTargets.toSeq
    }
 
-  def projSettings = buildSettings ++ Seq(
+  def projSettings = Defaults.defaultSettings ++ Seq(
     javaCCFiles in Compile <<= javaCCFilesTask,
     runJavaCC in Compile <<= srcGeneratorTask
   )

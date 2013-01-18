@@ -84,7 +84,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case _ => throw new RuntimeException("No signal found")
     }
     var preProc = false
-    val asets = json match { case JsObject(o) => try { o("asets") } catch { case _ => preProc = true; new JsArray(Nil) } case _ => preProc = true; new JsArray(Nil) }
+    val asets = json match { case JsObject(o) => try { o("asets") } catch { case _: Throwable => preProc = true; new JsArray(Nil) } case _ => preProc = true; new JsArray(Nil) }
     val tokSet = new Tagset(Set(SLabel("lex")))
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
     val preExistingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
@@ -258,7 +258,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): scala.collection.immutable.Map[AbstractLabel, ListBuffer[Annotation]] = {
     if (addBeginStates) StateCache.updateStateCache(lAlphabet) // make sure the state cache is updated for handling BEGIN states
-    val asets = d.json match { case JsObject(o) => try { o("asets") } catch { case _ => new JsArray(Nil) } case _ => new JsArray(Nil) }
+    val asets = d.json match { case JsObject(o) => try { o("asets") } catch { case _: Throwable => new JsArray(Nil) } case _ => new JsArray(Nil) }
     var annotTbl = scala.collection.immutable.Map[AbstractLabel, ListBuffer[Annotation]]()
     val pairs = toSources(d)
     for (i <- 0 until seqs.length) {
@@ -351,7 +351,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case JsObject(obj) =>
         val a1 =
           (try { obj("asets") match { case JsArray(a) => a case _ => throw new RuntimeException("Invalid obj") } }
-          catch { case e: java.util.NoSuchElementException => Nil case e => throw e })
+          catch { case e: java.util.NoSuchElementException => Nil case e: Throwable => throw e })
         JsObject(obj.updated("asets", JsArray(jsonPhrases ::: a1)))
       case a => a
     }

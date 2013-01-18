@@ -75,7 +75,7 @@ trait PostTextSeqGen extends FactoredSeqGen[Array[String]] with XmlConversions {
                   curAtts = attmap
                 case None =>
               }
-          } catch { case _ => println("Warning: tag " + t + " not parsed correctly")} // always continue if tag doesn't parse
+          } catch { case _: Throwable => println("Warning: tag " + t + " not parsed correctly")} // always continue if tag doesn't parse
         case t @ (HardEndTok(_) | SoftEndTok(_) | Tok(_)) => tokBuf += t.getString
         case Tag(t,false) if t.startsWith("</Post") => 
           val tarr = tokBuf.toArray

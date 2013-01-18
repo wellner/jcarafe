@@ -100,7 +100,7 @@ trait AntecedentSeqGen extends SeqGen[Array[PostTok]] with XmlConversions {
                   state = antecedentId
                 case None =>
               }
-          } catch { case _ => println("Warning: tag " + t + " not parsed correctly")} // always continue if tag doesn't parse
+          } catch { case _: Throwable => println("Warning: tag " + t + " not parsed correctly")} // always continue if tag doesn't parse
         case t @ (HardEndTok(_) | SoftEndTok(_) | Tok(_)) => tokBuf += new PostTok(t.getString)
         case Tag(t,false) => {tbuf += createSource(ILabel(state),tokBuf.toArray, curAtts); tokBuf.clear; state = 0}
         case _ => 

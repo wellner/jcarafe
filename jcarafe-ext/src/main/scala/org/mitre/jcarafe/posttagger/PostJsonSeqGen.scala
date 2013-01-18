@@ -30,7 +30,7 @@ trait PostJsonSeqGen extends SeqGen[Array[PostTok]] {
   
   def toSources(d: DeserializationT) : Seqs = {
     val json = d.json
-    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _ => new JsArray(Nil)} case _ =>  new JsArray(Nil)}
+    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _:Throwable => new JsArray(Nil)} case _ =>  new JsArray(Nil)}
     val signal = json match { 
       case JsObject(o) => 
         o("signal") match {case JsString(s) => s case _ => throw new RuntimeException("Expected signal to be a string")}
@@ -46,7 +46,7 @@ trait PostJsonSeqGen extends SeqGen[Array[PostTok]] {
 
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = {
     val json = d.json
-    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _ => new JsArray(Nil)} case _ =>  new JsArray(Nil)}
+    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _: Throwable => new JsArray(Nil)} case _ =>  new JsArray(Nil)}
     val seq = seqs(0) // only a single sequence per deserialization
     val targetAnnots : List[(Annotation,Int)] = getAnnotations(None,asets,opts.tagset,true).sortWith(_ < _).zipWithIndex
     var keys : Set[String] = Set()

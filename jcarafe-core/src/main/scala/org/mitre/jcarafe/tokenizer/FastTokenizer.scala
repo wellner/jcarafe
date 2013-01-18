@@ -227,7 +227,7 @@ object FastTokenizer {
     }
     val toks = new scala.collection.mutable.ListBuffer[JsArray]
     val zoneSet : Tagset = zoneTags match {case Some(z) => z case None => new Tagset(Set(Label("zone", Map("region_type" -> "body"))))}
-    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _ => new JsArray(Nil)} case _ => JsArray(Nil)}
+    val asets = json match {case JsObject(o) => try {o("asets")} catch {case _:Throwable => new JsArray(Nil)} case _ => JsArray(Nil)}
     val zones : List[Annotation] = getAnnotations(Some(orig_signal),asets,zoneSet) match {
       case Nil => List(new Annotation(0,orig_signal.length,false,SLabel("zone"),None))
       case a => a
@@ -271,7 +271,7 @@ object FastTokenizer {
       case JsObject(obj) =>
         val a1 = 
           (try {obj("asets") match {case JsArray(a) => a case _ => throw new RuntimeException("Invalid obj")}} 
-           catch { case e: java.util.NoSuchElementException => Nil case e => throw e})
+           catch { case e: java.util.NoSuchElementException => Nil case e:Throwable => throw e})
         JsObject(obj.updated("asets",JsArray(newToks :: a1)))
       case a => a}
    Json.writeJson(newJsonObj,ofile)

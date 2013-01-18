@@ -5,6 +5,7 @@
 package org.mitre.jcarafe.crf
 
 import org.mitre.jcarafe.util.Options
+import scala.concurrent.{Await, Future, ExecutionContext, Promise}
 
 trait DenseWorker extends DenseCrf {
   override def train(a:AccessSeq[AbstractInstance]) = throw new RuntimeException("Class doesn't support training")
@@ -23,29 +24,18 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
 
   def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) : T
   
-  class Mapper[A, B: ClassManifest](l: Seq[A], f: A => B) {
-    def pmap = {
-      val buffer = new Array[B](l.length)
-      val mappers =
-        for(idx <- (0 until l.length).toList) yield {
-          scala.actors.Futures.future {
-            buffer(idx) = f(l(idx))
-          }
-        }
-      for(mapper <- mappers) mapper()
-      buffer
-    }
-  }
-
+  implicit val ec = ExecutionContext.Implicits.global
+  
   protected def getGradient(numProcesses: Int, seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = {
-    val accessors = seqAccessor.splitAccessor(numProcesses).toArray
-    val returns = new Mapper(accessors,{accessor: AccessSeq[AbstractInstance] =>
+    val accessors = seqAccessor.splitAccessor(numProcesses).toVector
+    def subFn(accessor: AccessSeq[AbstractInstance]) = {
       val crf = getWorker(lambdas,nls,nfs,segSize,gPrior)
       val localLL = crf.getGradient(false,accessor)
       (crf.gradient,localLL)
-    })
+    }
     var logLi = (regularize())
-    val subLLs = returns.pmap map {(r: Tuple2[Array[Double],Option[Double]]) =>
+    val results = accessors.par map subFn 
+    val subLLs = results map {(r: Tuple2[Array[Double],Option[Double]]) =>
       r match {
         case (grad,Some(ll)) =>
           var i = 0
@@ -56,8 +46,6 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
     }
     Some(subLLs.foldLeft(0.0)(_+_) + logLi)           
   }
-
-
 }
 
 class DenseParallelCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, gPrior: Double) extends DenseCrf(nls,nfs,segSize,gPrior)

@@ -4,32 +4,38 @@
 
 package org.mitre.jcarafe.crf
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, ExecutionContext, Promise}
 import org.mitre.jcarafe.tokenizer.FastTokenizer
 import org.mitre.jcarafe.util._
-import scala.actors._
+import akka.actor._
+import akka.util.Timeout
+import akka.pattern.{ask,pipe}
 
 abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
-
+  
   def this() = this(false, new Options)
   def this(o: Options) = this(false, o)
   type M <: Model
   val sGen: DecodingSeqGen[Obs]
   val model: M
   lazy val ss = model.segSize
+  
+  implicit val ec = ExecutionContext.Implicits.global
+  //implicit val ec = ExecutionContext.fromExecutorService(new java.util.concurrent.ExecutorService) 
 
   lazy val viterbiDecoder: DecodingAlgorithm = Viterbi(dynamic, ss, model.crf, opts.posteriors)
 
+  val actorSystem = ActorSystem("DecodingSystem")
+  
+
   class DecoderWorker(val decoder: DecodingAlgorithm) extends Actor {
-    def act() {
-      Actor.loop {
-        react {
-          case seq: SourceSequence[Obs] =>
+    def receive = {
+      case seq: SourceSequence[Obs] =>
             val iseq = sGen.extractFeatures(seq)
             decoder.assignBestSequence(iseq)
-            reply(iseq)
-          case _ => exit()
-        }
-      }
+            sender ! iseq
+      case _ => context.stop(self)
     }
   }
 
@@ -37,7 +43,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     case Some(n) => n.toInt
     case None => 1
   }
-  var decoderWorkers: Vector[Actor] = Vector()
+  var decoderWorkers: Vector[ActorRef] = Vector()
 
   // this should be called by concrete class constructors
   def setDecoder(b: Boolean): Unit = {
@@ -45,7 +51,8 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     if (model.beg) sGen.setBegin
     if (numDecWorkers > 1) {
       System.setProperty("actors.corePoolSize", numDecWorkers.toString)
-      decoderWorkers = Vector.tabulate(numDecWorkers) { _ => (new DecoderWorker(viterbiDecoder.getCopyOf)).start }
+      decoderWorkers = Vector.tabulate(numDecWorkers) { _ => 
+        actorSystem.actorOf(Props(new DecoderWorker(viterbiDecoder.getCopyOf))) }
     }
   }
 
@@ -124,8 +131,17 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def cleanUp(): Unit = decoderWorkers foreach { _ ! None }
 
   private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
-    val futures = for ((f, i) <- seqs.zipWithIndex) yield decoderWorkers(i % numDecWorkers) !! f
-    futures map { f => f() match { case r: InstanceSequence => r case _ => throw new RuntimeException("Future failed") } }
+    implicit val timeout = Timeout(5 seconds) // needed for `?` below
+    val futures = for (seq <- seqs) yield {
+      Future {
+        val iseq = sGen.extractFeatures(seq)
+        decoder.assignBestSequence(iseq)
+        iseq
+      }
+    }
+    futures map {f => Await.result(f, 5 seconds)}
+    //val futures = for ((seq, i) <- seqs.zipWithIndex) yield {(decoderWorkers(i % numDecWorkers) ? seq)
+    //futures map { f => f() match { case r: InstanceSequence => r case _ => throw new RuntimeException("Future failed") } }
   }
 
   private def applyToSeqs(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {

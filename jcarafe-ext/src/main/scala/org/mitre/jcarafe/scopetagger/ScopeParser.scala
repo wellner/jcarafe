@@ -167,7 +167,7 @@ class FullDecoder(scopeModel: String, opts: ScopeOptions) {
     val joinedAnnots = 
       decodedCueAnnots flatMap 
       { an =>
-	val semType = try an.typ.assoc("type") catch { case e => "neg" }
+	val semType = try an.typ.assoc("type") catch { case e: Throwable => "neg" }
         val tp = Json.writeJsonToString(
 	    JsObject(Map("signal" -> JsString(str), "asets" -> 
             		 JsArray(List(JsObject(Map("type" -> JsString("lex"), 
