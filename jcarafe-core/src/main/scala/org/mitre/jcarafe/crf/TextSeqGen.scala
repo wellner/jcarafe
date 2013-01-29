@@ -151,7 +151,9 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
             gather(r, true) // add to queue
           case SoftEndTok(t) :: r =>
             if (opts.preProc) {
-              if (!withinTag && appearsToBeEndOfSequence(r)) endSeqOnNextToken = true
+              if (!withinTag && appearsToBeEndOfSequence(r)) {
+                endSeqOnNextToken = true
+              }
               posWithinTag += 1
               tmpBuf += createSource(getAState(state, !cont), t, !(cont), curAtts)
               curAtts = Map.empty
@@ -187,6 +189,9 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     seqsToStream(d, seqs, os)
     os.toString("UTF-8")
   }
+  
+  def seqsToSlicedWriter(d: DeserializationT, dseq: SourceSequence[String], iseqs: InstanceSequence, os: java.io.OutputStreamWriter): Unit =
+    seqsToWriter(d.getSlice(dseq.st, dseq.en), Seq(iseqs), os)
 
   def writeTok(write: Boolean, t: String, os: java.io.OutputStreamWriter, lexInfo: Option[Map[String,String]] = None): Unit = {
     if (opts.keepToks && write) {
@@ -310,59 +315,4 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     traverse(d.elements)
     os.flush
   }
-}
-
-trait StreamingDecoder extends FactoredDecodingSeqGen[String] with TextSeqGen {
-
-  def seqsToSlicedWriter(d: DeserializationT, dseq: SourceSequence[String], iseqs: InstanceSequence, os: java.io.OutputStreamWriter): Unit =
-    seqsToWriter(d.getSlice(dseq.st, dseq.en), Seq(iseqs), os)
-  /*
-  override def extractFeatures (dseq: SourceSequence[String]) : InstanceSequence = {
-    frep.otherIndex_=(otherIndex match {case Some(v) => v case None => -1}) // book-keeping to tell FeatureRep which index to not consider for segments longer than 1
-    var sid = 0
-    val iseq = 
-      Vector.tabulate(dseq.length){(i: Int) => 
-          if (dseq(i).beg) sid += 1
-          val inst = frep.createInstance(dseq(i).label,dseq(i).label,sid)
-          inst}
-    var pos = 0
-    iseq foreach {inst => frep.applyFeatureFns(inst,dseq,pos); pos += 1}
-    new InstanceSequence(iseq, dseq.st, dseq.en)
-  }
-
-
-  override def applyDecoder(dobj: DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) : Unit = {
-    val srcs = toSources(dobj)
-    outFile match {
-      case Some(oFile) => 
-	    val ostr = new java.io.FileOutputStream(oFile)
-	    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
-	    srcs foreach {srcS =>
-	      val srcSInst = extractFeatures(srcS)
-	      decoder.assignBestSequence(srcSInst.iseq)
-	      //srcSInst foreach {l => print(l.label + " ")}; println("") 
-	      seqToWriter(dobj.getSlice(srcS.st,srcS.en),srcSInst,os)
-	      }		      
-	    os.close
-      case None => throw new RuntimeException("Expected output file")
-    }
-  }
-*/
-  /*
-
-  override def applyDecoderParallel(dobj: DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) : Unit = {
-    val srcs = toSources(dobj)
-    outFile match {
-      case Some(oFile) => 
-	    val ostr = new java.io.FileOutputStream(oFile)
-	    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
-            val futures = for ((f,i) <- srcs.zipWithIndex) yield decoderWorkers(i % numDecWorkers) !! ((srcs(i), decoder))
-            val iseqs : Seq[InstanceSequence] = 
-	      futures map {f => f() match {case r: InstanceSequence => r case _ => throw new RuntimeException("Future failed")}}
-            iseqs.zip(srcs) foreach {case (iseq,srcS) => seqToWriter(dobj.getSlice(srcS.st, srcS.en),iseq,os)}
-            os.close
-      case None => throw new RuntimeException("Expected output file")}
-  }
-*/
-
 }

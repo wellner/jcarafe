@@ -12,7 +12,6 @@ import org.mitre.jcarafe.crf.{
   JsonSeqGen,
   BasicSeqGen,
   SeqGenScorer,
-  StreamingDecoder,
   StdDecoder,
   StdTrainer,
   TrainingSeqGen,
@@ -75,11 +74,11 @@ class StdTaggerTask(val opts: Options) {
           case Text =>
             if (eval) new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with SeqGenScorer[String]
             else if (opts.rawDecode)
-              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with StreamingDecoder {
+              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen {
                 override def deserializeFromFile(f: String) = new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
               }
             else if (opts.streaming)
-              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen with StreamingDecoder
+              new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen 
             else new FactoredDecodingSeqGen[String](model, opts, preModel) with TextSeqGen
           case Json =>
             if (eval) new FactoredDecodingSeqGen[String](model, opts, preModel) with JsonSeqGen with SeqGenScorer[String]
@@ -258,7 +257,7 @@ class StdTaggerTask(val opts: Options) {
 
 object TaggerTask {
   def printUsage =
-    println("\n\n Usage: java -jar jcarafe-0.9.8.2-bin.jar <options>\n\n Issue java -jar jcarafe-0.9.8-2-bin.jar --help for a list of command line options\n\n")
+    println("\n\n Usage: java -jar jcarafe-0.9.8.XXX.jar <options>\n\n Issue java -jar jcarafe-0.9.8.XXX.jar --help for a list of command line options\n\n")
   def apply(argv: Array[String]) = {
     val opts = new Options(argv)
     if (opts.selfInducedIterations > 0)

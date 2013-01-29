@@ -5,16 +5,16 @@
 package org.mitre.jcarafe.crf
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, ExecutionContext, Promise}
+import scala.concurrent.{ Await, Future, ExecutionContext, Promise }
 import org.mitre.jcarafe.tokenizer.FastTokenizer
 import org.mitre.jcarafe.util._
 import akka.actor._
 import akka.util.Timeout
-import akka.pattern.{ask,pipe}
+import akka.pattern.{ ask, pipe }
 import java.util.concurrent.Executors
 
 abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
-  
+
   def this() = this(false, new Options)
   def this(o: Options) = this(false, o)
   type M <: Model
@@ -22,41 +22,21 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   val model: M
   lazy val ss = model.segSize
   
-  val pool = Executors.newCachedThreadPool()
-  implicit val ec = ExecutionContext.fromExecutorService(pool)
-  
-  //implicit val ec = ExecutionContext.fromExecutorService(new java.util.concurrent.ExecutorService) 
+  val granularity = opts.granularity // set granularity for breaking up large files into chunks
 
   lazy val viterbiDecoder: DecodingAlgorithm = Viterbi(dynamic, ss, model.crf, opts.posteriors)
-
-  val actorSystem = ActorSystem("DecodingSystem")
-  
-
-  class DecoderWorker(val decoder: DecodingAlgorithm) extends Actor {
-    def receive = {
-      case seq: SourceSequence[Obs] =>
-            val iseq = sGen.extractFeatures(seq)
-            decoder.assignBestSequence(iseq)
-            sender ! iseq
-      case _ => context.stop(self)
-    }
-  }
-
-  val numDecWorkers: Int = opts.numThreads match {
-    case Some(n) => n.toInt
-    case None => 1
-  }
-  var decoderWorkers: Vector[ActorRef] = Vector()
 
   // this should be called by concrete class constructors
   def setDecoder(b: Boolean): Unit = {
     model.fixAlphabet(b)
     if (model.beg) sGen.setBegin
+    /*
     if (numDecWorkers > 1) {
       System.setProperty("actors.corePoolSize", numDecWorkers.toString)
       decoderWorkers = Vector.tabulate(numDecWorkers) { _ => 
         actorSystem.actorOf(Props(new DecoderWorker(viterbiDecoder.getCopyOf))) }
     }
+    */
   }
 
   def decodeString(s: String): String = {
@@ -132,22 +112,16 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
 
   def decode(): Unit = decodeSeqsFromFiles(viterbiDecoder)
   def cleanUp(): Unit = {
-    //decoderWorkers foreach { _ ! None }
-    pool.shutdown
   }
 
   private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
-    implicit val timeout = Timeout(5 seconds) // needed for `?` below
-    val futures = for (seq <- seqs) yield {
-      Future {
-        val iseq = sGen.extractFeatures(seq)
-        decoder.assignBestSequence(iseq)
-        iseq
-      }
+    val parSeq = seqs.par
+    val res = parSeq map { seq =>
+      val iseq = sGen.extractFeatures(seq)
+      decoder.assignBestSequence(iseq)
+      iseq
     }
-    futures map {f => Await.result(f, 5 seconds)}
-    //val futures = for ((seq, i) <- seqs.zipWithIndex) yield {(decoderWorkers(i % numDecWorkers) ? seq)
-    //futures map { f => f() match { case r: InstanceSequence => r case _ => throw new RuntimeException("Future failed") } }
+    res.seq
   }
 
   private def applyToSeqs(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
@@ -158,14 +132,43 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     }
   }
 
+  private def applyToSeqsStreamingParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
+    outFile foreach {f =>
+      val ostr = new java.io.FileOutputStream(f)
+	  val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
+      val sl = seqs.length
+      val amounts = Vector.tabulate((sl/granularity) + 1){f => 
+        val end = if (f == (sl/granularity)) sl else (granularity * (f+1))
+        val st = f * granularity
+        (st,end)
+        }
+      amounts foreach {case (sSt,sEn) =>
+        val aseqs = seqs.slice(sSt,sEn)
+        val iseqs = aseqs.par map {s =>
+          val iseq = sGen.extractFeatures(s)
+          decoder.assignBestSequence(iseq)
+          iseq
+          }
+        print("-")
+        sGen.seqsToWriter(dobj,iseqs.seq,os)
+        }
+      os.flush()
+      os.close()
+      ostr.flush
+      ostr.close
+      }
+  }
+
   private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
-    val iseqs = applyToSeqsInParallel(seqs, decoder)
-    opts.evaluate match {
-      case Some(_) =>
-        sGen.evaluateSequences(iseqs)
-      case None =>
-        outFile match { case Some(outFile) => sGen.seqsToFile(dobj, iseqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
-    }
+    if (seqs.length < granularity) {
+      val iseqs = applyToSeqsInParallel(seqs, decoder)
+      opts.evaluate match {
+        case Some(_) =>
+          sGen.evaluateSequences(iseqs)
+        case None =>
+          outFile match { case Some(outFile) => sGen.seqsToFile(dobj, iseqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
+      }
+    } else applyToSeqsStreamingParallel(seqs, dobj, decoder, outFile)
   }
 
   def applyDecoderParallel(dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
@@ -206,10 +209,8 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   }
 
   def runDecoder(dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
-    if (numDecWorkers > 1)
-      applyDecoderParallel(dobj, decoder, outFile)
-    else
-      applyDecoder(dobj, decoder, outFile)
+    if (opts.parallel) applyDecoderParallel(dobj, decoder, outFile)
+    else applyDecoder(dobj, decoder, outFile)
   }
 
   def decodeSeqsFromFiles(decoder: DecodingAlgorithm): Unit = {
@@ -250,7 +251,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
    * in a separate trait (yet?)
   */
   def decodeSeqsToSources(exceptions: Set[String], id: String, seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Unit = {
-    val iseqs = if (numDecWorkers > 1) applyToSeqsInParallel(seqs, decoder) else applyToSeqs(seqs, decoder)
+    val iseqs = if (true) applyToSeqsInParallel(seqs, decoder) else applyToSeqs(seqs, decoder)
     for (i <- 0 until seqs.length) {
       val lSeq = iseqs(i).iseq
       val si = seqs(i)
@@ -360,12 +361,12 @@ class TextDecoder(opts: Options, m: String, r: Option[java.io.InputStream]) exte
 
   val sGen =
     if (opts.rawDecode) {
-      new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen with StreamingDecoder {
+      new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen {
         override def deserializeFromFile(f: String) = {
           new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
         }
       }
-    } else if (opts.streaming) new FactoredDecodingSeqGen[String](model) with TextSeqGen with StreamingDecoder
+    } else if (opts.streaming) new FactoredDecodingSeqGen[String](model) with TextSeqGen
     else new FactoredDecodingSeqGen[String](model, opts) with TextSeqGen
   setDecoder(true)
 }

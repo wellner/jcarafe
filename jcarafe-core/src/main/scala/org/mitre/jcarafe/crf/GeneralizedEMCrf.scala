@@ -60,7 +60,7 @@ abstract class GeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options)
   
   // run backward pass twice - once constrained and once not
   def backwardPassConstrained(iseq:Seq[AbstractInstance]) = {
-    super.backwardPass(iseq) // override superclass backward pass
+    super.backwardPass(iseq) 
     val len = iseq.length
     conScale(len-1) = curNls
     assign(conBeta(len-1),((_:Double) => 1 / conScale(len-1)))

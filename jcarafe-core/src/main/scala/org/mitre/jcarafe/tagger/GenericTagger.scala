@@ -15,6 +15,9 @@ import org.mitre.jcarafe.crf.Model
 object GenericTagger {
   def main(argv: Array[String]) = 
     if (argv.length < 1) TaggerTask.printUsage
-    else TaggerTask(argv).process()
+    else {
+      TaggerTask(argv).process()
+      System.exit(0)
+    }
 }
 

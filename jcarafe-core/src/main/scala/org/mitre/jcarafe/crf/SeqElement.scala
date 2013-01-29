@@ -22,7 +22,7 @@ abstract class SeqElement(var label: Int) {
 /*
  * Represents an instance with an associated set of features for use by decoders
  * or trainers
- * @param lab - integer label
+ * @param lab - integer label.  By convention, -1 denotes UNCERTAINTY in label
  * @param orig - original label (preserved for scoring and other reasons) 
  * @param segId - an integer, i, indicating its the ith segment in a sequence
  * @author Ben Wellner
@@ -110,8 +110,6 @@ object CrfInstance {
 */
 class NonFactoredCrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends AbstractInstance(label, orig, segId) {
   type FType = Feature
-  //var compVec: Option[Array[Array[Feature]]] = None
-
   private var compVec: Option[Array[Array[Feature]]] = cv
 
   def getCompactVec = throw new RuntimeException("Unsupported")

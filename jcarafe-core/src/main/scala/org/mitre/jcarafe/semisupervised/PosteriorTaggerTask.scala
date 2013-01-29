@@ -6,7 +6,7 @@ package org.mitre.jcarafe.semisupervised
 
 import org.mitre.jcarafe.tagger.StdTaggerTask
 import org.mitre.jcarafe.crf.{StdDecoder,SelfInducibleDecodingFactoredFeatureRep,FactoredDecodingSeqGen,
-				  TextSeqGen,StreamingDecoder,TextSeqDeserialization,InducedFeatureMap}
+				  TextSeqGen,TextSeqDeserialization,InducedFeatureMap}
 import org.mitre.jcarafe.tokenizer.FastTokenizer
 import org.mitre.jcarafe.util.Options
 
@@ -17,7 +17,7 @@ class PosteriorTaggerTask(opts: Options) extends StdTaggerTask(opts) {
   override def getDecoder(modelFile: String, eval: Boolean, preModel: Boolean = false) : StdDecoder = {
     val decoder = new PosteriorDecoder(opts,modelFile) {
       val selfInducibleFRep = new SelfInducibleDecodingFactoredFeatureRep[String](opts,model)
-      val sGen = new FactoredDecodingSeqGen[String](selfInducibleFRep,model,opts) with TextSeqGen with StreamingDecoder {
+      val sGen = new FactoredDecodingSeqGen[String](selfInducibleFRep,model,opts) with TextSeqGen {
 	override def deserializeFromFile(f: String) = new TextSeqDeserialization(FastTokenizer.parseFileNoTags(f))
       }
     }

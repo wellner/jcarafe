@@ -70,6 +70,13 @@ class Alphabet[A](var fixed: Boolean) extends HashMap[A, Int] {
   }
 }
 
+class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) extends Alphabet[A](fixed) {
+  override def update(e: A) : Int = 
+    if (!specialCase(e)) {
+      super.update(e)
+    } else -1
+}
+
 class LongAlphabet(var fixed: Boolean) {
   import IncrementalMurmurHash.mix
   def this() = this(false)

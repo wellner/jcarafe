@@ -147,6 +147,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--tokenizer-patterns" desc "Split and Merge tokenizer post-processing patterns"
   "--each-iteration"     flag "Dump model file out on each training iteration"
   "--num-random-features" desc "Size of Random Feature Vector"
+  "--granularity"        desc "Size of sequence batches for large files (default 5000)"        
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
@@ -269,6 +270,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var tokenizerPatterns               = optHandler.get("--tokenizer-patterns")
   var eachIteration                   = optHandler.check("--each-iteration")
   var numRandomFeatures               = optHandler.get("--num-random-features") match {case Some(v) => v.toInt case None => -1}
+  var granularity : Int               = optHandler.get("--granularity") match {case Some(v) => v.toInt case None => 5000}
   
   def setInto(no: Options) = {
     no.CValue_=(CValue)
@@ -333,6 +335,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.zoneset_=(zoneset)
     no.eachIteration_=(eachIteration)
     no.numRandomFeatures_=(numRandomFeatures)
+    no.granularity_=(granularity)
   }
   
   def copy() : Options = {
