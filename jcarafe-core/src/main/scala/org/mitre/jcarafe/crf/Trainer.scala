@@ -53,6 +53,12 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
           new StochasticSemiCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, (s + 1), opts) with PsaLearner[AbstractInstance]
       else
         new DenseSemiCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, (s + 1), opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
+    } else if (opts.partialLabels) {
+      println(">> Training with partially labeled sequences ... <<\n")
+      if (opts.psa) {
+        new StochasticGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
+      } else 
+        new DenseGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
     } else if (opts.psa)
       if (opts.l1)
         new StochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearnerWithL1[AbstractInstance]

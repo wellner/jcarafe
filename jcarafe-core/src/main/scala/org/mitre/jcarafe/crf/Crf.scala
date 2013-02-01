@@ -275,7 +275,6 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
 
   def train(seqAccessor: AccessSeq[AbstractInstance]): CoreModel = train(seqAccessor, 300, None)
   def train(seqAccessor: AccessSeq[AbstractInstance], maxIters: Int, mi: Option[(CoreModel, Int) => Unit]): CoreModel
-
 }
 
 /**

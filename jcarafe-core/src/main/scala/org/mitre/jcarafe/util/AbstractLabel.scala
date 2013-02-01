@@ -2,6 +2,7 @@ package org.mitre.jcarafe.util
 
 sealed abstract class AbstractLabel extends java.io.Serializable {
   val labelString : String
+  val uncertain: Boolean = false
   def labelTag(b: Boolean, additionalAtts: Option[Map[String,String]], noDuplicate: Boolean = true) : String
   def assoc(s: String) : String
   val labelHead : String
@@ -66,7 +67,15 @@ case class Label(val l: String, val atts: Map[String,String]) extends AbstractLa
   override def hasAttributeWithWildCard(s: String) : Option[(String,String)] = {
     atts.find {case (a,v) => a == s && v == "*"}
   }
-} 
+}
+
+case object UncertainLabel extends AbstractLabel {
+  def assoc(s:String) = "Uncertain"
+  val labelHead = "Uncertain"
+    val labelString = "Uncertain"
+  def labelTag(b:Boolean,aa:Option[Map[String,String]] = None, noDuplicate: Boolean = true) = "Uncertain"
+
+}
 
 case class BeginState(val s: AbstractLabel) extends AbstractLabel {
   val labelString = "B:" + s.labelString

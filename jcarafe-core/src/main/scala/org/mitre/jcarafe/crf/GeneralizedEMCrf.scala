@@ -4,7 +4,7 @@ import scala.math.exp
 
 import org.mitre.jcarafe.util.Options
 
-abstract class GeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) extends StochasticCrf(nls,nfs,segSize,opts) {
+trait GeneralizedEMCrf extends Crf {
 	
   /**
    * Constrained Beta values. Need values for each segment length for each label (in general, Semi-CRF case)  
@@ -124,95 +124,6 @@ abstract class GeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options)
     */
   }
   
-  override def forwardPass(iseq:Seq[AbstractInstance]) = {
-    var seqLogLi = 0.0
-    var i = 0
-    while (i < iseq.length) {
-      val instFeatures = iseq(i).getCompVec
-      val label = iseq(i).label
-      computeScoresConstrained(iseq, i, true)
-      Array.copy(conCurA, 0, tmp, 0, curNls)
-      Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
-      assign1(conNewA, conRi(0), (_ * _))
-      computeScores(instFeatures,true)
-      Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
-      assign1(newA, ri(0), (_ * _))
-      // compute actual marginals over constrained sequence
-      // these will be used to set the "empirical" feature counts
-      setConstrainedMarginals(conRi(0), conMi(0), i) 
-
-      var k = 0
-      while (k < instFeatures(0).length) {
-        val inst = instFeatures(0)(k)
-        val gref = gradient.get(inst.fid) match {
-          case Some(v) => v 
-          case None => 
-            val nv = new DoubleCell(0.0,0.0)
-            gradient += ((inst.fid,nv))
-            nv}
-        if (inst.prv < 0) {
-          gref.e_= (gref.e + newA(inst.cur) * beta(i)(inst.cur) * inst.value)
-          val gSc = conMarginalState(inst.cur)
-          gref.g_= (gref.g + gSc)
-          seqLogLi += lambdas(inst.fid) * gSc 
-        } 
-        else {
-          gref.e_= (gref.e + curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value)
-          val gSc = conMarginals(inst.prv)(inst.cur)
-          gref.g_= (gref.g + gSc)
-        }
-        k += 1
-      }
-      Array.copy(newA,0,curA,0,curNls)
-      Array.copy(conNewA,0,conCurA,0,curNls)
-      assign(curA,(_ / scale(i)))
-      assign(conCurA,(_ / conScale(i)))
-      i += 1
-    }
-    seqLogLi
-  }
-  
-  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
-    val asize = batchSize min seqAccessor.length
-    var gradNormalizer = 0.0
-    var totalLL = 0.0
-    for (i <- curPos until curPos + asize) {
-      val j = i % seqAccessor.length
-      val iseq = seqAccessor(j)
-      val sl = iseq.length
-      if (sl > 0) {
-        reset(iseq.length)
-        gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
-        backwardPass(iseq)
-        var sll = forwardPass(iseq)
-        val pzx = vecSum(curA)
-        val gzx = vecSum(conCurA)
-        val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
-        sll -= math.log(zx)
-        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
-        for ((k, cell) <- gradient) {
-          cell.g_=((cell.g / gzx) - (cell.e / zx))
-          val cabs = math.abs(cell.g)
-          if (cabs > gradNormalizer) { gradNormalizer = cabs }
-        }
-        totalLL -= sll
-      }
-    }
-    curPos += asize
-    // normalization here will prevent gradient components from having a value greater than 100.0
-    // Such values in the gradient are problematic in subsequent numerical calculations
-    if (gradNormalizer > 50.0) {
-      numGradIssues += 1
-      val nn = 50.0 / gradNormalizer
-      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - lambdas(k) * invSigSqr)
-    } else {
-      for ((k, cell) <- gradient) {
-        cell.g_=(cell.g - lambdas(k) * invSigSqr)
-      }
-    }
-    Some(totalLL)
-  }
   
   def computeScoresConstrained (absInstSeq: Seq[AbstractInstance], pos: Int, takeExp: Boolean) = {
     val inst_features = absInstSeq(pos).getCompVec
@@ -265,4 +176,169 @@ abstract class GeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options)
     }
   }
     
+}
+
+abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) 
+extends StochasticCrf(nls, nfs, segSize, opts) with GeneralizedEMCrf {
+  
+  override def forwardPass(iseq:Seq[AbstractInstance]) = {
+    var seqLogLi = 0.0
+    var i = 0
+    while (i < iseq.length) {
+      val instFeatures = iseq(i).getCompVec
+      val label = iseq(i).label
+      computeScoresConstrained(iseq, i, true)
+      Array.copy(conCurA, 0, tmp, 0, curNls)
+      Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
+      assign1(conNewA, conRi(0), (_ * _))
+      computeScores(instFeatures,true)
+      Array.copy(curA, 0, tmp, 0, curNls)
+      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      assign1(newA, ri(0), (_ * _))
+      // compute actual marginals over constrained sequence
+      // these will be used to set the "empirical" feature counts
+      setConstrainedMarginals(conRi(0), conMi(0), i) 
+
+      var k = 0
+      while (k < instFeatures(0).length) {
+        val inst = instFeatures(0)(k)
+        val gref = gradient.get(inst.fid) match {
+          case Some(v) => v 
+          case None => 
+            val nv = new DoubleCell(0.0,0.0)
+            gradient += ((inst.fid,nv))
+            nv}
+        if (inst.prv < 0) {
+          gref.e_= (gref.e + newA(inst.cur) * beta(i)(inst.cur) * inst.value)
+          val gSc = conMarginalState(inst.cur) * inst.value
+          gref.g_= (gref.g + gSc)
+          seqLogLi += lambdas(inst.fid) * gSc 
+        } 
+        else {
+          gref.e_= (gref.e + curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value)
+          val gSc = conMarginals(inst.prv)(inst.cur) * inst.value
+          gref.g_= (gref.g + gSc)
+          seqLogLi += lambdas(inst.fid) * gSc
+        }
+        k += 1
+      }
+      Array.copy(newA,0,curA,0,curNls)
+      Array.copy(conNewA,0,conCurA,0,curNls)
+      assign(curA,(_ / scale(i)))
+      assign(conCurA,(_ / conScale(i)))
+      i += 1
+    }
+    seqLogLi
+  }
+  
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
+    val asize = batchSize min seqAccessor.length
+    var gradNormalizer = 0.0
+    var totalLL = 0.0
+    for (i <- curPos until curPos + asize) {
+      val j = i % seqAccessor.length
+      val iseq = seqAccessor(j)
+      val sl = iseq.length
+      if (sl > 0) {
+        reset(iseq.length)
+        gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
+        backwardPass(iseq)
+        var sll = forwardPass(iseq)
+        val pzx = vecSum(curA)
+        val gzx = vecSum(conCurA)
+        val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
+        sll -= math.log(zx)
+        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+        for ((k, cell) <- gradient) {
+          //cell.g_=((cell.g / gzx) - (cell.e / zx))
+          cell.g_=(cell.g - (cell.e / zx))
+          val cabs = math.abs(cell.g)
+          if (cabs > gradNormalizer) { gradNormalizer = cabs }
+        }
+        totalLL -= sll
+      }
+    }
+    curPos += asize
+    // normalization here will prevent gradient components from having a value greater than 100.0
+    // Such values in the gradient are problematic in subsequent numerical calculations
+    if (gradNormalizer > 50.0) {
+      numGradIssues += 1
+      val nn = 50.0 / gradNormalizer
+      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - lambdas(k) * invSigSqr)
+    } else {
+      for ((k, cell) <- gradient) {
+        cell.g_=(cell.g - lambdas(k) * invSigSqr)
+      }
+    }
+    Some(totalLL)
+  }
+}
+
+abstract class DenseGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) 
+extends DenseCrf(nls, nfs, segSize, opts.gaussian) with GeneralizedEMCrf {
+  
+  override def forwardPass(iseq:Seq[AbstractInstance]) = {
+    var seqLogLi = 0.0
+    var i = 0
+    while (i < iseq.length) {
+      val instFeatures = iseq(i).getCompVec
+      val label = iseq(i).label
+      computeScoresConstrained(iseq, i, true)
+      Array.copy(conCurA, 0, tmp, 0, curNls)
+      Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
+      assign1(conNewA, conRi(0), (_ * _))
+      computeScores(instFeatures,true)
+      Array.copy(curA, 0, tmp, 0, curNls)
+      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      assign1(newA, ri(0), (_ * _))
+      // compute actual marginals over constrained sequence
+      // these will be used to set the "empirical" feature counts
+      setConstrainedMarginals(conRi(0), conMi(0), i) 
+
+      var k = 0
+      while (k < instFeatures(0).length) {
+        val inst = instFeatures(0)(k)
+        if (inst.prv < 0) {
+          featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value 
+          val gSc = conMarginalState(inst.cur)
+          gradient(inst.fid) -= gSc * inst.value
+          seqLogLi += lambdas(inst.fid) * gSc 
+        } 
+        else {
+          featureExpectations(inst.fid) +=  curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value
+          val gSc = conMarginals(inst.prv)(inst.cur)
+          gradient(inst.fid) -= gSc * inst.value
+          seqLogLi += lambdas(inst.fid) * gSc
+        }
+        k += 1
+      }
+      Array.copy(newA,0,curA,0,curNls)
+      Array.copy(conNewA,0,conCurA,0,curNls)
+      assign(curA,(_ / scale(i)))
+      assign(conCurA,(_ / conScale(i)))
+      i += 1
+    }
+    seqLogLi
+  }
+  
+  override def gradOfSeq(iseq: Seq[AbstractInstance]): Double = {
+    reset(false, iseq.length)
+    var xx = 0
+    while (xx < nfs) { featureExpectations(xx) = 0.0; xx += 1 }
+    backwardPass(iseq)
+    var sll = forwardPass(iseq)
+    val zx = vecSum(curA) // curA will be set to the last position within forwardPass
+    val gzx = vecSum(conCurA)
+    sll -= math.log(zx)
+    for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+    var i = 0
+    while (i < nfs) {
+      gradient(i) += featureExpectations(i) / zx
+      //gradient(i) = (featureExpectations(i) / zx) - (gradient(i) / gzx) 
+      i += 1
+    }
+    sll
+  }
+  
+  
 }

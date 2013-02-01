@@ -71,10 +71,12 @@ class Alphabet[A](var fixed: Boolean) extends HashMap[A, Int] {
 }
 
 class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) extends Alphabet[A](fixed) {
-  override def update(e: A) : Int = 
+  override def update(e: A): Int =
     if (!specialCase(e)) {
       super.update(e)
-    } else -1
+    } else {
+      -1
+    }
 }
 
 class LongAlphabet(var fixed: Boolean) {
@@ -286,7 +288,8 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
   mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
   mgr.inducedFeatureMap_=(model.inducedFs match {
-    case Some(m) => println("got induced feature set: " + m.hmap.get.size); Some(m)
+    case Some(m) =>
+      println("got induced feature set: " + m.hmap.get.size); Some(m)
     case None => InducedFeatureMap()
   })
   maxSegSize_=(model.segSize - 1)
@@ -300,7 +303,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     fsetMap.get(fname) match {
       case (ft: FeatureType) =>
         inst add (new ValuedFeatureType(vl, ft))
-      case _ => 
+      case _ =>
     }
 
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
@@ -373,9 +376,11 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
           fsetMap.put(fname, n)
           n
       }
-    val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(yprv, yp, fname) }
-    val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(yp, fname) }
-    ft add new Feature(yprv, yp, fid, nfid)
+    if (yp >= 0) {
+      val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(yprv, yp, fname) }
+      val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(yp, fname) }
+      ft add new Feature(yprv, yp, fid, nfid)
+    }
     if (!supporting) inst add new ValuedFeatureType(vl, ft)
   }
 
@@ -417,6 +422,8 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     }
   }
 
+  // For handling learning with unlabeled elements we need to do:
+  //   Set this up so thhat if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
     val upTo = (maxSegSize min pos)
     val yp = dseq(pos).label
@@ -453,9 +460,9 @@ class NonFactoredPreFeature(val unsupported: Boolean, val yprv: Int, val ycur: I
 */
 class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureManager[Obs], val supporting: Boolean, val maxLab: Int, wholeSeq: Boolean) extends FeatureRep[Obs](false) {
 
-  def this(mgr: NonFactoredFeatureManager[Obs], s: Boolean, ml: Int, ws: Boolean) = this(new Options, mgr, s, ml,true)
+  def this(mgr: NonFactoredFeatureManager[Obs], s: Boolean, ml: Int, ws: Boolean) = this(new Options, mgr, s, ml, true)
   def this(mgr: NonFactoredFeatureManager[Obs], ml: Int) = this(mgr, false, ml, false)
-  
+
   val random = opts.numRandomFeatures > 0
 
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, i)
@@ -465,14 +472,13 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   def getWordProps = mgr.wdProps
   def getWordScores = None
   def getInducedFeatureMap = None
-  
-   
-  def createInstance(l: Int, o: Int, sId: Int) : NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, sId)
-  def createInstance(l: Int, o: Int) : NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, -1)
 
-  val faMap: LongAlphabet = 
+  def createInstance(l: Int, o: Int, sId: Int): NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, sId)
+  def createInstance(l: Int, o: Int): NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, -1)
+
+  val faMap: LongAlphabet =
     if (opts.numRandomFeatures > 0) {
-      val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564 
+      val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564
       new RandomLongAlphabet(nf)
     } else new LongAlphabet
 
