@@ -125,7 +125,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
                 state = lab; curAtts = attmap
               case None =>
                 if (opts.partialLabels) {
-                  state = UncertainLabel
+                  state = new UncertainLabel
                   curAtts = attmap
                 }
             }

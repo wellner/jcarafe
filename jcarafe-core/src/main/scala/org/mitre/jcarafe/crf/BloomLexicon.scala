@@ -8,6 +8,9 @@ import collection.mutable.BitSet
 import collection.mutable.HashMap
 import org.mitre.jcarafe.util.FastLoops._
 
+/*
+ * 
+ */
 class BloomLexicon(val dir: Option[java.io.File]) extends Lexicon {
   def this(d: String) = this(Some(new java.io.File(d)))
   def this(d: java.io.File) = this(Some(d))

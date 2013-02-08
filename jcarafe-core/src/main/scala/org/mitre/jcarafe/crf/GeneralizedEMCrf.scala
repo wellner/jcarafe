@@ -117,11 +117,6 @@ trait GeneralizedEMCrf extends Crf {
       }
       i += 1
     }
-    /*
-    println("Marginals: ")
-    conMarginalState foreach {i => print(" " + i)}
-    println
-    */
   }
   
   
@@ -248,9 +243,8 @@ extends StochasticCrf(nls, nfs, segSize, opts) with GeneralizedEMCrf {
         val gzx = vecSum(conCurA)
         val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
         sll -= math.log(zx)
-        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+        for (k <- 0 until (iseq.length - 1)) sll -= math.log(scale(k))
         for ((k, cell) <- gradient) {
-          //cell.g_=((cell.g / gzx) - (cell.e / zx))
           cell.g_=(cell.g - (cell.e / zx))
           val cabs = math.abs(cell.g)
           if (cabs > gradNormalizer) { gradNormalizer = cabs }
@@ -274,13 +268,16 @@ extends StochasticCrf(nls, nfs, segSize, opts) with GeneralizedEMCrf {
   }
 }
 
-abstract class DenseGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) 
-extends DenseCrf(nls, nfs, segSize, opts.gaussian) with GeneralizedEMCrf {
+abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, opts: Options) 
+extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, 0, 0) with GeneralizedEMCrf {
+  
+  def this(nls: Int, nfs: Int, segSize: Int, opts: Options) = this(Array.fill(nfs)(0.0),nls, nfs, segSize, opts)
   
   override def forwardPass(iseq:Seq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
+      
       val instFeatures = iseq(i).getCompVec
       val label = iseq(i).label
       computeScoresConstrained(iseq, i, true)
@@ -293,11 +290,14 @@ extends DenseCrf(nls, nfs, segSize, opts.gaussian) with GeneralizedEMCrf {
       assign1(newA, ri(0), (_ * _))
       // compute actual marginals over constrained sequence
       // these will be used to set the "empirical" feature counts
-      setConstrainedMarginals(conRi(0), conMi(0), i) 
-
+      setConstrainedMarginals(conRi(0), conMi(0), i)
+        
       var k = 0
-      while (k < instFeatures(0).length) {
-        val inst = instFeatures(0)(k)
+      val if0 = instFeatures(0)
+      val numFs = if0.length
+      
+      while (k < numFs) {
+        val inst = if0(k)
         if (inst.prv < 0) {
           featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value 
           val gSc = conMarginalState(inst.cur)
@@ -330,15 +330,27 @@ extends DenseCrf(nls, nfs, segSize, opts.gaussian) with GeneralizedEMCrf {
     val zx = vecSum(curA) // curA will be set to the last position within forwardPass
     val gzx = vecSum(conCurA)
     sll -= math.log(zx)
-    for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+    for (k <- 0 until (iseq.length - 1)) sll -= math.log(scale(k))
     var i = 0
     while (i < nfs) {
       gradient(i) += featureExpectations(i) / zx
-      //gradient(i) = (featureExpectations(i) / zx) - (gradient(i) / gzx) 
       i += 1
     }
     sll
   }
   
   
+}
+
+class DenseGeneralizedEMCrfWorker(lambdas: Array[Double], nls: Int,nfs: Int,segSize: Int, opts: Options) 
+extends DenseGeneralizedEMCrf(lambdas,nls,nfs,segSize,opts) with DenseWorker
+
+class DenseParallelGeneralizedEMCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, opts: Options) extends DenseGeneralizedEMCrf(nls,nfs,segSize,opts)
+with ParCrf[DenseGeneralizedEMCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
+  
+  def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
+    new DenseGeneralizedEMCrfWorker(lambdas,nls,nfs,segSize,opts)
+  }
+
+  override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = getGradient(numPs,seqAccessor)
 }

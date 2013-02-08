@@ -210,8 +210,9 @@ abstract class CoreModelSerializer extends DefaultProtocol {
   implicit def slabelMap: Format[SLabel] = wrap(_.v, SLabel)
   implicit def labelMap: Format[Label] = asProduct2(Label)(Label.unapply(_).get)
   implicit def beginMap: Format[BeginState] = wrap(_.s, BeginState)
+  implicit def uncMap: Format[UncertainLabel] = wrap(_.labelString,{_:String => new UncertainLabel})
 
-  implicit def abstractLabelMap: Format[AbstractLabel] = lazyFormat(asUnion[AbstractLabel](slabelMap, beginMap, labelMap))
+  implicit def abstractLabelMap: Format[AbstractLabel] = lazyFormat(asUnion[AbstractLabel](slabelMap, beginMap, labelMap, uncMap))
 
   implicit def abstractLabelAlphabetMap: Format[Alphabet[AbstractLabel]] =
     wrap[Alphabet[AbstractLabel], List[(AbstractLabel, Int)]](_.toList, { (s: List[(AbstractLabel, Int)]) =>

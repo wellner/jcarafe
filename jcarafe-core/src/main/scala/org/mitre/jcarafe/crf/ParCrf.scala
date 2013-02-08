@@ -49,7 +49,7 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
 }
 
 class DenseParallelCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, gPrior: Double) extends DenseCrf(nls,nfs,segSize,gPrior)
-with ParCrf[DenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance]{
+with ParCrf[DenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
   
   def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new DenseCrfWorker(lambdas,nls,nfs,segSize,gPrior)

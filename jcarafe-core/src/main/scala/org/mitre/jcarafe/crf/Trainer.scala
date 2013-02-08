@@ -5,6 +5,7 @@
 
 package org.mitre.jcarafe.crf
 import org.mitre.jcarafe.util._
+import collection.mutable.ArrayBuffer
 
 abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
   def this(o: Options) = this(false, o)
@@ -39,6 +40,11 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
 }
 
 trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
+  
+  def getNumPs = opts.numThreads match {
+        case None => Runtime.getRuntime.availableProcessors * 4 / 5 // leave a CPU or two free
+        case Some(n) => n
+      }
 
   def getCrf: Crf = {
     if (opts.neural) {
@@ -57,18 +63,20 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
       println(">> Training with partially labeled sequences ... <<\n")
       if (opts.psa) {
         new StochasticGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
-      } else 
-        new DenseGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
+      } else {
+        if (opts.parallel) {
+          val numPs = getNumPs
+          new DenseParallelGeneralizedEMCrf(numPs,sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
+        } else
+          new DenseGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
+      }
     } else if (opts.psa)
       if (opts.l1)
         new StochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearnerWithL1[AbstractInstance]
       else
         new StochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
     else if (opts.parallel) {
-      val numPs = opts.numThreads match {
-        case None => Runtime.getRuntime.availableProcessors * 4 / 5 // leave a CPU or two free
-        case Some(n) => n
-      }
+      val numPs = getNumPs
       println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
       new DenseParallelCrf(numPs, sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian)
     } else if (opts.sgd) {
@@ -112,11 +120,19 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   }
 
   def trainingRoutine(seqs: Seq[InstanceSequence]) = {
-    printHeader(seqs)
+    
     val dCrf: Crf = getCrf
     if (adjust) dCrf.adjustible_=(true)
+    val aseqs = if (opts.partialLabels && false) {
+      val filteredSeqs = new ArrayBuffer[InstanceSequence]
+      var numRemoved = 0
+      seqs foreach {is => if (is.iseq.exists(v => v.label >= 0)) filteredSeqs append is else numRemoved += 1}
+      println("\n ... Number of training sequences dropped due to lack of any provided labels ...")
+      filteredSeqs.toIndexedSeq
+    } else seqs
+    printHeader(aseqs)
     println("About to train model...")
-    trainModel(dCrf, seqs)
+    trainModel(dCrf, aseqs)
   }
 
 }

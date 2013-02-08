@@ -120,6 +120,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
  * Top abstract class representing the core elements and functionality of a sequence-structured
  * Conditional Random Field.  A <code>Crf</code> object is created after feature extraction
  * has occurred.
+ * @param lambdas   Parameter (lambda) vector
  * @param nls       Number of labels/states
  * @param nfs       Number of features
  * @param segSize   The size of segments.  Sizes greater than 1 indicate the model is a semi-CRF
@@ -279,6 +280,13 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
 
 /**
  * A CRF that uses a dense (rather than sparse) internal representation
+ * @param lambdas   Parameter (lambda) vector
+ * @param nls       Number of labels/states
+ * @param nfs       Number of features
+ * @param segSize   The size of segments.  Sizes greater than 1 indicate the model is a semi-CRF
+ * @param gPrior    The Gaussian prior variance used as a regularizer
+ * @param nNfs      Number of neural gate input features (for NeuralCrf)
+ * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
 abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int, nGates: Int)
   extends Crf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
@@ -357,6 +365,9 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
       val seq = seqAccessor(j)
       if (seq.length > 0) logLi -= gradOfSeq(seq)
     }
+    println("full LL: " + logLi)
+    println("Full Gradient:")
+    gradient foreach println
     Some(logLi)
   }
 }
@@ -364,6 +375,14 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
 /**
  * A Crf that uses a sparse internal representation suitable for Stochastic Gradient Descent learning
  * methods.
+ * @param lambdas   Parameter (lambda) vector
+ * @param nls       Number of labels/states
+ * @param nfs       Number of features
+ * @param opts      General program parameters/options passed in to trainer
+ * @param gPrior    The Gaussian prior variance used as a regularizer
+ * @param nNfs      Number of neural gate input features (for NeuralCrf)
+ * @param nGates    Number of neural gates per label (for NeuralCrf)
+* 
  */
 abstract class StochasticCrf(lambdas: Array[Double],
   nls: Int,
@@ -498,6 +517,15 @@ object Crf {
 
   }
 
+  /*
+   * In-place <i>dense</i> matrix multiplication using Arrays
+   * @param mat - Input matrix
+   * @param vec - Input column vector
+   * @param rvec - Result vector
+   * @param alpha - Coefficient for component-product
+   * @param beta - Coefficient for column sum
+   * @param trans - Take transpose of matrix and multiply by row input vector
+   */
   final def matrixMult(mat: Matrix, vec: Array[Double], rvec: Array[Double], alpha: Double, beta: Double, trans: Boolean) = {
     val vLen = vec.length
     val rvLen = rvec.length
@@ -551,6 +579,12 @@ object Crf {
     }
   }
 
+  /*
+   * Computes potential values for factors within linear chain sequence - i.e. score for a particular 
+   * label pair configuration.
+   * @param ri - scores for just current state/position
+   * @param mi - scores for currentstate and previous
+   */
   final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: Array[Double]) = {
     setMatrix(ri)
     setTensor(mi)
