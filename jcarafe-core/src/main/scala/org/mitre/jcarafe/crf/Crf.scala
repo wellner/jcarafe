@@ -365,9 +365,6 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
       val seq = seqAccessor(j)
       if (seq.length > 0) logLi -= gradOfSeq(seq)
     }
-    println("full LL: " + logLi)
-    println("Full Gradient:")
-    gradient foreach println
     Some(logLi)
   }
 }
