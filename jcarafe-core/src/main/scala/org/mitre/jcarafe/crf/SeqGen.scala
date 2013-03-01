@@ -306,7 +306,7 @@ abstract class SeqGen[Obs](val opts: Options) {
 
   // create a source - always have it be a beginning if the state corresponds to "otherIndex"
   protected def createSourceI(i: Int, o: Obs, b: Boolean, m: Option[Map[String, String]]) = frep.createSource(i, o, (b || (otherIndex match { case Some(oi) => oi == i case None => false })), m)
-  private def getIndex(l: AbstractLabel) = l match { case ILabel(i) => i case _ => lAlphabet.update(l)}
+  protected def getIndex(l: AbstractLabel) = l match { case ILabel(i) => i case _ => lAlphabet.update(l)}
 
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean) = createSourceI(getIndex(l), o, beg, None)
 

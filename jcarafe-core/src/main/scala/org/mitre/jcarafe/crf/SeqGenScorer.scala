@@ -149,6 +149,7 @@ trait SeqGenScorer[Obs] extends SeqGen[Obs] {
   val wrongLabel = SLabel("=NOVEL=")
   
   override def evaluateSequences(seqs: Seq[InstanceSequence]) = {
+    val invLa = lAlphabet.getInvMap // need to re-generate this here to ensure full inverse mapping is up-to-date
     var startSysIndex = -1
     var curSysType = invLa(0)
     var startGoldIndex = -1

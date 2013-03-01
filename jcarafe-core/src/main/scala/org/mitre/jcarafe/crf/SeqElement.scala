@@ -31,14 +31,32 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
   type FType <: FeatureCore
 
   var userFeatures: Set[FType] = Set() // ( we create a lot of these objects )
+  var normalized = false
   val condProbTbl: HashMap[Int, Double] = new HashMap
   def getCompactVec: Array[CompactFeature]
   def getRange = condProbTbl.size // used when # of states/labels isn't stationary over data points
-  def conditionalProb(i: Int): Double = condProbTbl.get(i) match { case Some(v) => v case None => 1.0 }
+  def conditionalProb(i: Int): Double = {
+    ensureNormalized
+    condProbTbl.get(i) match { case Some(v) => v case None => 1.0 }
+  }
   def setConditionalProb(i: Int, v: Double): Unit = condProbTbl += (i -> v)
   def add(ft: FType): Unit = {
     userFeatures += ft
   }
+  
+  @inline
+  private def ensureNormalized = {
+    if (!normalized) {
+      var s = 0.0
+      condProbTbl foreach {case (i,v) => s += v}
+      var i = 0; while (i < getRange) {
+        condProbTbl += (i -> condProbTbl(i) / s)
+        i += 1
+      }
+      normalized = true
+    }
+  }
+  def hasPosterior = condProbTbl.size > 0
   def userVec: Set[FType] = userFeatures
   def getCompVec: Array[Array[Feature]]
   def addSelf(l: Long) = {}

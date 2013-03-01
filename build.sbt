@@ -1,16 +1,16 @@
 name := "jcarafe"
 
-version in ThisBuild := "0.9.8.5.b-04"
+version in ThisBuild := "0.9.8.5.b-06"
 
 scalaVersion in ThisBuild := "2.10.0"
 
 organization := "org.mitre"
 
-resolvers in ThisBuild += Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")
-
 resolvers in ThisBuild += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns)
 
 resolvers in ThisBuild += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/"
+
+publishTo in ThisBuild := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
 
 libraryDependencies += "org.codehaus.jackson" % "jackson-core-asl" % "1.5.0"
 

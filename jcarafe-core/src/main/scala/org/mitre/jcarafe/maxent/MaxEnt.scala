@@ -29,7 +29,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--sgd" flag "Use 'standard' stochastic gradient descent"
   "--model" desc "Model file"
   "--fspec" desc "Feature spec"
-  "--evaluate"           desc "Evaluate decoder on gold-standard test data"  
+  "--evaluate" desc "Evaluate decoder on gold-standard test data"
   "--word-properties" desc "Word properties file"
   "--word-scores" desc "Word scores file"
   "--parallel" flag "Parallelize feature expectation computation"
@@ -50,15 +50,15 @@ class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
   def close() = is.close
 }
 
-class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None, 
-    val srcInfo: Option[String] = None, weight: Double = 1.0) 
-extends AbstractInstance(label, orig, -1) {
-  def this(l: Int, o: Int, meVec: Array[CompactFeature]) = this(l,o,Some(meVec))
+class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None,
+  val srcInfo: Option[String] = None, weight: Double = 1.0)
+  extends AbstractInstance(label, orig, -1) {
+  def this(l: Int, o: Int, meVec: Array[CompactFeature]) = this(l, o, Some(meVec))
   type FType = CompactFeature
   val maxentBuffer = new ArrayBuffer[CompactFeature]
   def getCompVec = throw new RuntimeException("Not implemented for efficiency")
   def getCompactVec: Array[CompactFeature] = getCacheMEVec
-  
+
   override lazy val instWeight = weight
 
   private def getCacheMEVec: Array[CompactFeature] = maxentVec match {
@@ -99,8 +99,10 @@ object FeatureId {
   var maintainMapping = false
 
   def apply(s: String) = s.split('|').toList match {
-    case a :: b :: Nil => val fid = new FeatureId(b, a); if (maintainMapping) fMapping.update(fid.fnId, b); fid
-    case a :: _ => val fid = new FeatureId(a); if (maintainMapping) fMapping.update(fid.fnId, a); fid
+    case a :: b :: Nil =>
+      val fid = new FeatureId(b, a); if (maintainMapping) fMapping.update(fid.fnId, b); fid
+    case a :: _ =>
+      val fid = new FeatureId(a); if (maintainMapping) fMapping.update(fid.fnId, a); fid
     case Nil => throw new RuntimeException("Unable to parse input line: " + s)
   }
 }
@@ -182,23 +184,46 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
     var k = 0
     val il = instFeatures.length
     val w = el.instWeight
-    while (k < il) {
-      var l = 0
-      val inst = instFeatures(k)
-      val fid = inst.fid
-      while (l < nls) {
-        val offset = l * predNFS
-        val actualIndex = fid + offset
-        val v = inst(l)
-        if (l == trueLabel) {
-          gradient(actualIndex) -= v * w
+    if (el.hasPosterior) {
+      while (k < il) {
+        var l = 0
+        val inst = instFeatures(k)
+        val fid = inst.fid
+        while (l < nls) {
+          val offset = l * predNFS
+          val actualIndex = fid + offset
+          val v = inst(l)
+          val pMass = el.conditionalProb(l)
+          gradient(actualIndex) += (scores(l) - pMass) * v * w
+          l += 1
         }
-        gradient(actualIndex) += scores(l) * v * w
-        l += 1
+        k += 1
       }
-      k += 1
+      var cost = 0.0
+      k = 0; while (k < el.getRange) {
+        cost += math.log(scores(k)) * el.conditionalProb(k)
+        k += 1
+      }
+      cost * w
+    } else {
+      while (k < il) {
+        var l = 0
+        val inst = instFeatures(k)
+        val fid = inst.fid
+        while (l < nls) {
+          val offset = l * predNFS
+          val actualIndex = fid + offset
+          val v = inst(l)
+          if (l == trueLabel) {
+            gradient(actualIndex) -= v * w
+          }
+          gradient(actualIndex) += scores(l) * v * w
+          l += 1
+        }
+        k += 1
+      }
+      log(scores(trueLabel)) * w
     }
-    log(scores(trueLabel)) * w
   }
 
   override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(true, seqAccessor)
@@ -222,32 +247,65 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
     val instFeatures: Array[CompactFeature] = el.getCompactVec
     val trueLabel = el.label
     val scores = classScoresNormalized(nls, predNFS, lambdas, instFeatures).toArray
+    val w = el.instWeight
     var k = 0
     val il = instFeatures.length
-    while (k < il) {
-      var l = 0
-      val inst = instFeatures(k)
-      val fid = inst.fid
-      while (l < nls) {
-        val offset = l * predNFS
-        val v = inst(l)
-        val actualIndex = fid + offset
-        val gref = gradient.get(actualIndex) match {
-          case Some(v) => v
-          case None =>
-            val nv = new DoubleCell(0.0, 0.0)
-            gradient += ((actualIndex, nv))
-            nv
+    if (el.hasPosterior) {
+      while (k < il) {
+        var l = 0
+        val inst = instFeatures(k)
+        val fid = inst.fid
+        while (l < nls) {
+          val offset = l * predNFS
+          val actualIndex = fid + offset
+          val v = inst(l)
+          val pMass = el.conditionalProb(l)
+          val gref = gradient.get(actualIndex) match {
+            case Some(v) => v
+            case None =>
+              val nv = new DoubleCell(0.0, 0.0)
+              gradient += ((actualIndex, nv))
+              nv
+          }
+          gref.g_=(gref.g + v * w * pMass) // constraint based on posterior probability mass
+          gref.e_=(gref.e + scores(l) * v * w)
+          l += 1
         }
-        if (l == trueLabel) {
-          gref.g_=(gref.g + v)
-        }
-        gref.e_=(gref.e + scores(l) * v)
-        l += 1
+        k += 1
       }
-      k += 1
+      var cost = 0.0
+      k = 0
+      while (k < el.getRange) {
+        cost += math.log(scores(k)) * el.conditionalProb(k)
+        k += 1
+      }
+      cost * w
+    } else {
+      while (k < il) {
+        var l = 0
+        val inst = instFeatures(k)
+        val fid = inst.fid
+        while (l < nls) {
+          val offset = l * predNFS
+          val v = inst(l)
+          val actualIndex = fid + offset
+          val gref = gradient.get(actualIndex) match {
+            case Some(v) => v
+            case None =>
+              val nv = new DoubleCell(0.0, 0.0)
+              gradient += ((actualIndex, nv))
+              nv
+          }
+          if (l == trueLabel) {
+            gref.g_=(gref.g + v)
+          }
+          gref.e_=(gref.e + scores(l) * v)
+          l += 1
+        }
+        k += 1
+      }
+      log(scores(trueLabel))
     }
-    log(scores(trueLabel))
   }
 
   override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) = getGradient(true, seqAccessor)
@@ -345,8 +403,9 @@ class DiskBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(
     var counter = 0
     val odirStr = opts.diskCache match { case Some(dir) => dir case None => throw new RuntimeException("Expecting cache directory") }
     while (l != null) {
-      buildInstance(l) match {
-        case Some(inst) => writeInstance(odirStr, inst); cnt += 1
+      buildInstanceUsingPosteriors(l) match {
+        case Some(inst) =>
+          writeInstance(odirStr, inst); cnt += 1
         case None =>
       }
       counter += 1
@@ -411,8 +470,8 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
   }
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
-  def createMEInstance(l: Int, o: Int, w: Double): MaxEntInstance = new MaxEntInstance(l, o, weight=w)
-  def createMEInstance(l: Int, o: Int, src: String) = new MaxEntInstance(l,o,srcInfo=Some(src))
+  def createMEInstance(l: Int, o: Int, w: Double): MaxEntInstance = new MaxEntInstance(l, o, weight = w)
+  def createMEInstance(l: Int, o: Int, src: String) = new MaxEntInstance(l, o, srcInfo = Some(src))
 
 }
 
@@ -425,7 +484,7 @@ abstract class MaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends Decodin
 }
 
 class FileBasedMaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends DecodingSeqGen[List[(FeatureId, Double)]](m, opts) with MaxEntSeqGenAttVal with MaxEntSeqGenAttValFromFileProcessor {
-  
+
   //val subSeqGen = new FactoredDecodingSeqGen[String](m, opts) with TextSeqGen
   val subSeqGen = new TrainingSeqGen[String](opts) with TextSeqGen
 
@@ -435,13 +494,13 @@ class FileBasedMaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends Decodin
 
   val frep = new MEFRep[List[(FeatureId, Double)]](m)
 
-} 
+}
 
 trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
 
   type DeserializationT = MaxEntDeserialization
 
-  def toSources(d: DeserializationT) : Seqs = throw new RuntimeException("UNIMPLEMENTED")
+  def toSources(d: DeserializationT): Seqs = throw new RuntimeException("UNIMPLEMENTED")
 
   def deserializeFromFile(file: String): DeserializationT = {
     new MaxEntDeserialization(new java.io.File(file))
@@ -603,9 +662,9 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     if (l.length > 2) { // just skip short/empty lines
       l.split(" ").toList match {
         case first :: second :: rest =>
-          val (weight,label,features) = 
+          val (weight, label, features) =
             if (numReg.findFirstIn(first).isDefined) (first.toDouble, second, rest)
-            else (1.0,first,(second :: rest))
+            else (1.0, first, (second :: rest))
           val src = createSource(SLabel(label), (features map { el =>
             el.split(":").toList match {
               case a :: b :: Nil => (FeatureId(a), b.toDouble)
@@ -621,13 +680,60 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     } else None
   }
 
+  private val LabRe = """([A-z]+)=([0-9\.]+)""".r
+
+  private def getLabelDistribution(lst: Array[String]) = {
+    val buf = new collection.mutable.ListBuffer[(String, Double)]
+    var i = 0;
+    var c = true
+    while (i < lst.length && c) {
+      if (LabRe.findFirstIn(lst(i)).isDefined) {
+        lst(i) match {
+          case LabRe(l, v) => buf append ((l, v.toDouble))
+        }
+      } else c = false
+      i += 1
+    }
+    buf.toList
+  }
+
+  protected def buildInstanceUsingPosteriors(l: String): Option[MaxEntInstance] = {
+    if (l.length > 2) { // just skip short/empty lines
+      val lineElements = l.split(" ")
+      val labDist = getLabelDistribution(lineElements)
+      if (labDist.length > 1) {
+      var i = labDist.length
+      val nEls = lineElements.length
+      val firstLab = labDist.head
+      val fbuf = new collection.mutable.ListBuffer[(FeatureId, Double)]
+      while (i < nEls) {
+        val el = lineElements(i)
+        val pair = el.split(":").toList match {
+          case a :: b :: Nil => (FeatureId(a), b.toDouble)
+          case a :: _ => (FeatureId(a), 1.0)
+          case Nil => throw new RuntimeException("Feature vector parse failed")
+        }
+        fbuf append pair
+        i += 1
+      }
+      val src = createSource(SLabel(firstLab._1), fbuf.toList)
+      val inst = frep.createMEInstance(src.label, src.label)
+      labDist foreach { case (l, v) => inst.setConditionalProb(getIndex(SLabel(l)), v) }
+      println("Label dist: ")
+      inst.condProbTbl foreach {case (k,v) => println(k + " => " + v)}
+      addInFeatures(inst, src)
+      Some(inst)
+      } else buildInstance(l)
+    } else None
+  }
+
   protected def toInstances(inReader: DeserializationT): InstanceSequence = {
     val instr = inReader.is
     var l = instr.readLine()
     val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
     var counter = 0
     while (l != null) {
-      buildInstance(l) match {
+      buildInstanceUsingPosteriors(l) match {
         case Some(inst) =>
           tmpBuf += inst
           counter += 1
@@ -657,7 +763,7 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
     writeModel(m, new java.io.File(opts.model.get))
   }
 
-  override def trainModel(m: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = trainModelWithDiskAccess(m)
+  override def trainModel(m: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = trainModelWithDiskAccess(m)
 
   override def train = {
     sGen.createInstancesOnDisk // build instances and cache to disk
@@ -689,16 +795,16 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
   def this() = this(new MEOptions(Array(), new MaxEntOptionHandler(Array())))
   type TrSeqGen = MaxEntTrainingSeqGen
   val sGen: TrSeqGen = if (opts.fileBased) new FileBasedMaxEntTrainingSeqGen(opts) else new MaxEntTrainingSeqGen(opts)
-  override def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence],modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
+  override def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     if (opts.dumpInstances.isDefined) {
       val ofile = new java.io.FileWriter(opts.dumpInstances.get)
       seqs foreach { iseq =>
         iseq.iseq foreach { ai =>
           ofile.write(ai.label.toString)
-          ai.getCompactVec foreach { cf => 
+          ai.getCompactVec foreach { cf =>
             ofile.write(' '); ofile.write(cf.fid.toString)
-            if (cf.v < 0.999 || cf.v > 1.001) {ofile.write(':'); ofile.write(cf.v.toString)} 
-            }
+            if (cf.v < 0.999 || cf.v > 1.001) { ofile.write(':'); ofile.write(cf.v.toString) }
+          }
           ofile.write('\n')
         }
       }
@@ -711,26 +817,26 @@ class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](
       writeModel(m, new java.io.File(opts.model.get))
     }
   }
-  
+
   def getMeEstimator = {
     // if we're dumping out instances, just set the number of states to 2 to make the CRF class ok with it
     // we won't use this to do actual training in this case so the inconsistency doesn't matter
     val nstates = if (opts.dumpInstances.isDefined) 2 else sGen.getNumberOfStates
     if (opts.parallel) {
-        val numPs = opts.numThreads match {
-          case None => Runtime.getRuntime.availableProcessors * 4 / 5 // leave a CPU or two free
-          case Some(n) => n
-        }
-        println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
-        new DenseParallelMaxEnt(numPs, nstates, sGen.getNumberOfFeatures, opts.gaussian)
-      } else if (opts.psa) {
-        if (opts.l1)
-          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
-        else
-          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
-      } else new MaxEnt(nstates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
+      val numPs = opts.numThreads match {
+        case None => Runtime.getRuntime.availableProcessors * 4 / 5 // leave a CPU or two free
+        case Some(n) => n
+      }
+      println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
+      new DenseParallelMaxEnt(numPs, nstates, sGen.getNumberOfFeatures, opts.gaussian)
+    } else if (opts.psa) {
+      if (opts.l1)
+        new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
+      else
+        new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearner[AbstractInstance]
+    } else new MaxEnt(nstates, sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
   }
-  
+
   override def train = {
     val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
     val me = getMeEstimator
@@ -749,43 +855,43 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
   type M = MaxEntModel
   def this(m: MaxEntModel) = this(new MEOptions, m)
   //val sGen = new MaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
-  val sGen = 
+  val sGen =
     if (decodingOpts.fileBased)
       new FileBasedMaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
     else new MaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
   setDecoder(true)
-  
-  protected def gatherFeatures(seqs: Seq[InstanceSequence]) : Set[String] = 
-    seqs.foldLeft(Set():Set[String]){(cs,seq) => seq.iseq.foldLeft(cs){(cs1,se) => se.userVec.foldLeft(cs1){_ + _.getName}}}
-  
-  protected def mapToMaxEntInstance(lab: String, fs: Seq[InstanceSequence]) = { 
-    val meFs : Set[String] = gatherFeatures(fs)
-    val src = sGen.createSource(SLabel(lab), meFs.toList map { fn => (new FeatureId(fn),1.0)})
-    val inst = sGen.frep.createMEInstance(src.label,src.label)
+
+  protected def gatherFeatures(seqs: Seq[InstanceSequence]): Set[String] =
+    seqs.foldLeft(Set(): Set[String]) { (cs, seq) => seq.iseq.foldLeft(cs) { (cs1, se) => se.userVec.foldLeft(cs1) { _ + _.getName } } }
+
+  protected def mapToMaxEntInstance(lab: String, fs: Seq[InstanceSequence]) = {
+    val meFs: Set[String] = gatherFeatures(fs)
+    val src = sGen.createSource(SLabel(lab), meFs.toList map { fn => (new FeatureId(fn), 1.0) })
+    val inst = sGen.frep.createMEInstance(src.label, src.label)
     //frep.addMEFeature(inst, unkCode, 1.0)
     //src.obs foreach {case (l,v) => frep.addMEFeature(inst,l.fnId,v)}
-    sGen.addInFeatures(inst,src)
+    sGen.addInFeatures(inst, src)
     inst
   }
-  
+
   val subSeqGen = new TrainingSeqGen[String](decodingOpts) with TextSeqGen
 
   def decodeFileBased() = {
-    val decoder = new MaxEntDecodingAlgorithm(model.crf) 
+    val decoder = new MaxEntDecodingAlgorithm(model.crf)
     val seq = sGen.createSeqsFromFiles
     decodingOpts.outputFile match {
       case None =>
-        seq foreach {s => decoder.assignBestSequence(s) }
+        seq foreach { s => decoder.assignBestSequence(s) }
         sGen.evaluateSequences(seq)
       case Some(ofile) =>
         val o = new java.io.File(ofile)
         val os = new java.io.PrintWriter(o)
         val invLa = sGen.invLa
-        seq foreach {s =>
+        seq foreach { s =>
           decoder.assignBestSequence(s)
-          s.iseq foreach {ai =>
+          s.iseq foreach { ai =>
             ai match {
-              case meI : MaxEntInstance => 
+              case meI: MaxEntInstance =>
                 os.write(meI.srcInfo.get)
                 for (i <- 0 until sGen.getNumberOfStates) {
                   os.write("\t" + invLa(i) + ":" + meI.conditionalProb(i))
@@ -793,12 +899,12 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
                 os.write('\n')
               case _ =>
             }
-            }
           }
+        }
         os.close
     }
   }
-  
+
   override def runDecoder(deser: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
     val instr = deser.is
     var l = instr.readLine()
@@ -837,12 +943,12 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
   }
 
   override def decodeToAnnotations(s: String): Array[Annotation] = throw new RuntimeException("Unavailable method")
-  
+
   override def decode() = {
     if (decodingOpts.fileBased) decodeFileBased()
     else decodeStd()
   }
-  
+
   def decodeStd() = {
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
     decodingOpts.inputDir match {
@@ -978,7 +1084,7 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
   }
 
   def train(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence]): MaxEntModel = {
-    seqs foreach {iseq => iseq.iseq foreach {ai => ai.label = ai.orig}}  // make sure the label is set ot original label here
+    seqs foreach { iseq => iseq.iseq foreach { ai => ai.label = ai.orig } } // make sure the label is set ot original label here
     val accessSeq = new MaxEntMemoryAccessSeq(seqs)
     val coreModel = me.train(accessSeq, opts.maxIters)
     new MaxEntModel(sGen.getLAlphabet, coreModel, sGen.frep.fMap, sGen.getInducedFeatureMap)
@@ -987,7 +1093,7 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
   def batchTrain: String = new String(serializeAsBytes(batchTrainToModel))
 
   def batchTrainToModel: MaxEntModel = batchTrainToModel(getObsSeqs.toSeq)
-  
+
   def batchTrainToModel(obsSeq: Seq[ObsSource[List[(FeatureId, Double)]]]): MaxEntModel = {
     val seqs = sGen.extractFeatures(new SourceSequence[List[(FeatureId, Double)]](obsSeq))
     val me = new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
@@ -998,7 +1104,7 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
     val me = new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
     train(me, Seq(instSeq))
   }
-  
+
   def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence, me: Crf with CrfLearner): MaxEntModel = {
     train(me, Seq(instSeq))
   }

@@ -10,13 +10,14 @@ trait SeqXValidator {
       val cm = crf.train(tr, num)
       val cr = new DenseCRFConfidences(cm, true) with CondLogLikelihoodLearner[AbstractInstance]
       val decoder = new Viterbi(cm)
+      println("Evaluating fold...")
       tst.getSeqs foreach {s => if (s.length > 0) nll -= cr.gradOfSeq(s.iseq); decoder.assignBestSequence(s)}
       sGen.evaluateSequences(tst.getSeqs) // evaluate (stores numbers in sGen
       tst.getSeqs foreach {s => s.iseq foreach {el => el.label_=(el.orig)}} // need to reset these for subseqeutn training folds
       }
     val acc = sGen.getAccuracy
     println("XValidation complete\n\n")
-    println("NCLL = " + nll)
+    println("Negative Conditional Log-likelihood = " + nll)
     println("Sequence element accuracy = " + acc)
   }
 

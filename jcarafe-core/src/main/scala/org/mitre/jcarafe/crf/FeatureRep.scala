@@ -423,7 +423,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   }
 
   // For handling learning with unlabeled elements we need to do:
-  //   Set this up so thhat if the label is -1, we add in all possible labels as if it were an unsupported feature type
+  //   Set this up so that if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
     val upTo = (maxSegSize min pos)
     val yp = dseq(pos).label

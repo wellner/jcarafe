@@ -1,6 +1,6 @@
 package org.mitre.jcarafe.util
 
-import org.mitre.jcarafe.tokenizer.{Element, Tag, FastTokenizer}
+import org.mitre.jcarafe.tokenizer.{ Element, Tag, FastTokenizer }
 
 object MapTokenAttributes {
   import ProjectAlignedAttributes._
@@ -51,49 +51,61 @@ object MapTokenAttributes {
     case "WP" => "PRON"
     case "WP$" => "PRON"
     case "WRB" => "ADV"
+    // Now handle Arabic Treebank tags
+    case "NEG" => "ADV"
+    case "ABBREV" => "NOUN"
     case _ => "NOUN"
   }
 
-  def mapToken(t: Token): Token = {
+  def mapToken(pr: Double = 1.0)(t: Token): Token = {
     val mp = t.props
-    mp.get("pos") match {
-      case Some(pvl) =>
-        val npvl = pvl map { pv =>
-          mapPos(pv.vl)
-        }
-        new Token(Map("pos" -> npvl.head), t.tokVal)
-      case None => t
+    if (util.Random.nextFloat() < pr) {
+      mp.get("pos") match {
+        case Some(pvl) =>
+          val npvl = pvl map { pv =>
+            mapPos(pv.vl)
+          }
+          new Token(Map("pos" -> npvl.head), t.tokVal)
+        case None => t
+      }
+    } else { // in this case, we randomly DROP the part-of-speech
+      new Token(Map(), t.tokVal)
     }
   }
-  
-  def getSentTokens(elems: List[Element], stck: List[Element]) : (List[Element],List[Element]) = elems match {
-    case Tag("</s>",false) :: r => (elems,stck.reverse)
-    case Nil => (Nil,stck.reverse)
-    case t :: r => getSentTokens(r,t :: stck)
+
+  def getSentTokens(elems: List[Element], stck: List[Element]): (List[Element], List[Element]) = elems match {
+    case Tag("</s>", false) :: r => (elems, stck.reverse)
+    case Nil => (Nil, stck.reverse)
+    case t :: r => getSentTokens(r, t :: stck)
   }
-  
-  def gatherLogicalTokensBySentence(elems: List[Element], stck: List[List[Token]]): List[List[Token]] = {
+
+  def gatherLogicalTokensBySentence(elems: List[Element], stck: List[List[Token]], pr: Double): List[List[Token]] = {
     elems match {
-      case Tag("<s>",true) :: r => 
-        val (nr,stoks) = getSentTokens(elems,Nil)
-        val ts = gatherLogicalTokens(stoks) map mapToken
-        gatherLogicalTokensBySentence(nr,(ts :: stck))
-      case v :: r => gatherLogicalTokensBySentence(r,stck)
+      case Tag("<s>", true) :: r =>
+        val (nr, stoks) = getSentTokens(elems, Nil)
+        val ts = gatherLogicalTokens(stoks) map mapToken(pr)
+        gatherLogicalTokensBySentence(nr, (ts :: stck), pr)
+      case v :: r => gatherLogicalTokensBySentence(r, stck, pr)
       case Nil => stck.reverse
     }
   }
 
-
   def main(args: Array[String]) = {
-    val outFile = new java.io.File(args(1))
-    val ts = FastTokenizer.parseFile(args(0), true)
-    val toks = gatherLogicalTokensBySentence(ts, Nil)
-    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
-    toks foreach {sent =>
-      os.write("<s>")
-      sent foreach {t => os.write(t.tokenBestOverToString(0.9,false)) }
-      os.write("</s>\n\n")
+    val outDir = new java.io.File(args(1))
+    val tsDir = new java.io.File(args(0))
+
+    val pr = if (args.length > 2) args(2).toDouble else 1.0
+    tsDir.listFiles foreach { tsF =>
+      val ts = FastTokenizer.parseFile(tsF.getPath(), true)
+      val toks = gatherLogicalTokensBySentence(ts, Nil, pr)
+      val outFile = new java.io.File(outDir.getPath + "/" + tsF.getName())
+      val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
+      toks foreach { sent =>
+        os.write("<s>")
+        sent foreach { t => os.write(t.tokenBestOverToString(0.9, false)) }
+        os.write("</s>\n\n")
       }
-    os.close()
+      os.close()
+    }
   }
 }
