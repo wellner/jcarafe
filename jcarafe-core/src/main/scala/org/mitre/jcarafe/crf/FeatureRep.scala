@@ -75,7 +75,7 @@ class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) e
     if (!specialCase(e)) {
       super.update(e)
     } else {
-      -1
+      -1 
     }
 }
 
@@ -181,7 +181,7 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) {
   def getInducedFeatureMap: Option[InducedFeatureMap]
 
   var otherIndex = -1 // keep track of index for "other" label associated with sparse labeling tasks
-
+  var numberOfTargetLabels = -1 // this should get set after this has been determined
 }
 
 /*
@@ -284,6 +284,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManager[Obs](opts, m, pre), opts, m)
 
   val fsetMap: OpenLongObjectHashMap = model.fsetMap
+  val faMap: LongAlphabet = model.deriveFaMap
   mgr.lex_=(if (mgr.lex.isEmpty) model.lex else mgr.lex)
   mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
   mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
@@ -295,16 +296,30 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   maxSegSize_=(model.segSize - 1)
 
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit =
-    addFeature(ss, inst, fname, vl, false)
+    addFeature(ss, inst, fname, vl, false, false)
 
-  def addFeature(ss: Int, inst: CrfInstance, fname: BuiltFeature, self: Boolean): Unit = addFeature(ss, inst, fname.get, fname.value, self)
+  def addFeature(ss: Int, inst: CrfInstance, fname: BuiltFeature, self: Boolean, edgeP: Boolean): Unit = 
+    addFeature(ss, inst, fname.get, fname.value, self, edgeP)
 
-  def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean): Unit =
+  def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean, edgeP: Boolean): Unit =
     fsetMap.get(fname) match {
       case (ft: FeatureType) =>
         inst add (new ValuedFeatureType(vl, ft))
       case _ =>
     }
+  
+  def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean) : Unit = {
+    if (edgeP) {
+      for (i <- 0 until numberOfTargetLabels; j <- 0 until numberOfTargetLabels) {
+        val fid = faMap.update(j,i,fname)
+        inst add new NBinFeature(vl,j,i,fid)
+      } 
+    }
+    for (i <- 0 until numberOfTargetLabels) {
+        val fid = faMap.update(-1,i,fname)
+        inst add new NBinFeature(vl,-1,i,fid)
+    }
+  }
 
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
     val upTo = math.min(maxSegSize, pos)
@@ -314,14 +329,14 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         for (d <- 0 to upTo) {
           val fresult: FeatureReturn = fn(d, dseq, pos)
           if (!fresult.edgeP || (pos > 0)) {
-            fresult.features foreach { f => addFeature(d, inst, f, fresult.self) }
+            fresult.features foreach { f => addFeature(d, inst, f, fresult.self, fresult.edgeP) }
             if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
           }
         }
       } else {
         val fresult: FeatureReturn = fn(0, dseq, pos)
         if (!fresult.edgeP || (pos > 0))
-          fresult.features foreach { f => addFeature(0, inst, f, fresult.self) }
+          fresult.features foreach { f => addFeature(0, inst, f, fresult.self, fresult.edgeP) }
         if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
       }
     }
@@ -335,8 +350,8 @@ class SelfInducibleDecodingFactoredFeatureRep[Obs](mgr: FeatureManager[Obs], opt
   override def createInstance(l: Int, o: Int, sId: Int) = new SelfInducibleCrfInstance(l, o, sId)
   override def createInstance(l: Int, o: Int) = new SelfInducibleCrfInstance(l, o, -1)
 
-  override def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean): Unit = {
-    super.addFeature(ss, inst, fname, vl, self)
+  override def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean, edgeP: Boolean): Unit = {
+    super.addFeature(ss, inst, fname, vl, self, edgeP)
     if (self) inst.addSelf(fname) // add this feature (regardless of whether we saw it during training) to self-inducible feature set
   }
 }
@@ -358,16 +373,43 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(opts: Options) = this(opts, false, opts.semiCrf)
 
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }
-  //val faMap: Alphabet[PreFeature] = mod match {case Some(m) => m.deriveFaMap case None => new Alphabet[PreFeature]}
-  //val faMap: IntAlphabet = new IntAlphabet
-  val faMap: LongAlphabet = initialModel match { case Some(m) => m.deriveFaMap case None => new LongAlphabet }
+  val faMap: LongAlphabet = initialModel match {
+    case Some(m) => m.deriveFaMap
+    case None =>
+      if (opts.numRandomFeatures > 0) {
+        val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564
+        new RandomLongAlphabet(nf)
+      } else new LongAlphabet
+  }
 
-  val neuralFaMap: LongAlphabet = new LongAlphabet
+  val neuralFaMap: LongAlphabet = 
+    if (opts.numRandomFeatures > 0) {
+      val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564
+        new RandomLongAlphabet(nf)
+    } else new LongAlphabet
 
   //var fsetMap = mod match {case Some(m) => m.fsetMap case None => IntMap[FeatureType]()}
   val fsetMap: OpenLongObjectHashMap = initialModel match { case Some(m) => m.fsetMap case None => new OpenLongObjectHashMap() }
+  
+  protected def addRandFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
+    import IncrementalMurmurHash.mix
+    if (yprv == -2) { // add in all state features, only
+      for (i <- 0 until numberOfTargetLabels) {
+        val fid = faMap.update(-1,i,fname)
+        inst add new NBinFeature(vl,-1,i,fid,-1)
+      }
+    } else {
+      for (i <- 0 until numberOfTargetLabels; j <- 0 until numberOfTargetLabels) {
+        val fid = faMap.update(j,i,fname)
+        inst add new NBinFeature(vl,j,i,fid,-1)
+      }
+    }
+  }
 
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit = {
+    if (opts.numRandomFeatures > 0)
+      addRandFeature(ss,inst,yprv,yp,fname,vl)
+    else {
     val ft =
       fsetMap.get(fname) match {
         case v: FeatureType => v
@@ -382,6 +424,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       ft add new Feature(yprv, yp, fid, nfid)
     }
     if (!supporting) inst add new ValuedFeatureType(vl, ft)
+    }
   }
 
   private def getEffectiveSize(yp: Int, cp: Int, dseq: SourceSequence[Obs]): Int = {
@@ -434,7 +477,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         val fresult: FeatureReturn = fn(d, dseq, pos)
         if (!fresult.edgeP || (pos > 0)) {
           fresult.features foreach { f =>
-            if (static) addFeatureStatic(d, inst, f) else addFeature(d, inst, (if (fresult.edgeP) yprv else (-1)), yp, f, false, fresult.fcat)
+            if (static) addFeatureStatic(d, inst, f) else addFeature(d, inst, (if (fresult.edgeP) yprv else (-2)), yp, f, false, fresult.fcat)
           }
           if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
         }

@@ -36,6 +36,7 @@ class MaxEntModel(
   def print(f: java.io.File) = println("--no printing available--")
 }
 
+
 class StdModel(
   fspec: String, // string format version of feature extraction specification
   beg: Boolean,
@@ -93,6 +94,17 @@ class StdModel(
     f_out.flush
     f_out.close
   }
+}
+
+class RandomStdModel(
+  fspec: String, // string format version of feature extraction specification
+  beg: Boolean,
+  aux: ModelAuxiliaries,
+  segSize: Int,
+  labelAlphabet: Alphabet[AbstractLabel],
+  crf: CoreModel,
+  val faMap: RandomLongAlphabet) extends StdModel(fspec, beg, aux, segSize, labelAlphabet, crf, new OpenLongObjectHashMap) {
+  override def deriveFaMap = faMap
 }
 
 class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[WordProperties], ss: Int, crf: CoreModel, val faMap: LongAlphabet, val numStates: Int)

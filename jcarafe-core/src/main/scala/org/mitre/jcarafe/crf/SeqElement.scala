@@ -90,12 +90,14 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
   }
 
   // this speeds things up a bit for non-Semi CRF
-  override def add(ft: FType) =
+  override def add(ft: FType) : Unit =
     if (CrfInstance.useCache && (CrfInstance.maxSegSize < 1) && !CrfInstance.training) {
       ft.getFeatures foreach { fc => seg1Features += fc }
     } else {
       super.add(ft) // semi-CRF case and/or for training
     }
+  
+  def add(f: Feature) = seg1Features += f // directly add a feature
 
   private def expandVector: Array[Array[Feature]] = {
     val fs = Array.tabulate(CrfInstance.maxSegSize + 1) { _ => new ArrayBuffer[Feature] }
