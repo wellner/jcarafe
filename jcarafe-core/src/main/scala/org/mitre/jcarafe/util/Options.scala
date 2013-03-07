@@ -279,6 +279,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var randomFeatures                  = optHandler.check("--random-features")
   var randomSupportedFeatures         = optHandler.check("--random-supported")
   var randomFeatureCoefficient        = optHandler.get("--random-feature-coefficient") match {case Some(v) => v.toDouble case None => 3.0}
+  var randomSupportedCoefficient      = optHandler.get("--random-supported-coefficient") match {case Some(v) => v.toDouble case None => 3.0}
   var granularity : Int               = optHandler.get("--granularity") match {case Some(v) => v.toInt case None => 1000}
   var partialLabels: Boolean          = optHandler.check("--partially-labeled")
   

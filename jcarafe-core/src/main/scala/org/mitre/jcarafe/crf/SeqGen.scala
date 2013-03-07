@@ -425,7 +425,10 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     if (opts.randomFeatures || opts.randomSupportedFeatures) {
       sourcePairSeqs foreach countFeatureTypes
       frep.numFeatureTypes = frep.featureTypeSet.size
-      frep.featureTypeSet = Set() // de-reference set here as it could be large
+      frep.featureTypeSet = Set() // de-reference set here as it could be large      
+      println("Number of feature types in training set: " + frep.numFeatureTypes)
+      println("Number of random features: " + frep.numRandomFeatures)
+      if (opts.randomSupportedFeatures) println("Number of allocated random feature types: " + frep.numSemiRandomFeatureTypes)
     }
     frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
     frep.resetDisplacement // reset the displaceable feature table

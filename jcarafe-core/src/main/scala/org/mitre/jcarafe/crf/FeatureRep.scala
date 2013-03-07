@@ -359,8 +359,6 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   val faMap: LongAlphabet = {
     model.deriveFaMap
   }
-  //val fsetFilter: BloomFilter = model match { case m: RandomStdModel => m.fsetFilter case _: StdModel => new BloomFilter(0, 0) }
-  //val semiRandomFset = new SemiRandomFsetMapping(1000) // XXX - need to have this within the serialized model
   val semiRandomFset = model match {case m: RandomStdModel => m.randFsetMap case _: StdModel => new SemiRandomFsetMapping(1)}
   val useSemiRandomFeatures = semiRandomFset.sz > 10
   
@@ -408,17 +406,14 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         i += 1
       }      
     } else {
-      semiRandomFset.get(fname) map {i =>
-        val fid = faMap.update(-1, i, fname)
-        //println("Adding feature -- fname: " + fname + " lab: " + i + " fid = " + fid)
-        inst add new NBinFeature(vl, -1, i, fid, -1)
+      semiRandomFset.get(fname) foreach {i =>
+        inst add new NBinFeature(vl, -1, i, faMap.update(-1, i, fname), -1)
         }
     }
   }
 
   @inline
   private def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
-    //if (fsetFilter.contains(fname)) {
       val nl = CrfInstance.numLabels
       if (edgeP) {
         var i = 0
@@ -497,8 +492,10 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   var featureTypeSet : Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
   var numFeatureTypes = -1
 
-  lazy val numSemiRandomFeatureTypes = PrimeNumbers.getLargerPrime((numFeatureTypes * opts.randomFeatureCoefficient).toInt)
-  lazy val numRandomFeatures = PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
+  lazy val numSemiRandomFeatureTypes = PrimeNumbers.getLargerPrime((numFeatureTypes * opts.randomSupportedCoefficient).toInt)
+  lazy val numRandomFeatures = 
+    PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
+         
   lazy val semiRandomFset = new SemiRandomFsetMapping(if (opts.randomSupportedFeatures) numSemiRandomFeatureTypes else 0)
   
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }

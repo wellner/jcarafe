@@ -3,6 +3,19 @@ package org.mitre.jcarafe.util
 object PrimeNumbers {
 
   val primes = Vector(
+      541,
+      1223,
+      1987,
+      2741,
+      3571,
+      4409,
+      5279,
+      6133,
+      6997,
+      7919,
+      9733,
+      12553,
+      15401,
       17389,
       27449,
       37813,
