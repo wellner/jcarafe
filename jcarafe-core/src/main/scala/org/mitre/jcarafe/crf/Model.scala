@@ -36,7 +36,6 @@ class MaxEntModel(
   def print(f: java.io.File) = println("--no printing available--")
 }
 
-
 class StdModel(
   fspec: String, // string format version of feature extraction specification
   beg: Boolean,
@@ -45,6 +44,8 @@ class StdModel(
   labelAlphabet: Alphabet[AbstractLabel],
   crf: CoreModel,
   val fsetMap: OpenLongObjectHashMap) extends Model(fspec, beg, aux.lex, segSize, labelAlphabet, crf) {
+  
+  def getLabelAlphabet = labelAlphabet
 
   def this(fs: String, b: Boolean, l: Option[BloomLexicon], wp: Option[WordProperties], ws: Option[WordScores], ifs: Option[InducedFeatureMap],
     ss: Int, lalpha: Alphabet[AbstractLabel], crf: CoreModel, fsmap: OpenLongObjectHashMap) =
@@ -103,7 +104,12 @@ class RandomStdModel(
   segSize: Int,
   labelAlphabet: Alphabet[AbstractLabel],
   crf: CoreModel,
-  val faMap: RandomLongAlphabet) extends StdModel(fspec, beg, aux, segSize, labelAlphabet, crf, new OpenLongObjectHashMap) {
+  val faMap: RandomLongAlphabet,
+  val randFsetMap: SemiRandomFsetMapping) extends StdModel(fspec, beg, aux, segSize, labelAlphabet, crf, new OpenLongObjectHashMap) {
+
+  def this(fs: String, b: Boolean, l: Option[BloomLexicon], wp: Option[WordProperties], ws: Option[WordScores], ifs: Option[InducedFeatureMap],
+    ss: Int, lalpha: Alphabet[AbstractLabel], crf: CoreModel, faMap: RandomLongAlphabet, randFsetMap: SemiRandomFsetMapping) =
+    this(fs, b, ModelAuxiliaries(l, wp, ws, ifs), ss, lalpha, crf, faMap, randFsetMap)
   override def deriveFaMap = faMap
 }
 
@@ -134,7 +140,7 @@ class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[
 }
 
 class RandomNonFactoredModel(fspec: String, lex: Option[BloomLexicon], wp: Option[WordProperties], ss: Int, crf: CoreModel, faMap: RandomLongAlphabet, numStates: Int)
-extends NonFactoredModel(fspec, lex, wp, ss, crf, faMap, numStates)
+  extends NonFactoredModel(fspec, lex, wp, ss, crf, faMap, numStates)
 
 object InducedFeatureMapProtocol extends DefaultProtocol {
 
@@ -202,14 +208,9 @@ abstract class CoreModelSerializer extends DefaultProtocol {
     })
 
   implicit def bloomFilter: Format[BloomFilter] =
-    asProduct4({ (k: Int, m: Int, n: Int, filter: collection.mutable.BitSet) =>
-      val bf = new BloomFilter
-      bf.size = k
-      bf.width = m
-      bf.nelements = n
-      bf.filter = filter
-      bf
-    })((bf: BloomFilter) => (bf.size, bf.width, bf.nelements, bf.filter))
+    asProduct3({ (k: Int, m: Int, filter: collection.mutable.BitSet) =>
+      new BloomFilter(k, m, filter)
+    })((bf: BloomFilter) => (bf.size, bf.width, bf.filter))
 
   implicit def bitsetMap: Format[collection.mutable.BitSet] =
     wrap[collection.mutable.BitSet, Array[Int]](_.toArray, { (ar: Array[Int]) =>
@@ -222,7 +223,7 @@ abstract class CoreModelSerializer extends DefaultProtocol {
   implicit def slabelMap: Format[SLabel] = wrap(_.v, SLabel)
   implicit def labelMap: Format[Label] = asProduct2(Label)(Label.unapply(_).get)
   implicit def beginMap: Format[BeginState] = wrap(_.s, BeginState)
-  implicit def uncMap: Format[UncertainLabel] = wrap(_.labelString,{_:String => new UncertainLabel})
+  implicit def uncMap: Format[UncertainLabel] = wrap(_.labelString, { _: String => new UncertainLabel })
 
   implicit def abstractLabelMap: Format[AbstractLabel] = lazyFormat(asUnion[AbstractLabel](slabelMap, beginMap, labelMap, uncMap))
 
@@ -232,6 +233,18 @@ abstract class CoreModelSerializer extends DefaultProtocol {
       s foreach { case (k, v) => h += (k -> v) }
       h
     })
+    
+  implicit def semiRandomFsetMappingMap : Format[SemiRandomFsetMapping] = 
+    wrap[SemiRandomFsetMapping,Array[Set[Int]]]((_.arr),((arr: Array[Set[Int]]) => new SemiRandomFsetMapping(arr)))
+
+  implicit def randomLongAlphabetMap: Format[RandomLongAlphabet] = {
+    wrap[RandomLongAlphabet, Int](
+      { rla: RandomLongAlphabet =>
+        rla.size
+      }, { s: Int =>
+        new RandomLongAlphabet(s)
+      })
+  }
 
   protected def checkModel(m: Model) = {
     import FastLoops._
@@ -289,18 +302,19 @@ object NonFactoredSerializer extends CoreModelSerializer {
 
   implicit def longAlphabetMap: Format[LongAlphabet] = {
     wrap[LongAlphabet, List[(Long, Int)]](
-      { case la : RandomLongAlphabet => List((0L,la.size))
+      {
+        case la: RandomLongAlphabet => List((0L, la.size))
         case la: LongAlphabet =>
-        val olhmp = la.getUnderlyingMap
-        val lb = new collection.mutable.ListBuffer[(Long, Int)]
-        olhmp.forEachPair(new GetLongAlpha(lb))
-        lb.toList
+          val olhmp = la.getUnderlyingMap
+          val lb = new collection.mutable.ListBuffer[(Long, Int)]
+          olhmp.forEachPair(new GetLongAlpha(lb))
+          lb.toList
       }, { s: List[(Long, Int)] =>
         s match {
           case Nil =>
             new RandomLongAlphabet(115911564)
-          case (_,sz) :: Nil => new RandomLongAlphabet(sz)
-          case a => 
+          case (_, sz) :: Nil => new RandomLongAlphabet(sz)
+          case a =>
             val a = new LongAlphabet
             s foreach { case (l, i) => a.add(l, i) }
             a
@@ -308,11 +322,11 @@ object NonFactoredSerializer extends CoreModelSerializer {
       })
   }
 
-  
   implicit def nonfactoredModelMap: Format[NonFactoredModel] =
     asProduct7((fs: String, l: Option[BloomLexicon], wp: Option[WordProperties], s: Int, c: CoreModel, fm: LongAlphabet, ns: Int) =>
-      new NonFactoredModel(fs, l, wp, s, c, fm, ns)){(m: NonFactoredModel) =>
-        (m.fspec, m.lex, m.wp, m.segSize, m.crf, m.faMap, m.numStates)}
+      new NonFactoredModel(fs, l, wp, s, c, fm, ns)) { (m: NonFactoredModel) =>
+      (m.fspec, m.lex, m.wp, m.segSize, m.crf, m.faMap, m.numStates)
+    }
 
   def writeModel(m: NonFactoredModel, f: java.io.File) = Operations.toFile[NonFactoredModel](m)(f)
   def serializeAsBytes(m: NonFactoredModel) = Operations.toByteArray[NonFactoredModel](m)
@@ -325,21 +339,13 @@ object NonFactoredSerializer extends CoreModelSerializer {
     case Some(s) => readModel(s)
     case None => throw new RuntimeException("Model Not specified")
   }
-  
+
   implicit def nonfactoredModelMapRand: Format[RandomNonFactoredModel] =
     asProduct7((fs: String, l: Option[BloomLexicon], wp: Option[WordProperties], s: Int, c: CoreModel, fm: RandomLongAlphabet, ns: Int) =>
-      new RandomNonFactoredModel(fs, l, wp, s, c, fm, ns)){(m: RandomNonFactoredModel) =>
-        val r : RandomLongAlphabet = m.faMap match {case m: RandomLongAlphabet => m case _ => new RandomLongAlphabet(1)} 
-        (m.fspec, m.lex, m.wp, m.segSize, m.crf, r, m.numStates)}
-
-  implicit def randomLongAlphabetMap: Format[RandomLongAlphabet] = {
-    wrap[RandomLongAlphabet, Int](
-      { rla: RandomLongAlphabet =>
-        println("Writing out \"RandomLongAlphabet\" with integer: " + rla.size)
-        rla.size }, { s: Int =>
-          println("Reading in \"RandomLongAlphabet\" with integer: " + s)
-          new RandomLongAlphabet(s) })
-  }
+      new RandomNonFactoredModel(fs, l, wp, s, c, fm, ns)) { (m: RandomNonFactoredModel) =>
+      val r: RandomLongAlphabet = m.faMap match { case m: RandomLongAlphabet => m case _ => new RandomLongAlphabet(1) }
+      (m.fspec, m.lex, m.wp, m.segSize, m.crf, r, m.numStates)
+    }
 
   def writeRModel(m: RandomNonFactoredModel, f: java.io.File) = Operations.toFile[RandomNonFactoredModel](m)(f)
   def serializeAsBytes(m: RandomNonFactoredModel) = Operations.toByteArray[RandomNonFactoredModel](m)
@@ -352,7 +358,7 @@ object NonFactoredSerializer extends CoreModelSerializer {
     case Some(s) => readRModel(s)
     case None => throw new RuntimeException("Model Not specified")
   }
-  
+
 }
 
 object StandardSerializer extends CoreModelSerializer {
@@ -390,17 +396,67 @@ object StandardSerializer extends CoreModelSerializer {
     asProduct7((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: OpenLongObjectHashMap) =>
       new StdModel(a, b, c, f, g, h, i))((a: StdModel) => (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.fsetMap))
 
-  def writeModel(m: StdModel, f: java.io.File) = {
-    checkModel(m)
-    val am: StdModel = Model.compactModel(m)
-    Operations.toFile[StdModel](am)(f)
+  implicit def randomModelMap: Format[RandomStdModel] =
+    asProduct8((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: RandomLongAlphabet, j: SemiRandomFsetMapping) =>
+      new RandomStdModel(a, b, c, f, g, h, i, j))((a: RandomStdModel) => 
+        (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.faMap, a.randFsetMap))
+
+  def writeModel(m: StdModel, f: java.io.File): Unit = {
+    m match {
+      case model: RandomStdModel =>
+        val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+        val headerBytes = "RAND\n".getBytes()
+        os.write(headerBytes)
+        val bytes = Operations.toByteArray[RandomStdModel](model) // Operations.toByteArray[RandomStdModel](m)
+        os.write(bytes)
+        os.close()
+      case model: StdModel =>
+        val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+        val headerBytes = "STAN\n".getBytes()
+        os.write(headerBytes)
+        val bytes = Operations.toByteArray[StdModel](model) // Operations.toByteArray[RandomStdModel](m)
+        os.write(bytes)
+        os.close()
+    }
   }
 
-  def serializeAsBytes(m: StdModel) = Operations.toByteArray[StdModel](m)
-  def readModel(f: java.io.File): StdModel = Operations.fromFile[StdModel](f)
-  def readModel(r: java.io.InputStream): StdModel = Operations.read[StdModel](r)
-  def readModel(ba: Array[Byte]): StdModel = Operations.fromByteArray[StdModel](ba)
-  def readModelString(s: String): StdModel = readModel(s.getBytes)
+  def getFirstNBytes(bis: java.io.BufferedInputStream, n: Int) = {
+    var e = true
+    var c = 0
+    val bBuf = new collection.mutable.ArrayBuffer[Byte]()
+    while (c < n) {
+      c += 1
+      val b = bis.read()
+      bBuf append b.toByte
+    }
+    bis.read() // this should be a newline
+    bBuf.toArray
+  }
+
+  def readModel(in: java.io.InputStream): StdModel = {
+    val is = new java.io.BufferedInputStream(in)
+    val firstFourBytes = getFirstNBytes(is, 4)
+    val firstLine = new String(firstFourBytes)
+    val arBuf = new collection.mutable.ArrayBuffer[Byte]()
+    var nRead: Int = 0
+    if (!(firstLine equals "RAND") && !(firstLine equals "STAN"))
+      arBuf appendAll firstFourBytes
+    while (nRead != (-1)) {
+      nRead = is.read()
+      if (nRead >= 0) arBuf append nRead.toByte
+    }
+    val byteArray = arBuf.toArray
+    if (firstLine equals "RAND") {
+      Operations.fromByteArray[RandomStdModel](byteArray)
+    } else {
+      Operations.fromByteArray[StdModel](byteArray)
+    }
+  }
+
+  //def serializeAsBytes(m: StdModel) = Operations.toByteArray[StdModel](m)
+  def readModel(f: java.io.File): StdModel = readModel(new java.io.FileInputStream(f))
+  //def readModel(r: java.io.InputStream): StdModel = Operations.read[StdModel](r)
+
   def readModel(s: String): StdModel = readModel(new java.io.File(s))
   def readModel(o: Option[String]): StdModel = o match {
     case Some(s) => readModel(s)

@@ -53,7 +53,7 @@ class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln:
 class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
 
   def iseq: Seq[AbstractInstance] = sGen.extractFeatures(src).iseq
-  def length : Int = iseq.length
+  def length: Int = iseq.length
 }
 
 object InstSeq {
@@ -112,8 +112,8 @@ abstract class SeqGen[Obs](val opts: Options) {
   type FRepT <: FeatureRep[Obs]
   val frep: FRepT
   //val lAlphabet : Alphabet[AbstractLabel]
-  val lAlphabet = 
-    if (opts.partialLabels) new AlphabetWithSpecialCases(false,{x:AbstractLabel => x.uncertain}) 
+  val lAlphabet =
+    if (opts.partialLabels) new AlphabetWithSpecialCases(false, { x: AbstractLabel => x.uncertain })
     else new Alphabet[AbstractLabel]
   val recodeAlphabet = new Alphabet[AbstractLabel]
   val unrecodeAlphabet = new Alphabet[AbstractLabel]
@@ -258,7 +258,8 @@ abstract class SeqGen[Obs](val opts: Options) {
         dir.listFiles.toSeq filter
           { f: File =>
             if (!f.isFile) false
-            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } map
+            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
+          } map
           { f: File => toSources(f) }
       case None =>
         opts.inputFile match {
@@ -281,7 +282,8 @@ abstract class SeqGen[Obs](val opts: Options) {
         dir.listFiles.toSeq filter
           { f: File =>
             if (!f.isFile) false
-            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } flatMap
+            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
+          } flatMap
           { f: File => extractFeatures(toSources(f)) }
       case None =>
         opts.inputFile match {
@@ -306,7 +308,7 @@ abstract class SeqGen[Obs](val opts: Options) {
 
   // create a source - always have it be a beginning if the state corresponds to "otherIndex"
   protected def createSourceI(i: Int, o: Obs, b: Boolean, m: Option[Map[String, String]]) = frep.createSource(i, o, (b || (otherIndex match { case Some(oi) => oi == i case None => false })), m)
-  protected def getIndex(l: AbstractLabel) = l match { case ILabel(i) => i case _ => lAlphabet.update(l)}
+  protected def getIndex(l: AbstractLabel) = l match { case ILabel(i) => i case _ => lAlphabet.update(l) }
 
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean) = createSourceI(getIndex(l), o, beg, None)
 
@@ -315,7 +317,7 @@ abstract class SeqGen[Obs](val opts: Options) {
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean, i: Map[String, String]) = createSourceI(getIndex(l), o, beg, Some(i))
   def createSource(l: AbstractLabel, o: Obs, i: Map[String, String]) = createSourceI(getIndex(l), o, false, Some(i))
   def createSource(o: Obs, i: Map[String, String]) = createSourceI(-1, o, false, Some(i)) // label of -1 means that the label is missing/unknown
-  
+
   // ---- Stuff for handling scoring/evaluation - possibly useful for Training time as well, so put this here rather than in DecodingSeqGen
   var totalTokCnt = 0
   var totalIncorrectTok = 0
@@ -330,7 +332,7 @@ abstract class SeqGen[Obs](val opts: Options) {
   def getAccuracy: Double = {
     ((totalTokCnt.toDouble - totalIncorrectTok.toDouble) / totalTokCnt.toDouble)
   }
-  
+
   def evaluateSequences(seqs: Seq[InstanceSequence]) =
     seqs foreach { s =>
       for (i <- 0 until s.length) {
@@ -397,18 +399,34 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     }
   }
 
-  def extractFeatures(dseq: SourceSequence[Obs]) : InstanceSequence = {
+  def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
     var sid = -1
-          val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
-            if (dseq(i).beg) sid += 1
-            val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
-            frep.applyFeatureFns(inst, dseq, i)
-            inst
-          }
-          InstSeq(iseq, dseq.st, dseq.en)
+    val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+      if (dseq(i).beg) sid += 1
+      val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+      frep.applyFeatureFns(inst, dseq, i)
+      inst
+    }
+    InstSeq(iseq, dseq.st, dseq.en)
   }
-  
+
+  def countFeatureTypes(dseq: SourceSequence[Obs]): Unit = {
+    var sid = -1
+    var i = 0
+    while (i < dseq.length) {
+      if (dseq(i).beg) sid += 1
+      frep.countFeatureTypes(dseq, i)
+      i += 1
+    }
+  }
+
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+    CrfInstance.numLabels_=(lAlphabet.size)
+    if (opts.randomFeatures || opts.randomSupportedFeatures) {
+      sourcePairSeqs foreach countFeatureTypes
+      frep.numFeatureTypes = frep.featureTypeSet.size
+      frep.featureTypeSet = Set() // de-reference set here as it could be large
+    }
     frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
     frep.resetDisplacement // reset the displaceable feature table
     if (opts.semiCrf) {
@@ -436,22 +454,22 @@ abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], op
       true
     }
   }
-  
-  def extractFeatures(dseq: SourceSequence[Obs]) : InstanceSequence = {
+
+  def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
     var sid = -1
-      val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
-        if (dseq(i).beg) sid += 1
-        val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
-        frep.applyFeatureFns(None, inst, dseq, i)
-        inst: AbstractInstance
-      }
-      InstSeq(iseq, dseq.st, dseq.en)
+    val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+      if (dseq(i).beg) sid += 1
+      val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+      frep.applyFeatureFns(None, inst, dseq, i)
+      inst: AbstractInstance
+    }
+    InstSeq(iseq, dseq.st, dseq.en)
   }
 
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
     if (opts.numRandomFeatures > 0) { // create instance sequences that only contain ObsSource
-      sourcePairSeqs map {dseq => InstSeq(this,dseq)}
-    } else 
+      sourcePairSeqs map { dseq => InstSeq(this, dseq) }
+    } else
       sourcePairSeqs map extractFeatures
   }
 
@@ -469,7 +487,6 @@ abstract class DecodingSeqGen[Obs](model: Model, val decodingOpts: Options) exte
 
   def extractFeatures(spSeq: SourceSequence[Obs]): InstanceSequence
 
-  
   /**
    * Create a deserialized object from a raw string
    * @param string  A string representing a piece of text to process
@@ -514,8 +531,8 @@ abstract class NonFactoredDecodingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], va
 
 }
 
-abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], model: StdModel, decodingOpts: Options, preModel: Boolean = false) 
-extends DecodingSeqGen[Obs](model, decodingOpts) {
+abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], model: StdModel, decodingOpts: Options, preModel: Boolean = false)
+  extends DecodingSeqGen[Obs](model, decodingOpts) {
   def this(m: StdModel, opts: Options, pre: Boolean = false) = this(new DecodingFactoredFeatureRep[Obs](opts, m, pre), m, opts)
   def this(model: StdModel, pre: Boolean = false) = this(model, new Options(), pre)
 

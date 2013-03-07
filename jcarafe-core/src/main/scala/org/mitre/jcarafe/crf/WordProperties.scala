@@ -9,7 +9,9 @@ class WordProperties(val file: Option[java.io.File]) extends HashMap[Long, List[
   import org.mitre.jcarafe.crf.IncrementalMurmurHash._
   def this(d: String) = this(Some(new java.io.File(d)))
   def this() = this(None)
-  file match { case Some(f) => build(f) case None => }
+  
+  file foreach build
+  
   private def build(f: java.io.File) = {
     val src = scala.io.Source.fromFile(f)("UTF8").getLines()
     src foreach { l =>

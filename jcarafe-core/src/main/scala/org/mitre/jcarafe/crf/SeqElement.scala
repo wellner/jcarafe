@@ -67,7 +67,7 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
 
 class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends AbstractInstance(label, orig, segId) {
 
-  type FType = ValuedFeatureType
+  type FType = AbstractValuedFeatureType
 
   private val seg1Features = new ArrayBuffer[Feature]
   private var compVec: Option[Array[Array[Feature]]] = cv
@@ -75,7 +75,7 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
   def getCompactVec = throw new RuntimeException("Unimplemented")
   def getCompVec: Array[Array[Feature]] =
     if (CrfInstance.useCache) {
-      if (!CrfInstance.training && CrfInstance.maxSegSize < 1)
+      if ((!CrfInstance.training && CrfInstance.maxSegSize < 1))
         Array(seg1Features.toArray) // case where we're decodign with standard CRFs
       else
         getCacheCompVec // other cases we compile out feature vec on the fly
@@ -101,7 +101,7 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
 
   private def expandVector: Array[Array[Feature]] = {
     val fs = Array.tabulate(CrfInstance.maxSegSize + 1) { _ => new ArrayBuffer[Feature] }
-    userVec foreach { ft => ft.getFeatures foreach { e => fs(ft.segsize) += e } }
+    userVec foreach { ft => ft.getFeatures foreach { e => fs(ft.segsize) append e } }
     fs map (_.toArray)
   }
 }
@@ -118,6 +118,8 @@ object CrfInstance {
   var training = false
   var maxSegSize = 0 // this is "0" based - so 0 means segment size 1 observation, 1 is size 2, etc.
   var diskCache: Option[String] = None
+  var randomFeatures = false
+  var numLabels = 0 // global for number of labels
 }
 
 /*

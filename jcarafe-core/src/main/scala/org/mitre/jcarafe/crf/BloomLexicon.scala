@@ -23,7 +23,7 @@ class BloomLexicon(val dir: Option[java.io.File]) extends Lexicon {
         d.listFiles foreach { f: java.io.File =>
           if (f.isFile) {
             val fn = lexName(f.getName)
-            val bf = new BloomFilter(f)
+            val bf = BloomFilter(f)
             bloomTable.update(fn, bf)
           }
         }
@@ -49,37 +49,52 @@ class BloomLexicon(val dir: Option[java.io.File]) extends Lexicon {
 
 }
 
-class BloomFilter(val file: Option[java.io.File] = None) {
-
-  def this(f: java.io.File) = this(Some(f))
-
-  import org.mitre.jcarafe.crf.IncrementalMurmurHash.mix
-
-  var size = 0
-  var nelements = 0
-  var width = 0
-  var filter = {
-    file match {
-      case Some(file) =>
-        count(file)
-        width = (-(nelements: Double) * math.log(0.001) / (math.log(2.0) * math.log(2.0))).toInt
-        size = (0.7 * width / nelements).toInt max 1
-        new BitSet(width)
-      case None => new BitSet()
-    }
+object BloomFilter {
+  def apply(file: java.io.File) : BloomFilter = {
+    val nelements = countEntriesInLexiconFile(file)
+    val width = (-(nelements: Double) * math.log(0.001) / (math.log(2.0) * math.log(2.0))).toInt
+    val size = (0.7 * width / nelements).toInt max 1
+    val bf = new BloomFilter(size,width)
+    bf.buildFromFile(file)
+    bf
   }
-
-  file match { case Some(file) => build(file) case None => }
-
+  
+  def apply(lst: Seq[Long]) : BloomFilter = {
+    val nelements = lst.length
+    val width = (-(nelements: Double) * math.log(0.001) / (math.log(2.0) * math.log(2.0))).toInt
+    val size = (0.7 * width / nelements).toInt max 1
+    val bf = new BloomFilter(size,width)
+    bf.buildFromLongSeq(lst)
+    bf
+  } 
+  
+  def countEntriesInLexiconFile(f: java.io.File) : Int = {
+    var nelements = 0
+    val src = scala.io.Source.fromFile(f)("UTF8").getLines()
+    src foreach { l =>
+      nelements += 1
+      forIndex(l.length) { i => if (l(i) == ' ') nelements += 1 }
+    }
+    nelements
+  }
+  
   def baseHash(s: String) = {
     val barr = s.getBytes("UTF-16")
     IncrementalMurmurHash.hash(barr, barr.length, 0)
   }
 
+}
+
+class BloomFilter(val size: Int, val width: Int, val filter: BitSet) {
+  
+  def this(sz: Int, w: Int) = this(sz, w, new BitSet(w)) 
+
+  import org.mitre.jcarafe.crf.IncrementalMurmurHash.mix
+
   private def getHash(l: Long, i: Int): Int =
     (math.abs(mix(l, i.toLong) % width)).toInt
 
-  def contains(s: String): Boolean = contains(baseHash(s))
+  def contains(s: String): Boolean = contains(BloomFilter.baseHash(s))
 
   def contains(k: Long): Boolean = {
     var c = true
@@ -91,15 +106,23 @@ class BloomFilter(val file: Option[java.io.File] = None) {
     }
     c
   }
-
-  def add(e: String) = {
-    val l = baseHash(e)
+  
+  def add(l: Long) : Unit = {
     forIndex(size) { i =>
       filter += (getHash(l, i))
     }
   }
 
-  def build(f: java.io.File) = {
+  def add(e: String) : Unit = {
+    val l = BloomFilter.baseHash(e)
+    add(l)
+  }
+  
+  def buildFromLongSeq(ls: Seq[Long]) : Unit = {
+    ls foreach add
+  }
+
+  def buildFromFile(f: java.io.File) = {
     val src = scala.io.Source.fromFile(f)("UTF8").getLines()
     src foreach { l =>
       val els = l.split(' ')
@@ -108,13 +131,23 @@ class BloomFilter(val file: Option[java.io.File] = None) {
       }
     }
   }
+}
 
-  def count(f: java.io.File) = {
-    val src = scala.io.Source.fromFile(f)("UTF8").getLines()
-    src foreach { l =>
-      nelements += 1
-      forIndex(l.length) { i => if (l(i) == ' ') nelements += 1 }
-    }
+class BloomFilterBuilder(val err: Double) {
+  var elements = Set[Long]()
+  def add(el: Long) = elements += el
+  def add(s: String) = {
+    elements += BloomFilter.baseHash(s)
   }
+  
+  def createBloomFilter : BloomFilter = {
+    val nelements = elements.size
+    val width = (-(nelements: Double) * math.log(err) / (math.log(2.0) * math.log(2.0))).toInt        
+    
+    val size = (0.7 * width / nelements).toInt max 1
 
+    val bf = new BloomFilter(size, width)
+    elements foreach bf.add
+    bf
+  }
 }

@@ -131,7 +131,6 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
       filteredSeqs.toIndexedSeq
     } else seqs
     printHeader(aseqs)
-    println("About to train model...")
     trainModel(dCrf, aseqs)
   }
 
@@ -142,16 +141,27 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
   import StandardSerializer._ // writing and reading models
   type TrSeqGen = TrainingSeqGen[O]
 
-  def getModel(ss: Int, coreModel: CoreModel) = {
+  def getStdModel(ss: Int, coreModel: CoreModel) = {
     val stM = new StdModel(sGen.getModelName, !opts.noBegin, sGen.getLexicon, sGen.getWordProps, sGen.getWordScores, sGen.getInducedFeatureMap, ss, sGen.getLAlphabet, coreModel, sGen.frep.fsetMap)
     if (opts.l1) Model.compactModel(stM) else stM
+  }
+  
+  def getRandModel(ss: Int, coreModel: CoreModel) = {
+    new RandomStdModel(sGen.getModelName, !opts.noBegin, sGen.getLexicon, sGen.getWordProps, 
+        sGen.getWordScores, sGen.getInducedFeatureMap, ss, sGen.getLAlphabet, coreModel, 
+        sGen.frep.faMap.asInstanceOf[RandomLongAlphabet], sGen.frep.semiRandomFset)
   }
 
   def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs, opts.seed)
     val coreModel = dCrf.train(accessSeq, opts.maxIters, modelIterFn)
-    val m = getModel((sGen.getMaxSegmentSize + 1), coreModel)
+    if (opts.randomFeatures || opts.randomSupportedFeatures) {
+      val m = getRandModel((sGen.getMaxSegmentSize + 1), coreModel)
+      writeModel(m, new java.io.File(opts.model.get))
+    } else {
+    val m = getStdModel((sGen.getMaxSegmentSize + 1), coreModel)
     writeModel(m, new java.io.File(opts.model.get))
+    }
   }
 }
 

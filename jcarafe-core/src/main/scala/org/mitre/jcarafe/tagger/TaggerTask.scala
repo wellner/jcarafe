@@ -62,6 +62,7 @@ class StdTaggerTask(val opts: Options) {
 
   if (opts.train) org.mitre.jcarafe.crf.CrfInstance.training = true
   if (opts.noCache) org.mitre.jcarafe.crf.CrfInstance.useCache = false
+  if (opts.numRandomFeatures > 0) org.mitre.jcarafe.crf.CrfInstance.randomFeatures = true
   opts.diskCache match { case Some(d) => if (opts.train) org.mitre.jcarafe.crf.CrfInstance.diskCache = Some(d) case None => }
   opts.tokenizerPatterns foreach { f =>
     org.mitre.jcarafe.tokenizer.FastTokenizer.setTokenizerAugmenters(new java.io.File(f))

@@ -75,12 +75,11 @@ class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) e
     if (!specialCase(e)) {
       super.update(e)
     } else {
-      -1 
+      -1
     }
 }
 
 class LongAlphabet(var fixed: Boolean) {
-  import IncrementalMurmurHash.mix
   def this() = this(false)
   var size = 0
   private val iMap = new OpenLongIntHashMap()
@@ -102,25 +101,52 @@ class LongAlphabet(var fixed: Boolean) {
     size = math.max(v, size)
   }
   def get(k: Long) = iMap.get(k)
-  def update(yprv: Int, ycur: Int, fname: Long): Int = update(mix(mix(fname, ycur), yprv))
-  def update(ycur: Int, fname: Long): Int = update(mix(fname, ycur))
+  def update(yprv: Int, ycur: Int, fname: Long): Int = update(FeatureHashMixer.mixFeature(yprv, ycur, fname))
+  def update(ycur: Int, fname: Long): Int = update(FeatureHashMixer.mixFeature(ycur, fname))
+}
+
+object FeatureHashMixer {
+  import IncrementalMurmurHash.mix
+
+  @inline
+  final def mixFeature(ycur: Int, fname: Long): Long = mix(fname, ycur)
+
+  @inline
+  final def mixFeature(yprv: Int, ycur: Int, fname: Long): Long = mix(mix(fname, ycur), yprv)
+
+  @inline
+  final def mixFeature(segSize: Int, yprv: Int, ycur: Int, fname: Long): Long = mix(mix(mix(fname, ycur), yprv), segSize)
+
 }
 
 class RandomLongAlphabet(sz: Int) extends LongAlphabet(true) {
   import IncrementalMurmurHash._
 
   size = sz
-
-  override def update(k: Long): Int = {
-    (k % size).toInt
+  @inline
+  final override def update(k: Long): Int = {
+    if (k < 0) (math.abs(k) % size).toInt
+    else (k % size).toInt
   }
 
   override def get(k: Long): Int = update(k)
-
   // hash this (again) before mod-ing
   def updateHash(k: Long): Int = update(mix(0L, k))
-
 }
+
+class SemiRandomFsetMapping(val sz: Int, val arr: Array[Set[Int]]) {
+  def this(sz: Int) = this(sz,Array.fill(sz)(Set[Int]()))
+  def this(ar: Array[Set[Int]]) = this(ar.size, ar)
+  
+  final def get(v: Long) : Set[Int] = arr((math.abs(v.toInt) % sz))
+  def add(v: Long, yp: Int) = {
+    val pos = math.abs(v.toInt) % sz
+    val ss = arr(pos)
+    arr(pos) = ss + yp
+  }
+  
+}
+
 
 /*
  * Represents a 'type' of feature that may have many specific features for different
@@ -151,13 +177,57 @@ class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fca
   override def hashCode: Int = 41 * (41 * (41 + fname.hashCode) + segsize) + edgep.hashCode
 }
 
-class ValuedFeatureType(val value: Double, val ft: FeatureType) extends FeatureCore {
+abstract class AbstractValuedFeatureType(val value: Double) extends FeatureCore {
+  def getFeatures: Iterable[Feature]
+  def segsize: Int
+}
+
+class ValuedFeatureType(value: Double, val ft: FeatureType) extends AbstractValuedFeatureType(value) {
   def getName = ft.getName
-  def getFeatures =
+  def getFeatures: Iterable[Feature] =
     if (value == 1.0) ft.fdetail
     else ft.fdetail map { f => new NBinFeature(value, f.prv, f.cur, f.fid, f.nfid) }
   def segsize = ft.segsize
   def getFName = ft.fname
+}
+
+class ValuedSemiSupportedFeatureType(value: Double, val ss: Int, val fname: Long, val edgep: Boolean, 
+    val faMap: LongAlphabet, fsetMap: SemiRandomFsetMapping) extends AbstractValuedFeatureType(value) {
+
+  def segsize = ss
+  def getName = fname.toString
+  override def getFeatures: Iterable[Feature] = {
+    val nl = CrfInstance.numLabels
+    if (edgep) {
+      for (i <- 0 until nl; j <- 0 until nl) yield {
+        val fid = faMap.update(i, j, fname)
+        new NBinFeature(value, i, j, fid, -1)
+      }
+    } else {
+      fsetMap.get(fname) map {i =>
+        val fid = faMap.update(-1, i, fname)
+        new NBinFeature(value, -1, i, fid, -1)
+        }
+    }
+  }
+}
+
+class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val edgep: Boolean, val faMap: LongAlphabet) extends AbstractValuedFeatureType(value) {
+  def segsize = ss
+  def getName = fname.toString
+  // this will let us "lazily" compute features
+  override def getFeatures: Iterable[Feature] = {
+    val nl = CrfInstance.numLabels
+    if (edgep) {
+      for (i <- 0 until nl; j <- 0 until nl) yield {
+        new NBinFeature(value, i, j, faMap.update(i, j, fname), -1)
+      }
+    } else {
+      for (i <- 0 until nl) yield {
+        new NBinFeature(value, -1, i, faMap.update(-1, i, fname), -1)
+      }
+    }
+  }
 }
 
 case class PreFeature(val prv: Int, val cur: Int, val name: Long)
@@ -181,7 +251,6 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) {
   def getInducedFeatureMap: Option[InducedFeatureMap]
 
   var otherIndex = -1 // keep track of index for "other" label associated with sparse labeling tasks
-  var numberOfTargetLabels = -1 // this should get set after this has been determined
 }
 
 /*
@@ -283,8 +352,18 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
 
   def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManager[Obs](opts, m, pre), opts, m)
 
+  var randomModel = (model.isInstanceOf[RandomStdModel])
+  CrfInstance.randomFeatures = randomModel
+  CrfInstance.numLabels = model.getLabelAlphabet.size
   val fsetMap: OpenLongObjectHashMap = model.fsetMap
-  val faMap: LongAlphabet = model.deriveFaMap
+  val faMap: LongAlphabet = {
+    model.deriveFaMap
+  }
+  //val fsetFilter: BloomFilter = model match { case m: RandomStdModel => m.fsetFilter case _: StdModel => new BloomFilter(0, 0) }
+  //val semiRandomFset = new SemiRandomFsetMapping(1000) // XXX - need to have this within the serialized model
+  val semiRandomFset = model match {case m: RandomStdModel => m.randFsetMap case _: StdModel => new SemiRandomFsetMapping(1)}
+  val useSemiRandomFeatures = semiRandomFset.sz > 10
+  
   mgr.lex_=(if (mgr.lex.isEmpty) model.lex else mgr.lex)
   mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
   mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
@@ -298,27 +377,67 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit =
     addFeature(ss, inst, fname, vl, false, false)
 
-  def addFeature(ss: Int, inst: CrfInstance, fname: BuiltFeature, self: Boolean, edgeP: Boolean): Unit = 
+  def addFeature(ss: Int, inst: CrfInstance, fname: BuiltFeature, self: Boolean, edgeP: Boolean): Unit =
     addFeature(ss, inst, fname.get, fname.value, self, edgeP)
 
-  def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean, edgeP: Boolean): Unit =
-    fsetMap.get(fname) match {
-      case (ft: FeatureType) =>
-        inst add (new ValuedFeatureType(vl, ft))
-      case _ =>
+  def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean, edgeP: Boolean): Unit = {
+    if (randomModel && !useSemiRandomFeatures) {
+      addRandomFeature(ss, inst, fname, vl, edgeP)
+    } else if (randomModel && useSemiRandomFeatures) { // check for semirandom supported feature mode here
+      addSemiRandomSupportedFeature(ss, inst, fname, vl, edgeP)
+    } else {
+      fsetMap.get(fname) match {
+        case (ft: FeatureType) =>
+          inst add (new ValuedFeatureType(vl, ft))
+        case _ =>
+      }
     }
+  }
   
-  def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean) : Unit = {
+  private def addSemiRandomSupportedFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
+    val nl = CrfInstance.numLabels
     if (edgeP) {
-      for (i <- 0 until numberOfTargetLabels; j <- 0 until numberOfTargetLabels) {
-        val fid = faMap.update(j,i,fname)
-        inst add new NBinFeature(vl,j,i,fid)
-      } 
+      var i = 0
+      var j = 0
+      while (i < nl) {
+        j = 0
+        while (j < nl) {
+          inst add new NBinFeature(vl, i, j, faMap.update(i,j,fname), -1)
+          j += 1
+        }
+        i += 1
+      }      
+    } else {
+      semiRandomFset.get(fname) map {i =>
+        val fid = faMap.update(-1, i, fname)
+        //println("Adding feature -- fname: " + fname + " lab: " + i + " fid = " + fid)
+        inst add new NBinFeature(vl, -1, i, fid, -1)
+        }
     }
-    for (i <- 0 until numberOfTargetLabels) {
-        val fid = faMap.update(-1,i,fname)
-        inst add new NBinFeature(vl,-1,i,fid)
-    }
+  }
+
+  @inline
+  private def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
+    //if (fsetFilter.contains(fname)) {
+      val nl = CrfInstance.numLabels
+      if (edgeP) {
+        var i = 0
+        var j = 0
+        while (i < nl) {
+          j = 0
+          while (j < nl) {
+            inst add new NBinFeature(vl, j, i, faMap.update(j,i,fname))
+            j += 1
+          }
+          i += 1
+        }
+      } else {
+        var i = 0
+        while (i < nl) {
+          inst add new NBinFeature(vl, -1, i, faMap.update(-1,i,fname))
+          i += 1
+        }
+      }
   }
 
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
@@ -335,8 +454,9 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         }
       } else {
         val fresult: FeatureReturn = fn(0, dseq, pos)
-        if (!fresult.edgeP || (pos > 0))
-          fresult.features foreach { f => addFeature(0, inst, f, fresult.self, fresult.edgeP) }
+        if (!fresult.edgeP || (pos > 0)) 
+          fresult.features foreach { f =>
+            addFeature(0, inst, f, fresult.self, fresult.edgeP) }
         if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
       }
     }
@@ -371,59 +491,71 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(opts: Options, supporting: Boolean, semi: Boolean) = this(FeatureManager[Obs](opts), opts, supporting, semi)
   def this(mgr: FeatureManager[Obs], opts: Options) = this(mgr, opts, false, opts.semiCrf)
   def this(opts: Options) = this(opts, false, opts.semiCrf)
+  
+  val random = opts.randomFeatures || opts.randomSupportedFeatures
+  
+  var featureTypeSet : Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
+  var numFeatureTypes = -1
 
+  lazy val numSemiRandomFeatureTypes = PrimeNumbers.getLargerPrime((numFeatureTypes * opts.randomFeatureCoefficient).toInt)
+  lazy val numRandomFeatures = PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
+  lazy val semiRandomFset = new SemiRandomFsetMapping(if (opts.randomSupportedFeatures) numSemiRandomFeatureTypes else 0)
+  
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }
-  val faMap: LongAlphabet = initialModel match {
+  lazy val faMap: LongAlphabet = initialModel match {
     case Some(m) => m.deriveFaMap
     case None =>
-      if (opts.numRandomFeatures > 0) {
-        val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564
-        new RandomLongAlphabet(nf)
+      if (random) {
+        new RandomLongAlphabet(numRandomFeatures)
       } else new LongAlphabet
   }
 
-  val neuralFaMap: LongAlphabet = 
-    if (opts.numRandomFeatures > 0) {
-      val nf = if (opts.numRandomFeatures > 10) opts.numRandomFeatures else 115911564
-        new RandomLongAlphabet(nf)
+  lazy val neuralFaMap: LongAlphabet =
+    if (random) {
+      new RandomLongAlphabet(numRandomFeatures)
     } else new LongAlphabet
 
-  //var fsetMap = mod match {case Some(m) => m.fsetMap case None => IntMap[FeatureType]()}
   val fsetMap: OpenLongObjectHashMap = initialModel match { case Some(m) => m.fsetMap case None => new OpenLongObjectHashMap() }
-  
+
   protected def addRandFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
-    import IncrementalMurmurHash.mix
-    if (yprv == -2) { // add in all state features, only
-      for (i <- 0 until numberOfTargetLabels) {
-        val fid = faMap.update(-1,i,fname)
-        inst add new NBinFeature(vl,-1,i,fid,-1)
-      }
-    } else {
-      for (i <- 0 until numberOfTargetLabels; j <- 0 until numberOfTargetLabels) {
-        val fid = faMap.update(j,i,fname)
-        inst add new NBinFeature(vl,j,i,fid,-1)
-      }
+    //fsetFilterBuilder.add(fname)
+    if (yprv == (-2))
+      inst add new ValuedRandomFeatureType(vl, ss, fname, false, faMap)
+    else {
+      inst add new ValuedRandomFeatureType(vl, ss, fname, true, faMap)
     }
+  }
+  
+  protected def addSemiRandomSupportedFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
+    if (yprv == (-2)) {
+      semiRandomFset.add(fname, yp) // update this for non-edge features
+      inst add new ValuedSemiSupportedFeatureType(vl, ss, fname, false, faMap, semiRandomFset)
+    } else {
+      inst add new ValuedSemiSupportedFeatureType(vl, ss, fname, true, faMap, semiRandomFset)
+    }
+    
   }
 
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit = {
-    if (opts.numRandomFeatures > 0)
-      addRandFeature(ss,inst,yprv,yp,fname,vl)
-    else {
-    val ft =
-      fsetMap.get(fname) match {
-        case v: FeatureType => v
-        case _ =>
-          val n = new FeatureType(fname, (yprv >= 0), ss, fcat)
-          fsetMap.put(fname, n)
-          n
+    if (opts.randomFeatures)
+      addRandFeature(ss, inst, yprv, yp, fname, vl)
+    else if (opts.randomSupportedFeatures) {
+      addSemiRandomSupportedFeature(ss, inst, yprv, yp, fname, vl)
+    } else {
+      val ft =
+        fsetMap.get(fname) match {
+          case v: FeatureType => v
+          case _ =>
+            val n = new FeatureType(fname, (yprv >= 0), ss, fcat)
+            fsetMap.put(fname, n)
+            n
+        }
+      if (yp >= 0) {
+        val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(yprv, yp, fname) }
+        val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(yp, fname) }
+        ft add new Feature(yprv, yp, fid, nfid)
       }
-    if (yp >= 0) {
-      val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(yprv, yp, fname) }
-      val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(yp, fname) }
-      ft add new Feature(yprv, yp, fid, nfid)
-    }
-    if (!supporting) inst add new ValuedFeatureType(vl, ft)
+      if (!supporting) inst add new ValuedFeatureType(vl, ft)
     }
   }
 
@@ -464,7 +596,23 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       }
     }
   }
+  
 
+  def countFeatureTypes(dseq: SourceSequence[Obs], pos: Int) = {
+    val upTo = (maxSegSize min pos)
+    val yp = dseq(pos).label
+    for (d <- 0 to upTo) {
+      val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
+      mgr.fnList foreach { fn =>
+        val fresult: FeatureReturn = fn(d, dseq, pos)
+        if (!fresult.edgeP || (pos > 0)) {
+          fresult.features foreach { f =>
+            featureTypeSet += f.get
+          }
+        }
+      }
+    }
+  }
   // For handling learning with unlabeled elements we need to do:
   //   Set this up so that if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
@@ -507,7 +655,6 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   def this(mgr: NonFactoredFeatureManager[Obs], ml: Int) = this(mgr, false, ml, false)
 
   val random = opts.numRandomFeatures > 0
-
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, i)
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, None)
   def getFeatureSetName = mgr.iString
