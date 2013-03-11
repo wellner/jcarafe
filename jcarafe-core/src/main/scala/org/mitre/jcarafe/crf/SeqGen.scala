@@ -240,13 +240,13 @@ abstract class SeqGen[Obs](val opts: Options) {
    * @return       A sequence of sequences of <code>ObsSource</code> objects
    */
   def toSources(d: DeserializationT): Seqs
-
+  
   def createSeqsWithInput(d: DeserializationT): Seq[InstanceSequence] = extractFeatures(toSources(d))
 
   def createSeqsWithInput(dseq: Seq[DeserializationT]): Seq[InstanceSequence] =
     dseq flatMap { (d: DeserializationT) => createSeqsWithInput(d) }
-
-  def createSourcesFromFiles: Seq[Seqs] =
+  
+  private def gatherFiles : Seq[File] = {
     opts.inputDir match {
       case Some(dirStr) =>
         val pat = opts.inputFilter match {
@@ -259,46 +259,33 @@ abstract class SeqGen[Obs](val opts: Options) {
           { f: File =>
             if (!f.isFile) false
             else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
-          } map
-          { f: File => toSources(f) }
+          } 
       case None =>
         opts.inputFile match {
-          case Some(f) =>
-            Seq(toSources(f))
-          case None =>
-            throw new RuntimeException("Expecting input file")
-        }
-    }
-
-  def createInstancesFromFiles: Seq[InstanceSequence] = {
-    opts.inputDir match {
-      case Some(dirStr) =>
-        val pat = opts.inputFilter match {
-          case Some(r) =>
-            new scala.util.matching.Regex(r)
-          case None => new scala.util.matching.Regex(".*")
-        }
-        val dir = new File(dirStr)
-        dir.listFiles.toSeq filter
-          { f: File =>
-            if (!f.isFile) false
-            else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
-          } flatMap
-          { f: File => extractFeatures(toSources(f)) }
-      case None =>
-        opts.inputFile match {
-          case Some(f) =>
-            extractFeatures(toSources(f))
+          case Some(f) => Seq(new File(f))
           case None =>
             throw new RuntimeException("Expecting input file")
         }
     }
   }
 
+  def createSourcesFromFiles: Seq[Seqs] = gatherFiles map toSources    
+  
+  def countFeatureTypesFromFiles : Unit = gatherFiles foreach {f => countFeatureTypes(toSources(f))}
+
+  def createInstancesFromFiles: Seq[InstanceSequence] = {
+    if (opts.randomFeatures || opts.randomSupportedFeatures) countFeatureTypesFromFiles
+    gatherFiles flatMap {f => extractFeatures(toSources(f))}
+  }
+
   //def createSeqsFromFiles : Seq[InstanceSequence] = extractFeaturesSeq(createSourcesFromFiles)
   def createSeqsFromFiles: Seq[InstanceSequence] = createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
 
   def extractFeatures(spSeqs: Seqs): Seq[InstanceSequence]
+  
+  def countFeatureTypes(src: SourceSequence[Obs]) : Unit = {}
+  
+  def countFeatureTypes(spSeqs: Seqs) : Unit = spSeqs.seq foreach countFeatureTypes
 
   def extractFeatures(src: SourceSequence[Obs]): InstanceSequence
 
@@ -410,7 +397,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     InstSeq(iseq, dseq.st, dseq.en)
   }
 
-  def countFeatureTypes(dseq: SourceSequence[Obs]): Unit = {
+  override def countFeatureTypes(dseq: SourceSequence[Obs]): Unit = {
     var sid = -1
     var i = 0
     while (i < dseq.length) {
@@ -420,15 +407,12 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     }
   }
 
+  // note that this extraction is done over a document's worth of sequences
+  // relevant for document-level feature handling
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
     CrfInstance.numLabels_=(lAlphabet.size)
     if (opts.randomFeatures || opts.randomSupportedFeatures) {
       sourcePairSeqs foreach countFeatureTypes
-      frep.numFeatureTypes = frep.featureTypeSet.size
-      frep.featureTypeSet = Set() // de-reference set here as it could be large      
-      println("Number of feature types in training set: " + frep.numFeatureTypes)
-      println("Number of random features: " + frep.numRandomFeatures)
-      if (opts.randomSupportedFeatures) println("Number of allocated random feature types: " + frep.numSemiRandomFeatureTypes)
     }
     frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
     frep.resetDisplacement // reset the displaceable feature table

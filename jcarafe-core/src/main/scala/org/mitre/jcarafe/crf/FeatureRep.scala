@@ -39,7 +39,7 @@ class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) exte
   def value = 1.0 // 1.0 by default
   def getName = fid.toString
   override def equals(other: Any): Boolean = other match {
-    case that: Feature => fid == that.fid && nfid == that.nfid
+    case that: Feature => fid == that.fid && nfid == that.nfid && cur == that.cur
     case _ => false
   }
   override def hashCode: Int = if (nfid >= 0) mix(mix(fid.toLong, nfid.toLong), cur.toLong).toInt else mix(fid.toLong, cur.toLong).toInt
@@ -134,19 +134,35 @@ class RandomLongAlphabet(sz: Int) extends LongAlphabet(true) {
   def updateHash(k: Long): Int = update(mix(0L, k))
 }
 
-class SemiRandomFsetMapping(val sz: Int, val arr: Array[Set[Int]]) {
-  def this(sz: Int) = this(sz,Array.fill(sz)(Set[Int]()))
-  def this(ar: Array[Set[Int]]) = this(ar.size, ar)
-  
-  final def get(v: Long) : Set[Int] = arr((math.abs(v.toInt) % sz))
-  def add(v: Long, yp: Int) = {
+class SemiRandomFsetMapping(val faMap: LongAlphabet, val sz: Int, val arr: Array[Set[Int]]) {
+  def this(faMap: LongAlphabet, sz: Int) = this(faMap, sz, Array.fill(sz)(Set[Int]()))
+  def this(faMap: LongAlphabet, ar: Array[Set[Int]]) = this(faMap, ar.size, ar)
+
+  final def get(v: Long): Set[Int] = {
+    val pos = (math.abs(v.toInt) % sz)
+    val f = arr(pos)
+    //println("Training feature get: " + v + " => " + f + " @ pos = " + pos)
+    f
+  }
+  def add(v: Long, yp: Int): Unit = {
     val pos = math.abs(v.toInt) % sz
     val ss = arr(pos)
-    arr(pos) = ss + yp
+    //val fid = faMap.update(yp, v)
+    arr(pos) = ss + yp // new Feature(-1, yp, fid)
   }
-  
+
+  def getOptimizedMapping: SemiRandomFsetMappingOptimized = {
+    val narr = arr map { s => s.toArray }
+    new SemiRandomFsetMappingOptimized(sz, narr)
+  }
 }
 
+class SemiRandomFsetMappingOptimized(val sz: Int, val arr: Array[Array[Int]]) {
+  def this(ar: Array[Array[Int]]) = this(ar.length, ar)
+  def this(sz: Int) = this(sz, Array.fill(sz)(Array()))
+  final def get(v: Long): Array[Int] = arr((math.abs(v.toInt) % sz))
+
+}
 
 /*
  * Represents a 'type' of feature that may have many specific features for different
@@ -191,27 +207,6 @@ class ValuedFeatureType(value: Double, val ft: FeatureType) extends AbstractValu
   def getFName = ft.fname
 }
 
-class ValuedSemiSupportedFeatureType(value: Double, val ss: Int, val fname: Long, val edgep: Boolean, 
-    val faMap: LongAlphabet, fsetMap: SemiRandomFsetMapping) extends AbstractValuedFeatureType(value) {
-
-  def segsize = ss
-  def getName = fname.toString
-  override def getFeatures: Iterable[Feature] = {
-    val nl = CrfInstance.numLabels
-    if (edgep) {
-      for (i <- 0 until nl; j <- 0 until nl) yield {
-        val fid = faMap.update(i, j, fname)
-        new NBinFeature(value, i, j, fid, -1)
-      }
-    } else {
-      fsetMap.get(fname) map {i =>
-        val fid = faMap.update(-1, i, fname)
-        new NBinFeature(value, -1, i, fid, -1)
-        }
-    }
-  }
-}
-
 class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val edgep: Boolean, val faMap: LongAlphabet) extends AbstractValuedFeatureType(value) {
   def segsize = ss
   def getName = fname.toString
@@ -249,6 +244,8 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) {
   def getWordProps: Option[WordProperties]
   def getWordScores: Option[WordScores]
   def getInducedFeatureMap: Option[InducedFeatureMap]
+
+  def getNumberOfFeatureTypes: Int = 0
 
   var otherIndex = -1 // keep track of index for "other" label associated with sparse labeling tasks
 }
@@ -359,9 +356,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   val faMap: LongAlphabet = {
     model.deriveFaMap
   }
-  val semiRandomFset = model match {case m: RandomStdModel => m.randFsetMap case _: StdModel => new SemiRandomFsetMapping(1)}
-  val useSemiRandomFeatures = semiRandomFset.sz > 10
-  
+
   mgr.lex_=(if (mgr.lex.isEmpty) model.lex else mgr.lex)
   mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
   mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
@@ -379,10 +374,8 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     addFeature(ss, inst, fname.get, fname.value, self, edgeP)
 
   def addFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, self: Boolean, edgeP: Boolean): Unit = {
-    if (randomModel && !useSemiRandomFeatures) {
+    if (randomModel) {
       addRandomFeature(ss, inst, fname, vl, edgeP)
-    } else if (randomModel && useSemiRandomFeatures) { // check for semirandom supported feature mode here
-      addSemiRandomSupportedFeature(ss, inst, fname, vl, edgeP)
     } else {
       fsetMap.get(fname) match {
         case (ft: FeatureType) =>
@@ -391,8 +384,9 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       }
     }
   }
-  
-  private def addSemiRandomSupportedFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
+
+  @inline
+  private def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
     val nl = CrfInstance.numLabels
     if (edgeP) {
       var i = 0
@@ -400,39 +394,18 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       while (i < nl) {
         j = 0
         while (j < nl) {
-          inst add new NBinFeature(vl, i, j, faMap.update(i,j,fname), -1)
+          inst add new NBinFeature(vl, j, i, faMap.update(j, i, fname))
           j += 1
         }
         i += 1
-      }      
-    } else {
-      semiRandomFset.get(fname) foreach {i =>
-        inst add new NBinFeature(vl, -1, i, faMap.update(-1, i, fname), -1)
-        }
-    }
-  }
-
-  @inline
-  private def addRandomFeature(ss: Int, inst: CrfInstance, fname: Long, vl: Double, edgeP: Boolean): Unit = {
-      val nl = CrfInstance.numLabels
-      if (edgeP) {
-        var i = 0
-        var j = 0
-        while (i < nl) {
-          j = 0
-          while (j < nl) {
-            inst add new NBinFeature(vl, j, i, faMap.update(j,i,fname))
-            j += 1
-          }
-          i += 1
-        }
-      } else {
-        var i = 0
-        while (i < nl) {
-          inst add new NBinFeature(vl, -1, i, faMap.update(-1,i,fname))
-          i += 1
-        }
       }
+    } else {
+      var i = 0
+      while (i < nl) {
+        inst add new NBinFeature(vl, -1, i, faMap.update(i, fname))
+        i += 1
+      }
+    }
   }
 
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
@@ -449,9 +422,10 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         }
       } else {
         val fresult: FeatureReturn = fn(0, dseq, pos)
-        if (!fresult.edgeP || (pos > 0)) 
+        if (!fresult.edgeP || (pos > 0))
           fresult.features foreach { f =>
-            addFeature(0, inst, f, fresult.self, fresult.edgeP) }
+            addFeature(0, inst, f, fresult.self, fresult.edgeP)
+          }
         if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
       }
     }
@@ -486,18 +460,21 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(opts: Options, supporting: Boolean, semi: Boolean) = this(FeatureManager[Obs](opts), opts, supporting, semi)
   def this(mgr: FeatureManager[Obs], opts: Options) = this(mgr, opts, false, opts.semiCrf)
   def this(opts: Options) = this(opts, false, opts.semiCrf)
-  
-  val random = opts.randomFeatures || opts.randomSupportedFeatures
-  
-  var featureTypeSet : Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
-  var numFeatureTypes = -1
 
-  lazy val numSemiRandomFeatureTypes = PrimeNumbers.getLargerPrime((numFeatureTypes * opts.randomSupportedCoefficient).toInt)
-  lazy val numRandomFeatures = 
+  val random = opts.randomFeatures
+
+  var featureTypeSet: Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
+  lazy val numFeatureTypes = {
+    val v = featureTypeSet.size
+    featureTypeSet = Set() // reset this to eventually GC feature type set
+    v
+  }
+
+  override def getNumberOfFeatureTypes = numFeatureTypes
+
+  lazy val numRandomFeatures =
     PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
-         
-  lazy val semiRandomFset = new SemiRandomFsetMapping(if (opts.randomSupportedFeatures) numSemiRandomFeatureTypes else 0)
-  
+
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }
   lazy val faMap: LongAlphabet = initialModel match {
     case Some(m) => m.deriveFaMap
@@ -515,30 +492,17 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   val fsetMap: OpenLongObjectHashMap = initialModel match { case Some(m) => m.fsetMap case None => new OpenLongObjectHashMap() }
 
   protected def addRandFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
-    //fsetFilterBuilder.add(fname)
-    if (yprv == (-2))
+    if (yprv == (-2)) // indicates a state feature rather than transition feature
       inst add new ValuedRandomFeatureType(vl, ss, fname, false, faMap)
     else {
       inst add new ValuedRandomFeatureType(vl, ss, fname, true, faMap)
     }
   }
-  
-  protected def addSemiRandomSupportedFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
-    if (yprv == (-2)) {
-      semiRandomFset.add(fname, yp) // update this for non-edge features
-      inst add new ValuedSemiSupportedFeatureType(vl, ss, fname, false, faMap, semiRandomFset)
-    } else {
-      inst add new ValuedSemiSupportedFeatureType(vl, ss, fname, true, faMap, semiRandomFset)
-    }
-    
-  }
 
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit = {
     if (opts.randomFeatures)
       addRandFeature(ss, inst, yprv, yp, fname, vl)
-    else if (opts.randomSupportedFeatures) {
-      addSemiRandomSupportedFeature(ss, inst, yprv, yp, fname, vl)
-    } else {
+    else {
       val ft =
         fsetMap.get(fname) match {
           case v: FeatureType => v
@@ -593,7 +557,6 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       }
     }
   }
-  
 
   def countFeatureTypes(dseq: SourceSequence[Obs], pos: Int) = {
     val upTo = (maxSegSize min pos)

@@ -150,7 +150,6 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--num-semirandom-supported-features" desc "Size of semi-random supported feature vector"
   "--random-features"    flag "Use unsupported features; randomized"
   "--random-feature-coefficient" desc "Multiplicative factor for number of random features (default = 3.0)"
-  "--random-supported"   flag "Use random pseudo-supported features"
   "--granularity"        desc "Size of sequence batches for large files (default 5000)"
   "--partially-labeled"  flag "Enable training over partially labeled sequences"
 }
@@ -275,11 +274,9 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var tokenizerPatterns               = optHandler.get("--tokenizer-patterns")
   var eachIteration                   = optHandler.check("--each-iteration")
   var numRandomFeatures               = optHandler.get("--num-random-features") match {case Some(v) => v.toInt case None => -1}
-  var numSemiRandomSupported          = optHandler.get("--num-semirandom-supported-features") match {case Some(v) => v.toInt case None => -1}
   var randomFeatures                  = optHandler.check("--random-features")
   var randomSupportedFeatures         = optHandler.check("--random-supported")
   var randomFeatureCoefficient        = optHandler.get("--random-feature-coefficient") match {case Some(v) => v.toDouble case None => 3.0}
-  var randomSupportedCoefficient      = optHandler.get("--random-supported-coefficient") match {case Some(v) => v.toDouble case None => 3.0}
   var granularity : Int               = optHandler.get("--granularity") match {case Some(v) => v.toInt case None => 1000}
   var partialLabels: Boolean          = optHandler.check("--partially-labeled")
   
@@ -346,7 +343,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.zoneset_=(zoneset)
     no.eachIteration_=(eachIteration)
     no.numRandomFeatures_=(numRandomFeatures)
-    no.numSemiRandomSupported_=(numSemiRandomSupported)
+    no.randomFeatureCoefficient_=(randomFeatureCoefficient)
     no.granularity_=(granularity)
     no.partialLabels_=(partialLabels)
   }

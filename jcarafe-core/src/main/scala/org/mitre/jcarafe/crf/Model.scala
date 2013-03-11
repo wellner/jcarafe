@@ -104,12 +104,11 @@ class RandomStdModel(
   segSize: Int,
   labelAlphabet: Alphabet[AbstractLabel],
   crf: CoreModel,
-  val faMap: RandomLongAlphabet,
-  val randFsetMap: SemiRandomFsetMapping) extends StdModel(fspec, beg, aux, segSize, labelAlphabet, crf, new OpenLongObjectHashMap) {
+  val faMap: RandomLongAlphabet) extends StdModel(fspec, beg, aux, segSize, labelAlphabet, crf, new OpenLongObjectHashMap) {
 
   def this(fs: String, b: Boolean, l: Option[BloomLexicon], wp: Option[WordProperties], ws: Option[WordScores], ifs: Option[InducedFeatureMap],
-    ss: Int, lalpha: Alphabet[AbstractLabel], crf: CoreModel, faMap: RandomLongAlphabet, randFsetMap: SemiRandomFsetMapping) =
-    this(fs, b, ModelAuxiliaries(l, wp, ws, ifs), ss, lalpha, crf, faMap, randFsetMap)
+    ss: Int, lalpha: Alphabet[AbstractLabel], crf: CoreModel, faMap: RandomLongAlphabet) =
+    this(fs, b, ModelAuxiliaries(l, wp, ws, ifs), ss, lalpha, crf, faMap)
   override def deriveFaMap = faMap
 }
 
@@ -234,9 +233,6 @@ abstract class CoreModelSerializer extends DefaultProtocol {
       h
     })
     
-  implicit def semiRandomFsetMappingMap : Format[SemiRandomFsetMapping] = 
-    wrap[SemiRandomFsetMapping,Array[Set[Int]]]((_.arr),((arr: Array[Set[Int]]) => new SemiRandomFsetMapping(arr)))
-
   implicit def randomLongAlphabetMap: Format[RandomLongAlphabet] = {
     wrap[RandomLongAlphabet, Int](
       { rla: RandomLongAlphabet =>
@@ -397,9 +393,9 @@ object StandardSerializer extends CoreModelSerializer {
       new StdModel(a, b, c, f, g, h, i))((a: StdModel) => (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.fsetMap))
 
   implicit def randomModelMap: Format[RandomStdModel] =
-    asProduct8((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: RandomLongAlphabet, j: SemiRandomFsetMapping) =>
-      new RandomStdModel(a, b, c, f, g, h, i, j))((a: RandomStdModel) => 
-        (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.faMap, a.randFsetMap))
+    asProduct7((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: RandomLongAlphabet) =>
+      new RandomStdModel(a, b, c, f, g, h, i))((a: RandomStdModel) => 
+        (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.faMap))
 
   def writeModel(m: StdModel, f: java.io.File): Unit = {
     m match {

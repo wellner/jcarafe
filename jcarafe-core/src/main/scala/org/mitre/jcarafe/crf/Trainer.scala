@@ -113,6 +113,8 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     println("Processed " + seqs.length + " sequences . . . beginning parameter estimation..\n")
     println("Number of features = " + (if (adjust) "DYNAMIC" else sGen.getNumberOfFeatures))
     println("Number of states   = " + sGen.getNumberOfStates)
+    if (opts.randomFeatures || opts.randomSupportedFeatures)
+      println("Number of feature types = " + sGen.frep.getNumberOfFeatureTypes)
     if (sGen.getMaxSegmentSize > 0)
       println("SEMI-CRF model used.   Maximum segment size = " + sGen.getMaxSegmentSize)
     if (opts.neural) println("Using hidden gates ... \"neural\" CRF ")
@@ -120,7 +122,6 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   }
 
   def trainingRoutine(seqs: Seq[InstanceSequence]) = {
-    
     val dCrf: Crf = getCrf
     if (adjust) dCrf.adjustible_=(true)
     val aseqs = if (opts.partialLabels && false) {
@@ -149,7 +150,7 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
   def getRandModel(ss: Int, coreModel: CoreModel) = {
     new RandomStdModel(sGen.getModelName, !opts.noBegin, sGen.getLexicon, sGen.getWordProps, 
         sGen.getWordScores, sGen.getInducedFeatureMap, ss, sGen.getLAlphabet, coreModel, 
-        sGen.frep.faMap.asInstanceOf[RandomLongAlphabet], sGen.frep.semiRandomFset)
+        sGen.frep.faMap.asInstanceOf[RandomLongAlphabet])
   }
 
   def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
