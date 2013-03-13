@@ -219,7 +219,7 @@ class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val e
       }
     } else {
       for (i <- 0 until nl) yield {
-        new NBinFeature(value, -1, i, faMap.update(-1, i, fname), -1)
+        new NBinFeature(value, -1, i, faMap.update(i, fname), -1)
       }
     }
   }
