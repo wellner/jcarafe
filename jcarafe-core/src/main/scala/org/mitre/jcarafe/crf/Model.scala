@@ -110,6 +110,12 @@ class RandomStdModel(
     ss: Int, lalpha: Alphabet[AbstractLabel], crf: CoreModel, faMap: RandomLongAlphabet) =
     this(fs, b, ModelAuxiliaries(l, wp, ws, ifs), ss, lalpha, crf, faMap)
   override def deriveFaMap = faMap
+  
+  override def adjustParameter(fname: Long, lab: AbstractLabel, fac: Double) = {
+    val labelId = labelAlphabet.get(lab).getOrElse(0)
+    val fid = faMap.update(labelId,fname)
+    crf.params(fid) += fac
+  }
 }
 
 class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[WordProperties], ss: Int, crf: CoreModel, val faMap: LongAlphabet, val numStates: Int)

@@ -99,7 +99,9 @@ object ProjectAlignedAttributes {
         } catch {
           case _: Throwable => println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine)
         }
-        tgtFileToks foreach { t => os.write(t.tokenBestOverToString(th)) }
+        os.write("<s>")
+	tgtFileToks foreach { t => os.write(t.tokenBestOverToString(th)) }
+        os.write("</s>")
         os.write('\n')
       }
     }

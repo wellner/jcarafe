@@ -216,7 +216,7 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
       " seconds, symbol table increased by " + (symbolTable.size - ss) + " to " + symbolTable.size)
   }
 
-  private def getClusterData2(d: java.io.File, dir: Boolean): Unit = {
+  private def getClusterData(d: java.io.File, dir: Boolean): Unit = {
     val freqs = new ArrayBuffer[Int]()
     val lCntxt = new ArrayBuffer[HistoGram]()
     val rCntxt = new ArrayBuffer[HistoGram]()
@@ -626,10 +626,10 @@ object BrownClustering {
     val opts = new ClusteringOptions(args)
     val bc = new BrownClustering(opts.nc, opts.txt, verbose = opts.verbose)
     opts.idir match {
-      case Some(d) => bc.getClusterData2(new java.io.File(d), true)
+      case Some(d) => bc.getClusterData(new java.io.File(d), true)
       case None =>
         opts.ifile match {
-          case Some(f) => bc.getClusterData2(new java.io.File(f), false)
+          case Some(f) => bc.getClusterData(new java.io.File(f), false)
           case None => throw new RuntimeException("\nInput File or Directory must be provided\n")
         }
     }

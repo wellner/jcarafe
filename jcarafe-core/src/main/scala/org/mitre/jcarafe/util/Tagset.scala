@@ -65,5 +65,29 @@ object Tagset {
     val src = scala.io.Source.fromFile(new java.io.File(t))
     new Tagset(src.getLines().foldLeft(Set():Set[AbstractLabel]) {case (ac,l) => ac + parseTagSpec(l)}) 
   }
-
 }
+
+class WeightedTagset(val weightMap: Map[AbstractLabel,Double], ts: Set[AbstractLabel]) extends Tagset(ts) {
+  
+}
+
+object WeightedTagset {
+  def parseTagSpec(s: String) : (AbstractLabel,Double) = 
+    s.split("=>").toList match {
+      case spec :: weight :: Nil =>
+        (Tagset.parseTagSpec(spec), weight.toDouble)
+      case _ => throw new RuntimeException("Unparsable line: " + s) }
+  
+  def loadWeightedTagset(t: java.io.File) = {
+    val src = io.Source.fromFile(t)
+    var labs = Set[AbstractLabel]()
+    var mapping = Map[AbstractLabel,Double]()
+    src.getLines() foreach {l => 
+      val (al,w) = parseTagSpec(l)
+      labs += al
+      mapping += (al -> w)
+    }
+    new WeightedTagset(mapping,labs)
+  }
+}
+

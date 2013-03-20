@@ -132,7 +132,8 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--output-file"        desc "Output file location"
   "--output-dir"         desc "Output directory location"
   "--out-suffix"         desc "Output suffix"
-  "--prior-adjust"       desc "Bias/adjust state prior weights in model" 
+  "--prior-adjust"       desc "Bias/adjust state prior weights in model"
+  "--prior-weights"      desc "File containing per-label weights to bias decoder output"
   "--evaluate"           desc "Evaluate decoder on gold-standard test data"
   "--no-tags"            flag "Indicates that the trainer/decoder should not try to parse SGML/XML elements (i.e. tags)"
   "--streaming"          flag "Process files in a streaming fashion; faster and requires less memory for larger files"
@@ -233,6 +234,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
 
   var initialModel                    = optHandler.get("--initial-model")
   var priorAdjust                     = optHandler.get("--prior-adjust") match {case Some(v) => Some(v.toDouble) case None => None}
+  var priorWeightFile                 = optHandler.get("--prior-weights")
   var outputFile                      = optHandler.get("--output-file")
   var outputDir                       = optHandler.get("--output-dir")
   var outSuffix                       = optHandler.get("--out-suffix")
@@ -319,6 +321,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.preModels_=(preModels)
     no.preProc_=(preProc)
     no.priorAdjust_=(priorAdjust)
+    no.priorWeightFile_=(priorWeightFile)
     no.psa_=(psa)
     no.psaPeriodSize_=(psaPeriodSize)
     no.rawDecode_=(rawDecode)
