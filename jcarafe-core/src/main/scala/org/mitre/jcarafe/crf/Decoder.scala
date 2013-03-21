@@ -318,10 +318,12 @@ abstract class StdDecoder(opts: Options, m: String, r: Option[java.io.InputStrea
   def this(m: String) = this(None, m)
   val model: M = {
     val model = r match { case Some(r) => readModel(r) case None => readModel(m) }
-    opts.priorWeightFile match {case Some(f) =>
+    opts.priorWeightFile foreach {f =>
       val weightedTagset = WeightedTagset.loadWeightedTagset(new java.io.File(f))
       val pr = IncrementalMurmurHash.hash(":U:", 0L) // XXX - bit dangerous      
       weightedTagset.weightMap foreach {case (al,w) =>
+        val beginAl = sGen.getState(al,true)
+        if (!(al equals beginAl)) model.adjustParameter(pr,beginAl,w)
         model.adjustParameter(pr,al,w)
         }
       }

@@ -143,6 +143,8 @@ abstract class SeqGen[Obs](val opts: Options) {
   def getNumberOfFeatures: Int
 
   def getNumberOfNeuralFeatures: Int = 0
+  
+  def getState(l: AbstractLabel, b: Boolean) = if (b && !(l == otherIndex.getOrElse(-1)) && !l.uncertain) BeginState(l) else l
 
   /**
    * Creates a source sequence.  Subclasses can over-ride this to add additional infor regarding sequences
@@ -347,7 +349,7 @@ trait FactoredSeqGen[Obs] extends SeqGen[Obs] {
       }
     def isBegin(i: Int) = beginStateCache match { case Some(c) => c.contains(i) case None => false }
   }
-  def getState(l: AbstractLabel, b: Boolean) = if (b && !(l == other) && !l.uncertain) BeginState(l) else l
+  
 }
 
 abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Options) extends SeqGen[Obs](opts) {

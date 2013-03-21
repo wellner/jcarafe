@@ -73,10 +73,10 @@ class WeightedTagset(val weightMap: Map[AbstractLabel,Double], ts: Set[AbstractL
 
 object WeightedTagset {
   def parseTagSpec(s: String) : (AbstractLabel,Double) = 
-    s.split("=>").toList match {
+    s.replaceAll(" ","").split("=>").toList match {
       case spec :: weight :: Nil =>
         (Tagset.parseTagSpec(spec), weight.toDouble)
-      case _ => throw new RuntimeException("Unparsable line: " + s) }
+      case _ => throw new RuntimeException("Unparsable line in weighted tagset file: " + s) }
   
   def loadWeightedTagset(t: java.io.File) = {
     val src = io.Source.fromFile(t)
