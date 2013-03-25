@@ -23,7 +23,7 @@ TOKEN : /* OPERATORS */
     < ENDPUNCT: (([".","!","?"])+ | ".''" | "?''" | ".\"" | "?\"" | "!''" | "!\"") >
 |   < WHITEEND: (("\r")? "\n") (("\r")? "\n")+ >
 |   < ABBREV: ( "'s"|"n't"|"'d"|"'m"|"'re"|"'ll"|"'ve"
-	|"U.S."|"Mr."|"Ms."|"Dr."|"Gen."|"Mrs."|"Adm."|"Co."|"Inc."|"Ltd."|"Corp."|"Mass."|"Calif."|"MR."|"MRS."|"DR."|"MS."
+	|"u.s."|"U.S."|"Mr."|"Ms."|"Dr."|"Gen."|"Mrs."|"Adm."|"Co."|"Inc."|"Ltd."|"Corp."|"Mass."|"Calif."|"MR."|"MRS."|"DR."|"MS."
 	|"Adm."|"Brig."|"Capt."|"Cmdr."|"Col."|"Comdr."|"Dn."|"Drs."|"Geo."|"Gen."|"Gov."|"Govs."|"Hon."|"Jr."|"Lt."|"Maj."
 	|"Messrs."|"Pres."|"Prof."|"Profr."|"Rep."|"Reps."|"Rev."|"Sen."|"Sens."|"Sgt."|"Sr."|"Sra."|"Srta."|"ST. "|"St."|"Ste."
 	|"Wm."|"Geo."|"Jos."|"Chas."|"Bancorp."|"Bhd."|"Bros."|"Cia."|"Cie."|"Co."|"Cos."|"Corp."|"Inc."|"Ltd."|"Mfg."|"Pte."|"Pty."
