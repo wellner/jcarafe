@@ -144,7 +144,12 @@ abstract class SeqGen[Obs](val opts: Options) {
 
   def getNumberOfNeuralFeatures: Int = 0
   
-  def getState(l: AbstractLabel, b: Boolean) = if (b && !(l == otherIndex.getOrElse(-1)) && !l.uncertain) BeginState(l) else l
+  def getState(l: AbstractLabel, b: Boolean) =
+    l match {
+    	case SLabel("lex") => l
+    	case _ => if (b && !l.uncertain) BeginState(l) else l
+    }
+    
 
   /**
    * Creates a source sequence.  Subclasses can over-ride this to add additional infor regarding sequences
