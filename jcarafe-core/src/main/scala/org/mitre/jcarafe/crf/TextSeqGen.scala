@@ -86,7 +86,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     var docPos = 0 // position within entire deserialization; used to split out tokens
     var prevPos = 0 // end of previous sequence
     def endSeq(t: Option[String], c: Boolean) = {
-      t match { case Some(t) => tmpBuf += createSource(getState(state, !c), t, !c, curAtts); curAtts = Map.empty case None => }
+      t match { case Some(t) => tmpBuf += createSource(getAState(state, !c), t, !c, curAtts); curAtts = Map.empty case None => }
       if (tmpBuf.size > 0) {
         sourceBuffer += createSourceSequence(tmpBuf.toIndexedSeq, prevPos, docPos)
         tmpBuf = new ListBuffer[ObsSource[String]]
@@ -234,6 +234,8 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     var tokTagInfo : Option[Map[String,String]] = None
     val labSeq = iSeq.iseq
     var withinLex = false // that keeps track of whether we're within a lex-tag.  For no-pre-proc, we need to skip over everything outside a lex tag....
+    lAlphabet foreach { case (k,v) => println(k + " => " + v + " simple = " + k.isInstanceOf[SLabel]) }
+    
     def createNewTok(t: String, lexEnd: Boolean = false) = {
       // check whether this token should be included in the tagged output
       // if its outside the label sequence or we aren't doing pre-processing and it didn't appear
