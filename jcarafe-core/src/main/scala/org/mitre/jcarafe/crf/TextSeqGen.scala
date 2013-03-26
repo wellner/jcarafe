@@ -234,8 +234,6 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     var tokTagInfo : Option[Map[String,String]] = None
     val labSeq = iSeq.iseq
     var withinLex = false // that keeps track of whether we're within a lex-tag.  For no-pre-proc, we need to skip over everything outside a lex tag....
-    lAlphabet foreach { case (k,v) => println(k + " => " + v + " simple = " + k.isInstanceOf[SLabel]) }
-    
     def createNewTok(t: String, lexEnd: Boolean = false) = {
       // check whether this token should be included in the tagged output
       // if its outside the label sequence or we aren't doing pre-processing and it didn't appear
