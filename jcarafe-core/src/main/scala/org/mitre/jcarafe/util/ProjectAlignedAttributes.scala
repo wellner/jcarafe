@@ -39,9 +39,10 @@ object ProjectAlignedAttributes {
       val sbuf = new StringBuilder
       sbuf append "<lex"
       props foreach {
-        case (a, pvs) =>
-          sbuf append " "
-          findBestAttvalOver(t, a) foreach { pv => sbuf append attToString(a, pv); if (writeSc) {sbuf append ' '; sbuf append scoreToString(pv) }}
+        case (a, pvs) =>          
+          findBestAttvalOver(t, a) foreach { pv =>
+            sbuf append " "
+            sbuf append attToString(a, pv); if (writeSc) {sbuf append ' '; sbuf append scoreToString(pv) }}
       }
       sbuf append ">"
       sbuf append tokVal
