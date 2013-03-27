@@ -38,9 +38,9 @@ object ProjectAlignedAttributes {
     def tokenBestOverToString(t: Double, writeSc: Boolean = true) = {
       val sbuf = new StringBuilder
       sbuf append "<lex"
-      if (!props.isEmpty) sbuf append " "
       props foreach {
         case (a, pvs) =>
+          sbuf append " "
           findBestAttvalOver(t, a) foreach { pv => sbuf append attToString(a, pv); if (writeSc) {sbuf append ' '; sbuf append scoreToString(pv) }}
       }
       sbuf append ">"
