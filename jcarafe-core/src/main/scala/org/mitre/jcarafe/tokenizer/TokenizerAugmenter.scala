@@ -66,7 +66,9 @@ class SplitTokenizerAugmenterPattern(val patternSequences : List[SplitPatternSeq
           case Some(m) =>
             val rest = str.substring(m.end,slen)
             Tok(m.toString()) :: applyPattern((R(r1) :: Recurse :: Nil),rest,slen - m.end)
-          case None => Nil
+          case None =>
+            complete = true
+            Nil
         }
       case R(r1) :: ptail =>
         r1.findPrefixMatchOf(str) match {
