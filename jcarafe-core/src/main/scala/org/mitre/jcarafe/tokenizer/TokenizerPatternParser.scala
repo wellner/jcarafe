@@ -35,9 +35,11 @@ class TokenizerPatternParser extends RegexParsers {
     patExpr ~ topExpr ^^ {case (h~t) => h :: t} |
     patExpr ^^ {case (el) => List(el)}
     
-  def patExpr : Parser[PatternElement] = repReExpr | reExpr | tokExpr | catExpr | strExpr 
+  def patExpr : Parser[PatternElement] = repReExpr | reExpr | tokExpr | catExpr | strExpr | recurseExpr
   
   def atomExpr : Parser[String] = """[A-z]+""".r
+  
+  def recurseExpr : Parser[PatternElement] = "Recurse" ^^ {case _ => Recurse}
   
   def repReExpr : Parser[PatternElement] = "Rep(" ~> """(\\\)|[^\)])+""".r <~ ")" ^^ {case(re) => Rep(re.r)}
     

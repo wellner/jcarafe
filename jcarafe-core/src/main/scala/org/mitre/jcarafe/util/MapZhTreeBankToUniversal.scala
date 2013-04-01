@@ -16,6 +16,7 @@ class MapZhTreeBankToUniversal(val posMapping: Map[String,String]) {
           sbuf append "</lex>"
         case t => sbuf append tok 
       }
+
       sbuf append ' '
     }
     sbuf.toString

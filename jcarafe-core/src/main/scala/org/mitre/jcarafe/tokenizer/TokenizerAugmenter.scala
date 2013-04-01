@@ -18,6 +18,7 @@ case object Tk extends PatternElement
 sealed case class R(val reg: util.matching.Regex) extends PatternElement
 sealed case class S(val str: String) extends PatternElement
 sealed case class Rep(val reg: util.matching.Regex) extends PatternElement
+case object Recurse extends PatternElement 
 
 abstract class TokenizerAugmenterPattern {
   def checkMatch(pat: PatternElement, s: String, kind: Int) : Boolean = pat match {
@@ -26,6 +27,7 @@ abstract class TokenizerAugmenterPattern {
     case S(s1) => s1 == s
     case Tk => kind == TOK
     case Rep(r1) => r1.findPrefixOf(s).isDefined
+    case Recurse => true
   }  
 }
 
@@ -57,6 +59,13 @@ class SplitTokenizerAugmenterPattern(val patternSequences : List[SplitPatternSeq
               val rest = str.substring(m.end,slen)
           	  Tok(pre) :: Tok(m.toString) :: applyPattern(ptail,rest, slen - m.end)
           	} else Nil
+          case None => Nil
+        }
+      case R(r1) :: Recurse :: Nil => // special case of greedy regexp matching to split 
+        r1.findPrefixMatchOf(str) match {
+          case Some(m) =>
+            val rest = str.substring(m.end,slen)
+            Tok(m.toString()) :: applyPattern((R(r1) :: Recurse :: Nil),rest,slen - m.end)
           case None => Nil
         }
       case R(r1) :: ptail =>

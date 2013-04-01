@@ -78,10 +78,7 @@ object BloomFilter {
     nelements
   }
   
-  def baseHash(s: String) = {
-    val barr = s.getBytes("UTF-16")
-    IncrementalMurmurHash.hash(barr, barr.length, 0)
-  }
+  def baseHash(s: String) = IncrementalMurmurHash.hash(s)
 
 }
 
@@ -122,13 +119,18 @@ class BloomFilter(val size: Int, val width: Int, val filter: BitSet) {
     ls foreach add
   }
 
-  def buildFromFile(f: java.io.File) = {
+  def buildFromFile(f: java.io.File, concatLines: Boolean = true) = {
     val src = scala.io.Source.fromFile(f)("UTF8").getLines()
     src foreach { l =>
       val els = l.split(' ')
-      forIndex(els.length) { i =>
-        add(els(i))
+      var mx = 0L
+      val ln = els.length
+      forIndex(ln) { i =>
+        val ss = els(i)
+        mx = IncrementalMurmurHash.mix(ss,mx)
+        add(ss)
       }
+      if (ln > 1) add(mx) // if multi-word term, add in mixed/conjunction value
     }
   }
 }

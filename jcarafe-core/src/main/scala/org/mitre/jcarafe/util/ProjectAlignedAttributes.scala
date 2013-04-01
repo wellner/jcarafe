@@ -88,9 +88,11 @@ object ProjectAlignedAttributes {
     val inSrc = io.Source.fromFile(srcFile).getLines
     val inTgt = io.Source.fromFile(tgtFile).getLines
     val inAlign = io.Source.fromFile(alignFile).getLines
+    var lnCnt = 0
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
     inSrc foreach { srcLine =>
       val tgtLine = inTgt.next
+      lnCnt += 1
       val srcFileToks = gatherLogicalTokens(FastTokenizer.parseString(srcLine, true)).toVector // true - keep lex tags in token stream
       val tgtFileToks = gatherLogicalTokens(FastTokenizer.parseString(tgtLine, true)).toVector
       val alignSequence = getAlignSequence(inAlign.next)
@@ -98,7 +100,7 @@ object ProjectAlignedAttributes {
         try {
           projectToTgtTokens(srcFileToks, tgtFileToks, alignSequence)
         } catch {
-          case _: Throwable => println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine)
+          case _: Throwable => println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine + " on line: " + lnCnt)
         }
         os.write("<s>")
 	tgtFileToks foreach { t => os.write(t.tokenBestOverToString(th)) }
