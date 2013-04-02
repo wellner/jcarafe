@@ -153,9 +153,9 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
    */
   var adjustible = false
 
-  if ((nls < 2) || (nfs < 2) && segSize < 2) {
+  if (((nls < 2) || (nfs < 2)) && (segSize < 2)) {
     System.err.println("\n\nEnsure the tagset/label set is properly defined!!")
-    throw new RuntimeException("Crf requires 2 or more states/features")
+    throw new RuntimeException("Crf requires 2 or more states/features.  Segsize = " + segSize)
   }
   /**
    * A matrix type as an array of arrays of <code>Double</code>s
