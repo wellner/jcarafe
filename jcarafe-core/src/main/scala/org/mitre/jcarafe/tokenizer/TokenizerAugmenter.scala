@@ -65,9 +65,13 @@ class SplitTokenizerAugmenterPattern(val patternSequences : List[SplitPatternSeq
         r1.findPrefixMatchOf(str) match {
           case Some(m) =>
             val rest = str.substring(m.end,slen)
-            Tok(m.toString()) :: applyPattern((R(r1) :: Recurse :: Nil),rest,slen - m.end)
+            val getRestTokens = applyPattern((R(r1) :: Recurse :: Nil),rest,slen - m.end)
+            if (complete)
+              Tok(m.toString()) :: getRestTokens
+            else
+              applyPatternSequence(patternSequences,rest)
           case None =>
-            complete = true
+            complete = (str.length < 1) // reached end of token/string
             Nil
         }
       case R(r1) :: ptail =>
@@ -80,12 +84,17 @@ class SplitTokenizerAugmenterPattern(val patternSequences : List[SplitPatternSeq
       case Nil => complete = (slen == 0); Nil
       case _ => Nil
     }
-    val toks = patternSequences.foldLeft(List(Tok(gstr)):List[Element]){case (ac,seq) => 
-      complete = false
-      val r = applyPattern(seq.seq,gstr,slen)
-      if (complete && (r.length > ac.length)) r else ac
+    
+    def applyPatternSequence(ps: List[PatternSequence], str: String) : List[Element] = {
+      ps.foldLeft(List(Tok(gstr)): List[Element]){case (ac,seq) =>
+        complete = false
+        val sl = str.length
+        val r = applyPattern(seq.seq,str,sl)
+        if (complete && (r.length > ac.length)) r else ac
+        }
     }
-    toks
+    
+    applyPatternSequence(patternSequences,gstr)
   }
 }
 
