@@ -1,6 +1,6 @@
 package org.mitre.jcarafe.util
 
-import org.mitre.jcarafe.tokenizer.{ FastTokenizer, Element, Tag, Tok }
+import org.mitre.jcarafe.tokenizer.{ FastTokenizer, Element, Tag, Tok, Ws, EndWs }
 import org.mitre.jcarafe.crf.TagParser
 
 case class AlignSeq(tgt: Int, src: Int, prob: Double)
@@ -170,6 +170,8 @@ class ProjectAlignedTags extends ProjectAligned {
         val atts = TagParser.parseString(s) match { case Label(l, _) => attsP + ("tag" -> l) case _ => attsP }
         val (remElements,toks) = getRemainingPhraseTokens(rest,atts)
         toks ++ gatherLogicalTokens(remElements)
+      case Ws(_) :: r => gatherLogicalTokens(r)
+      case EndWs(_) :: r => gatherLogicalTokens(r)
       case a :: r => new Token(Map(),a.getString) :: gatherLogicalTokens(r)
       case Nil => Nil
     }
