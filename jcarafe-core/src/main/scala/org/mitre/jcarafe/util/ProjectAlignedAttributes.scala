@@ -189,9 +189,6 @@ class ProjectAlignedTags extends ProjectAligned {
       val srcFileToks = gatherLogicalTokens(FastTokenizer.parseString(srcLine, true)).toVector // true - keep lex tags in token stream
       val tgtFileToks = gatherLogicalTokens(FastTokenizer.parseString(tgtLine, true)).toVector
       val alignSequence = getAlignSequence(inAlign.next)
-      println("Src toks: " + srcFileToks.length)
-      println("Tgt toks: " + tgtFileToks.length)
-      println("align seq: " + alignSequence.length)
       if (alignSequence.length > 0) {
         try {
           projectToTgtTokens(srcFileToks, tgtFileToks, alignSequence)
@@ -200,7 +197,7 @@ class ProjectAlignedTags extends ProjectAligned {
             println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine + " on line: " + lnCnt)
         }
         os.write("<s>")
-        tgtFileToks foreach { t => os.write(tokenBestOverToString(t,th)) }
+        tgtFileToks foreach { t => os.write(tokenBestOverToString(t,th,false)) }
         os.write("</s>")
         os.write('\n')
       }
