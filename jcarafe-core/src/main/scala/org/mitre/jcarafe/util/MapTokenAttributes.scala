@@ -56,6 +56,8 @@ object MapTokenAttributes {
     case "ABBREV" => "NOUN"
     case _ => "NOUN"
   }
+  
+  val tokenMapper = new ProjectAlignedTokenAttributes
 
   def mapToken(pr: Double = 1.0)(t: Token): Token = {
     val mp = t.props
@@ -83,7 +85,7 @@ object MapTokenAttributes {
     elems match {
       case Tag("<s>", true) :: r =>
         val (nr, stoks) = getSentTokens(elems, Nil)
-        val ts = gatherLogicalTokens(stoks) map mapToken(pr)
+        val ts = tokenMapper.gatherLogicalTokens(stoks) map mapToken(pr)
         gatherLogicalTokensBySentence(nr, (ts :: stck), pr)
       case v :: r => gatherLogicalTokensBySentence(r, stck, pr)
       case Nil => stck.reverse
@@ -102,7 +104,7 @@ object MapTokenAttributes {
       val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
       toks foreach { sent =>
         os.write("<s>")
-        sent foreach { t => os.write(t.tokenBestOverToString(0.9, false)) }
+        sent foreach { t => os.write(tokenMapper.tokenBestOverToString(t,0.9, false)) }
         os.write("</s>\n\n")
       }
       os.close()
