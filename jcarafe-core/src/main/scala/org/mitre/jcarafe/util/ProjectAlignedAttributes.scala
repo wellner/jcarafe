@@ -189,6 +189,7 @@ class ProjectAlignedTags extends ProjectAligned {
     inSrc foreach { srcLine =>
       val tgtLine = inTgt.next
       lnCnt += 1
+      try {
       val srcFileToks = gatherLogicalTokens(FastTokenizer.parseString(srcLine, true)).toVector // true - keep lex tags in token stream
       val tgtFileToks = gatherLogicalTokens(FastTokenizer.parseString(tgtLine, true)).toVector
       val alignSequence = getAlignSequence(inAlign.next)
@@ -204,6 +205,7 @@ class ProjectAlignedTags extends ProjectAligned {
         os.write("</s>")
         os.write('\n')
       }
+      } catch {case e:Throwable => println("Exception on line: " + lnCnt)}
     }
     os.flush()
   }
