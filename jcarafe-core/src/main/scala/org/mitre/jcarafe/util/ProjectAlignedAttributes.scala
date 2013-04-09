@@ -96,9 +96,9 @@ class ProjectAlignedTokenAttributes extends ProjectAligned {
 
 
   def projectAttributes(srcFile: String, alignFile: String, tgtFile: String, outFile: String, th: Double = 0.5) = {
-    val inSrc = io.Source.fromFile(srcFile).getLines
-    val inTgt = io.Source.fromFile(tgtFile).getLines
-    val inAlign = io.Source.fromFile(alignFile).getLines
+    val inSrc = io.Source.fromFile(srcFile)("UTF-8").getLines
+    val inTgt = io.Source.fromFile(tgtFile)("UTF-8").getLines
+    val inAlign = io.Source.fromFile(alignFile)("UTF-8").getLines
     var lnCnt = 0
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
     inSrc foreach { srcLine =>
@@ -126,17 +126,31 @@ class ProjectAlignedTokenAttributes extends ProjectAligned {
 class ProjectAlignedTags extends ProjectAligned {
   
   def tokenBestOverToString(tok: Token, t: Double, writeSc: Boolean = true) = {
-    val tagElement = tok.props.get("tag").getOrElse("PER")
+    
     val sbuf = new StringBuilder
-    sbuf append ('<')
-    sbuf append tagElement
-    tok.props foreach {case (a,v) => if (a != "tag") {sbuf append ' '; sbuf append a; sbuf append '='; sbuf append ("\"" + v + "\"")} case _ => }
+    val tagElement = tok.props.get("tag")
+    if (tagElement.isDefined) {
+      sbuf append ('<')
+      sbuf append tagElement.get.head.vl
+      tok.props foreach {
+        case (a, pvs) =>
+          if (a != "tag") {
+          tok.findBestAttvalOver(t, a) foreach { pv =>
+            sbuf append " "
+            sbuf append tok.attToString(a, pv); if (writeSc) { sbuf append ' '; sbuf append tok.scoreToString(pv) }
+          }
+          }
+      }
     sbuf append ('>')
     sbuf append tok.tokVal
     sbuf append ("</")
-    sbuf append tagElement
-    sbuf append ("> ")
-    ""
+    sbuf append tagElement.get.head.vl
+    sbuf append ("> ")    
+    } else {
+        sbuf append tok.tokVal
+        sbuf append ' '
+    }
+    sbuf.toString        
   }
   
   def getRemainingPhraseTokens(elems: List[Element], atts: Map[String,String]) : (List[Element],List[Token]) = {
@@ -156,15 +170,15 @@ class ProjectAlignedTags extends ProjectAligned {
         val atts = TagParser.parseString(s) match { case Label(l, _) => attsP + ("tag" -> l) case _ => attsP }
         val (remElements,toks) = getRemainingPhraseTokens(rest,atts)
         toks ++ gatherLogicalTokens(remElements)
-      case a :: r => gatherLogicalTokens(r)
+      case a :: r => new Token(Map(),a.getString) :: gatherLogicalTokens(r)
       case Nil => Nil
     }
   }
 
   def projectTags(srcFile: String, alignFile: String, tgtFile: String, outFile: String, th: Double = 0.5) = {
-    val inSrc = io.Source.fromFile(srcFile).getLines
-    val inTgt = io.Source.fromFile(tgtFile).getLines
-    val inAlign = io.Source.fromFile(alignFile).getLines
+    val inSrc = io.Source.fromFile(srcFile)("UTF-8").getLines
+    val inTgt = io.Source.fromFile(tgtFile)("UTF-8").getLines
+    val inAlign = io.Source.fromFile(alignFile)("UTF-8").getLines
     var lnCnt = 0
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
     inSrc foreach { srcLine =>
@@ -173,11 +187,15 @@ class ProjectAlignedTags extends ProjectAligned {
       val srcFileToks = gatherLogicalTokens(FastTokenizer.parseString(srcLine, true)).toVector // true - keep lex tags in token stream
       val tgtFileToks = gatherLogicalTokens(FastTokenizer.parseString(tgtLine, true)).toVector
       val alignSequence = getAlignSequence(inAlign.next)
+      println("Src toks: " + srcFileToks.length)
+      println("Tgt toks: " + tgtFileToks.length)
+      println("align seq: " + alignSequence.length)
       if (alignSequence.length > 0) {
         try {
           projectToTgtTokens(srcFileToks, tgtFileToks, alignSequence)
         } catch {
-          case _: Throwable => println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine + " on line: " + lnCnt)
+          case _: Throwable =>
+            println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine + " on line: " + lnCnt)
         }
         os.write("<s>")
         tgtFileToks foreach { t => os.write(tokenBestOverToString(t,th)) }
