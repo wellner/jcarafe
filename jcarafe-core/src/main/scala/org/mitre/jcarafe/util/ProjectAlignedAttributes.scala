@@ -201,7 +201,7 @@ object ProjectAlignedAttributes {
 object ProjectAlignedTags {
   def main(args: Array[String]) = {
     val th = if (args.length > 4) args(4).toDouble else 0.5
-    val mapper = new ProjectAlignedTokenAttributes
-    mapper.projectAttributes(args(0), args(1), args(2), args(3), th)
+    val mapper = new ProjectAlignedTags
+    mapper.projectTags(args(0), args(1), args(2), args(3), th)
   }
 }
