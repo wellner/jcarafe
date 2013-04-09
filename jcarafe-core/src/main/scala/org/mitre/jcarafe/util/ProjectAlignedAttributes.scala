@@ -138,13 +138,24 @@ class ProjectAlignedTags extends ProjectAligned {
     sbuf append ("> ")
     ""
   }
+  
+  def getRemainingPhraseTokens(elems: List[Element], atts: Map[String,String]) : (List[Element],List[Token]) = {
+    def getRemainingPhraseTokens(elems: List[Element], acc: List[Token]) : (List[Element],List[Token]) = {
+      elems match {
+        case Tag(t,false) :: r => (r,acc)
+        case el :: r => getRemainingPhraseTokens(r,new Token(atts, el.getString) :: acc)
+      }
+    }
+    getRemainingPhraseTokens(elems,Nil)
+  }
 
   def gatherLogicalTokens(elems: List[Element]): List[Token] = {
     elems match {
-      case Tag(s, true) :: el :: Tag(_, false) :: r =>
+      case Tag(s, true) :: rest =>
         val attsP = getAttributes(s)
         val atts = TagParser.parseString(s) match { case Label(l, _) => attsP + ("tag" -> l) case _ => attsP }
-        new Token(atts, el.getString) :: gatherLogicalTokens(r)
+        val (remElements,toks) = getRemainingPhraseTokens(rest,atts)
+        toks ++ gatherLogicalTokens(remElements)
       case a :: r => gatherLogicalTokens(r)
       case Nil => Nil
     }
