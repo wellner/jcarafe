@@ -131,18 +131,21 @@ class ProjectAlignedTags extends ProjectAligned {
     
     val sbuf = new StringBuilder
     val tagElement = tok.props.get("tag")
-    if (tagElement.isDefined) {
+    if (tagElement.isDefined && tagElement.get.head.sc > t) {
       sbuf append ('<')
       sbuf append tagElement.get.head.vl
+      var noProps = true
       tok.props foreach {
         case (a, pvs) =>
-          if (a != "tag") {
+          if (a != "tag") {            
           tok.findBestAttvalOver(t, a) foreach { pv =>
+            noProps = false
             sbuf append " "
             sbuf append tok.attToString(a, pv); if (writeSc) { sbuf append ' '; sbuf append tok.scoreToString(pv) }
           }
           }
       }
+      if (noProps) println("Token has no properties: " + tok.tokVal)
     sbuf append ('>')
     sbuf append tok.tokVal
     sbuf append ("</")
@@ -160,7 +163,9 @@ class ProjectAlignedTags extends ProjectAligned {
       elems match {
         case Tag(t,false) :: r => (r,acc)
         case el :: r => getRemainingPhraseTokens(r,new Token(atts, el.getString) :: acc)
-        case Nil => (Nil,acc)
+        case Nil =>
+          println("WARNING: unexpectedly reached end of line....")
+          (Nil,acc)
       }
     }
     getRemainingPhraseTokens(elems,Nil)
@@ -175,7 +180,8 @@ class ProjectAlignedTags extends ProjectAligned {
         toks ++ gatherLogicalTokens(remElements)
       case Ws(_) :: r => gatherLogicalTokens(r)
       case EndWs(_) :: r => gatherLogicalTokens(r)
-      case a :: r => new Token(Map(),a.getString) :: gatherLogicalTokens(r)
+      case a :: r =>
+        new Token(Map(),a.getString) :: gatherLogicalTokens(r)
       case Nil => Nil
     }
   }
@@ -189,9 +195,10 @@ class ProjectAlignedTags extends ProjectAligned {
     inSrc foreach { srcLine =>
       val tgtLine = inTgt.next
       lnCnt += 1
-      try {
-      val srcFileToks = gatherLogicalTokens(FastTokenizer.parseString(srcLine, true)).toVector // true - keep lex tags in token stream
-      val tgtFileToks = gatherLogicalTokens(FastTokenizer.parseString(tgtLine, true)).toVector
+      val srcElems = try {FastTokenizer.parseString(srcLine, true)} catch {case _: Throwable => Nil}
+      val tgtElems = try {FastTokenizer.parseString(tgtLine, true)} catch {case _: Throwable => Nil}
+      val srcFileToks = gatherLogicalTokens(srcElems).toVector // true - keep lex tags in token stream
+      val tgtFileToks = gatherLogicalTokens(tgtElems).toVector
       val alignSequence = getAlignSequence(inAlign.next)
       if (alignSequence.length > 0) {
         try {
@@ -205,7 +212,6 @@ class ProjectAlignedTags extends ProjectAligned {
         os.write("</s>")
         os.write('\n')
       }
-      } catch {case e:Throwable => println("Exception on line: " + lnCnt)}
     }
     os.flush()
   }
