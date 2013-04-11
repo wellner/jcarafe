@@ -60,8 +60,6 @@ abstract class ProjectAligned {
     }
   }
 
-  def gatherLogicalTokens(elems: List[Element]): List[Token]
-
   def projectToTgtTokens(srcToks: IndexedSeq[Token], tgtToks: IndexedSeq[Token], alignment: IndexedSeq[AlignSeq]) = {
     alignment foreach {
       case AlignSeq(t, s, sc) => tgtToks(t).assignAttributes(srcToks(s).props, sc)
@@ -158,30 +156,44 @@ class ProjectAlignedTags extends ProjectAligned {
     sbuf.toString        
   }
   
-  def getRemainingPhraseTokens(elems: List[Element], atts: Map[String,String]) : (List[Element],List[Token]) = {
-    def getRemainingPhraseTokens(elems: List[Element], acc: List[Token]) : (List[Element],List[Token]) = {
+  def getRemainingPhraseTokens(elems: List[Element], atts: Map[String,String]) : (List[Element],List[Token],Boolean) = {
+    def getRemainingPhraseTokens(elems: List[Element], acc: List[Token]) : (List[Element],List[Token],Boolean) = {
       elems match {
-        case Tag(t,false) :: r => (r,acc)
+        case Tag(t,false) :: r => (r,acc,false)
         case el :: r => getRemainingPhraseTokens(r,new Token(atts, el.getString) :: acc)
         case Nil =>
-          throw new RuntimeException("Reached end of line unexpectedly")
+          (Nil,acc,true)
       }
     }
     getRemainingPhraseTokens(elems,Nil)
   }
 
-  def gatherLogicalTokens(elems: List[Element]): List[Token] = {
+  def gatherLogicalTokens(lastState: Option[Map[String,String]], elems: List[Element]): (List[Token],Option[Map[String,String]]) = {
     elems match {
       case Tag(s, true) :: rest =>
         val attsP = getAttributes(s)
         val atts = TagParser.parseString(s) match { case Label(l, _) => attsP + ("tag" -> l) case _ => attsP }
-        val (remElements,toks) = getRemainingPhraseTokens(rest,atts)
-        toks ++ gatherLogicalTokens(remElements)
-      case Ws(_) :: r => gatherLogicalTokens(r)
-      case EndWs(_) :: r => gatherLogicalTokens(r)
-      case a :: r =>
-        new Token(Map(),a.getString) :: gatherLogicalTokens(r)
-      case Nil => Nil
+        val (remElements,toks,suddenEnd) = getRemainingPhraseTokens(rest,atts)
+        if (suddenEnd)
+          (toks,Some(atts))
+        else {
+          val (rest,st) = gatherLogicalTokens(None,remElements) 
+          (toks ++ rest, st)
+        }
+      case Tag(s,false) :: rest => gatherLogicalTokens(None,rest)
+      case Ws(_) :: r => gatherLogicalTokens(lastState,r)
+      case EndWs(_) :: r => gatherLogicalTokens(lastState,r)
+      case a :: rest =>
+        lastState match {
+          case Some(st) =>
+            val (r,nst) = gatherLogicalTokens(None,rest)
+            (new Token(st,a.getString) :: r, nst)
+          case None => 
+            val (r,st) = gatherLogicalTokens(None,rest)
+            (new Token(Map(),a.getString) :: r, st)
+        }
+         
+      case Nil => (Nil,None)
     }
   }
 
@@ -191,13 +203,26 @@ class ProjectAlignedTags extends ProjectAligned {
     val inAlign = io.Source.fromFile(alignFile)("UTF-8").getLines
     var lnCnt = 0
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(outFile)), "UTF-8")
+    var lastState : Option[Map[String,String]] = None // hack to keep track of when entity mentions span line boundaries ... ick
     inSrc foreach { srcLine =>
       val tgtLine = inTgt.next
       lnCnt += 1
       val srcElems = try {FastTokenizer.parseString(srcLine, true)} catch {case _: Throwable => Nil}
       val tgtElems = try {FastTokenizer.parseString(tgtLine, true)} catch {case _: Throwable => Nil}
-      val srcFileToks = try {gatherLogicalTokens(srcElems).toVector} catch {case e: Throwable => println("Src exception! line " + lnCnt + " => " + e); throw e}
-      val tgtFileToks = try {gatherLogicalTokens(tgtElems).toVector} catch {case e: Throwable => println("Tgt exception! line " + lnCnt + " => " + e); throw e}
+      val srcFileToks = 
+        try {
+          val (tks,st) = gatherLogicalTokens(lastState,srcElems)
+          lastState = st
+          tks.toVector
+        }
+        catch {case e: Throwable => println("Src exception! line " + lnCnt + " => " + e); throw e}
+      val tgtFileToks = 
+        try {
+          val (tks,st) = gatherLogicalTokens(lastState,tgtElems)
+          lastState = st
+          tks.toVector
+        } 
+        catch {case e: Throwable => println("Tgt exception! line " + lnCnt + " => " + e); throw e}
       val alignSequence = getAlignSequence(inAlign.next)
       if (alignSequence.length > 0) {
         try {
