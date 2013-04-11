@@ -164,8 +164,7 @@ class ProjectAlignedTags extends ProjectAligned {
         case Tag(t,false) :: r => (r,acc)
         case el :: r => getRemainingPhraseTokens(r,new Token(atts, el.getString) :: acc)
         case Nil =>
-          println("WARNING: unexpectedly reached end of line....")
-          (Nil,acc)
+          throw new RuntimeException("Reached end of line unexpectedly")
       }
     }
     getRemainingPhraseTokens(elems,Nil)
@@ -197,8 +196,8 @@ class ProjectAlignedTags extends ProjectAligned {
       lnCnt += 1
       val srcElems = try {FastTokenizer.parseString(srcLine, true)} catch {case _: Throwable => Nil}
       val tgtElems = try {FastTokenizer.parseString(tgtLine, true)} catch {case _: Throwable => Nil}
-      val srcFileToks = gatherLogicalTokens(srcElems).toVector // true - keep lex tags in token stream
-      val tgtFileToks = gatherLogicalTokens(tgtElems).toVector
+      val srcFileToks = try {gatherLogicalTokens(srcElems).toVector} catch {case e: Throwable => println("Src exception! line " + lnCnt + " => " + e); throw e}
+      val tgtFileToks = try {gatherLogicalTokens(tgtElems).toVector} catch {case e: Throwable => println("Tgt exception! line " + lnCnt + " => " + e); throw e}
       val alignSequence = getAlignSequence(inAlign.next)
       if (alignSequence.length > 0) {
         try {
