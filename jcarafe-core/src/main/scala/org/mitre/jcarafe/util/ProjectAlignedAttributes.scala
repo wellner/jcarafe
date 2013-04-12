@@ -46,7 +46,9 @@ abstract class ProjectAligned {
       l.split(' ').toIndexedSeq map { tr =>
         tr.split('-').toList match {
           case s :: t :: v :: Nil => AlignSeq(s.toInt, t.toInt, v.toDouble)
-          case s :: t :: Nil => AlignSeq(s.toInt, t.toInt, 1.0)
+          case s :: t :: Nil =>
+            println("WARNING: ... expected alignment score..")
+            AlignSeq(s.toInt, t.toInt, 1.0)
           case _ => throw new RuntimeException("Unable to parse alignment: " + tr)
         }
       }
@@ -62,7 +64,9 @@ abstract class ProjectAligned {
 
   def projectToTgtTokens(srcToks: IndexedSeq[Token], tgtToks: IndexedSeq[Token], alignment: IndexedSeq[AlignSeq]) = {
     alignment foreach {
-      case AlignSeq(t, s, sc) => tgtToks(t).assignAttributes(srcToks(s).props, sc)
+      case AlignSeq(t, s, sc) =>
+        println("Assigning attributes from src: " + s + " to tgt = " + t)
+        tgtToks(t).assignAttributes(srcToks(s).props, sc)
     }
   }
 }
