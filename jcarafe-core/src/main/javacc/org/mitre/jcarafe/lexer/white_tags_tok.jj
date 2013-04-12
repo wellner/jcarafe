@@ -1,0 +1,34 @@
+/**
+ * JavaCC file
+ */
+ 
+options {
+  JDK_VERSION = "1.6";
+  STATIC = false;
+  BUILD_PARSER = true;
+  UNICODE_INPUT = true;
+}
+PARSER_BEGIN(WhiteTagToker)
+package org.mitre.jcarafe.lexer;
+
+public class WhiteTagToker {
+  public static void main(String args[]) throws ParseException {
+    System.out.println("Main not implemented");
+  }
+}
+PARSER_END(WhiteTagToker)
+SKIP :
+{  < #ST: "<" >
+| < #EN: ">" >
+| < #ENST: "</" >
+
+}
+
+TOKEN : /* OPERATORS */
+{
+    < TAGEND: ( < ENST > ( ~["<",">"] )+ < EN > ) >
+|   < TAGSTART: ( < ST > ( ~["<",">"] )+ < EN > ) >
+|   < WHITEEND: ( (("\r")? "\n")+ ) >
+|   < TOK: ( (~[" ","\r","\n","\t"])+ ) >
+|   < WHITE: ( ([" ","\t","\r"])+ ) >
+    }

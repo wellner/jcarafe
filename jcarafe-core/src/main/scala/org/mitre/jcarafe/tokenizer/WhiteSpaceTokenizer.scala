@@ -14,8 +14,8 @@ object WhiteSpaceTokenizer {
   
   import CharStr._
 
-  private def parse(scs: InputStream) = {
-    val parser = new WhiteSpaceToker(scs)
+  private def parse(scs: InputStream, parseTags: Boolean = false) = {
+    val parser = if (parseTags) new WhiteTagToker(scs) else new WhiteSpaceToker(scs)
     val tbuf = new scala.collection.mutable.ListBuffer[Element]
     var c = true
     while (c) {
@@ -37,8 +37,8 @@ object WhiteSpaceTokenizer {
     if (at) os.write("</lex>")
   }
   
-  private def parseToFile(scs: InputStream, os: java.io.OutputStreamWriter) = {
-    val parser = new WhiteSpaceToker(scs)
+  private def parseToFile(scs: InputStream, os: java.io.OutputStreamWriter, parseTags : Boolean = false) = {
+    val parser = new if (parseTags) new WhiteTagToker(scs) else WhiteSpaceToker(scs)
     var c = true
     while (c) {
       val t : Token = parser.getNextToken()
@@ -52,18 +52,18 @@ object WhiteSpaceTokenizer {
     }
   }
   
-  def parseString(s: String) = {
-    parse(new ByteArrayInputStream(s.getBytes))
+  def parseString(s: String, parseTags: Boolean = false) = {
+    parse(new ByteArrayInputStream(s.getBytes), parseTags)
   }
   
-  def parseFile(f:String) = {
+  def parseFile(f:String, parseTags: Boolean = false) = {
     val fstream = new java.io.FileInputStream(f)
-    parse(fstream)
+    parse(fstream, parseTags)
   }
   
-  def parseFileToStream(f:String,os: java.io.OutputStreamWriter) = {
+  def parseFileToStream(f:String,os: java.io.OutputStreamWriter, parseTags: Boolean = false) = {
     val fstream = new java.io.FileInputStream(f)
-    parseToFile(fstream, os)
+    parseToFile(fstream, os, parseTags)
   }
   
   def main(args: Array[String]) = {
