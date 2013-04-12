@@ -38,7 +38,7 @@ object WhiteSpaceTokenizer {
   }
   
   private def parseToFile(scs: InputStream, os: java.io.OutputStreamWriter, parseTags : Boolean = false) = {
-    val parser = new if (parseTags) new WhiteTagToker(scs) else WhiteSpaceToker(scs)
+    val parser = if (parseTags) new WhiteTagToker(scs) else new WhiteSpaceToker(scs)
     var c = true
     while (c) {
       val t : Token = parser.getNextToken()
