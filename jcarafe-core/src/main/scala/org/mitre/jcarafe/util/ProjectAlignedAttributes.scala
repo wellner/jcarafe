@@ -65,7 +65,7 @@ abstract class ProjectAligned {
   def projectToTgtTokens(srcToks: IndexedSeq[Token], tgtToks: IndexedSeq[Token], alignment: IndexedSeq[AlignSeq]) = {
     alignment foreach {
       case AlignSeq(t, s, sc) =>
-        println("Assigning attributes from src: " + s + " to tgt = " + t)
+        println("Assigning attributes from src: " + s + " to tgt = " + t + "  == " + srcToks(s).props)
         tgtToks(t).assignAttributes(srcToks(s).props, sc)
     }
   }
