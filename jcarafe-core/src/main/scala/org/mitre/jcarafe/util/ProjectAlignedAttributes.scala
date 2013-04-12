@@ -13,8 +13,7 @@ class Token(prs: Map[String, String], val tokVal: String) {
     m foreach {
       case (k, v) =>
         val is = props.get(k).getOrElse(Nil)
-        val nv = if (sc < 1.0) v map { case PropertyVal(vv, ss) => PropertyVal(vv, sc) } else v
-        println("Assigned new value = " + (is ::: nv) + " to k = " + k)
+        val nv = if (sc < 1.0) v map { case PropertyVal(vv, ss) => PropertyVal(vv, sc) } else v        
         props += (k -> (is ::: nv))
     }
   }
@@ -64,7 +63,6 @@ abstract class ProjectAligned {
   def projectToTgtTokens(srcToks: IndexedSeq[Token], tgtToks: IndexedSeq[Token], alignment: IndexedSeq[AlignSeq]) = {
     alignment foreach {
       case AlignSeq(t, s, sc) =>
-        println("Assigning attributes from src: " + s + " to tgt = " + t + "  == " + srcToks(s).props)
         tgtToks(t).assignAttributes(srcToks(s).props, sc)
     }
   }
@@ -134,11 +132,12 @@ class ProjectAlignedTags extends ProjectAligned {
     if (tagElement.isDefined && tagElement.get.head.sc > t) {
       sbuf append ('<')
       sbuf append tagElement.get.head.vl
+      val bestLexScore = tok.findBestAttvalOver(0.0,"lex") match {case Some(pv) => pv.sc case None => 0.0}
       tok.props foreach {
         case (a, pvs) =>
-          if (a != "tag") {
+          if (a != "tag" && a != "lex") {
             tok.findBestAttvalOver(t, a) foreach { pv =>
-              if (a != "lex") {
+              if (pv.sc > bestLexScore) {
                 sbuf append " "
                 sbuf append tok.attToString(a, pv); if (writeSc) { sbuf append ' '; sbuf append tok.scoreToString(pv) }
               }
