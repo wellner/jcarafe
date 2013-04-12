@@ -14,7 +14,7 @@ class Token(prs: Map[String, String], val tokVal: String) {
       case (k, v) =>
         val is = props.get(k).getOrElse(Nil)
         val nv = if (sc < 1.0) v map { case PropertyVal(vv, ss) => PropertyVal(vv, sc) } else v
-        println("Assigned new value = " + nv + " to k = " + k)
+        println("Assigned new value = " + (is ::: nv) + " to k = " + k)
         props += (k -> (is ::: nv))
     }
   }
