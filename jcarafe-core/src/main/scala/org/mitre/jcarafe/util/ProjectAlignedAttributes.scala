@@ -168,7 +168,7 @@ class ProjectAlignedTags extends ProjectAligned {
     getRemainingPhraseTokens(elems, Nil)
   }
 
-  def gatherLogicalTokens(tgtSide: Boolean, lastState: Option[Map[String, String]], elems: List[Element]): (List[Token], Option[Map[String, String]]) = {
+  
     def gatherLogicalTokens(lastState: Option[Map[String, String]], elems: List[Element]): (List[Token], Option[Map[String, String]]) = {
       elems match {
         case Tag(s, true) :: rest =>
@@ -191,15 +191,13 @@ class ProjectAlignedTags extends ProjectAligned {
               (new Token(st, a.getString) :: r, nst)
             case None =>
               val (r, st) = gatherLogicalTokens(None, rest)
-              val t = if (tgtSide) new Token(Map(), a.getString) else new Token(Map("lex" -> "lex"), a.getString)
+              val t = new Token(Map("lex" -> "lex"), a.getString)
               (t :: r, st)
           }
 
         case Nil => (Nil, None)
       }
     }
-    gatherLogicalTokens(lastState, elems)
-  }
 
   def projectTags(srcFile: String, alignFile: String, tgtFile: String, outFile: String, th: Double = 0.5) = {
     val inSrc = io.Source.fromFile(srcFile)("UTF-8").getLines
@@ -215,13 +213,13 @@ class ProjectAlignedTags extends ProjectAligned {
       val tgtElems = try { WhiteSpaceTokenizer.parseString(tgtLine, true) } catch { case _: Throwable => Nil }
       val srcFileToks =
         try {
-          val (tks, st) = gatherLogicalTokens(false, lastState, srcElems)
+          val (tks, st) = gatherLogicalTokens(lastState, srcElems)
           lastState = st
           tks.toVector
         } catch { case e: Throwable => println("Src exception! line " + lnCnt + " => " + e); throw e }
       val tgtFileToks =
         try {
-          val (tks, st) = gatherLogicalTokens(true, lastState, tgtElems)
+          val (tks, st) = gatherLogicalTokens(lastState, tgtElems)
           lastState = st
           tks.toVector
         } catch { case e: Throwable => println("Tgt exception! line " + lnCnt + " => " + e); throw e }
