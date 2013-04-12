@@ -16,6 +16,7 @@ class Token(prs: Map[String, String], val tokVal: String) {
         val nv = if (sc < 1.0) v map { case PropertyVal(vv, ss) => PropertyVal(vv, sc) } else v        
         props += (k -> (is ::: nv))
     }
+    println("props after assignment = " + props)
   }
   def attToString(a: String, v: PropertyVal) = a + "=\"" + v.vl + "\""
   def scoreToString(v: PropertyVal) = "sc=\"" + v.sc + "\""
@@ -130,6 +131,7 @@ class ProjectAlignedTags extends ProjectAligned {
     val sbuf = new StringBuilder
     val tagElement = tok.props.get("tag")
     val bestLexScore = tok.findBestAttvalOver(0.0,"lex") match {case Some(pv) => pv.sc case None => 0.0}
+    println("best lex score = " + bestLexScore)
     val tt = math.max(t, bestLexScore)
     if (tagElement.isDefined && tagElement.get.head.sc > tt) {
       sbuf append ('<')
