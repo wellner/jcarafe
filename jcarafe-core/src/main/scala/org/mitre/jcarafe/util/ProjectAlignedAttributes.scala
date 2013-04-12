@@ -232,7 +232,7 @@ class ProjectAlignedTags extends ProjectAligned {
             println("Failure: \n src: " + srcLine + "\n tgt: " + tgtLine + " on line: " + lnCnt)
         }
         os.write("<s>")
-        tgtFileToks foreach { t => os.write(tokenBestOverToString(t,th,false)) }
+        tgtFileToks foreach { t => os.write(tokenBestOverToString(t,th,true)) }
         os.write("</s>")
         os.write('\n')
       }
