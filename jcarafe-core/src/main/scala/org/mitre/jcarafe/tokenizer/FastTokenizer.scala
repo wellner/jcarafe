@@ -4,7 +4,7 @@
 
 package org.mitre.jcarafe.tokenizer
 
-import org.mitre.jcarafe.lexer._
+import org.mitre.jcarafe.lexer.{Token, GenTokerConstants, SimpleCharStream, GenToker, JsonToker, JsonTokerConstants}
 import org.mitre.jcarafe.util._
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -413,7 +413,6 @@ object FastTokenizer {
           case a => printTok(false, a.getString, os)
         }
     }
-
   }
 
   def parseString(s: String, keep: Boolean = false) = {

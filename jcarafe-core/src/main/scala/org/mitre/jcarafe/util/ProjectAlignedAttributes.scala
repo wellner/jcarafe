@@ -16,7 +16,6 @@ class Token(prs: Map[String, String], val tokVal: String) {
         val nv = if (sc < 1.0) v map { case PropertyVal(vv, ss) => PropertyVal(vv, sc) } else v        
         props += (k -> (is ::: nv))
     }
-    println("props after assignment = " + props)
   }
   def attToString(a: String, v: PropertyVal) = a + "=\"" + v.vl + "\""
   def scoreToString(v: PropertyVal) = "sc=\"" + v.sc + "\""
