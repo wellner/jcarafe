@@ -14,7 +14,7 @@ abstract class TokenTransmuter {
 }
 
 
-class TokenTagUpcaseTransmuter(val tagTypes: Set[String]) {
+class TokenTagUpcaseTransmuter(val tagTypes: Set[String]) extends TokenTransmuter {
   
   def getMappedTokens(els: List[Element]) : (List[Element],List[Element]) = {
     els match {
@@ -33,13 +33,17 @@ class TokenTagUpcaseTransmuter(val tagTypes: Set[String]) {
     val toks = FastTokenizer.parseFile(inFile.getPath())
     def upcaseTokensWithinTags(rToks: List[Element], acc: List[Element]) : List[Element] = {
       rToks match {
-        case Tag(s,b) :: r if tagTypes.contains(s) =>
-          val (nts,nr) = getMappedTokens(r)
-          upcaseTokensWithinTags(nr,(nts.reverse ::: acc))
+        case Tag(s,true) :: r =>
+          if (tagTypes.contains(s)) {
+            val (nts,nr) = getMappedTokens(r)
+            upcaseTokensWithinTags(nr,(nts.reverse ::: (Tag(s,true) :: acc)))
+          } else upcaseTokensWithinTags(r,Tag(s,true) :: acc)
         case a :: r => upcaseTokensWithinTags(r,a :: acc)
         case Nil => acc.reverse
       }
     }
+    val ntoks = upcaseTokensWithinTags(toks,Nil)
+    elementSequenceToFile(ntoks, outFile)
   }
 }
 
