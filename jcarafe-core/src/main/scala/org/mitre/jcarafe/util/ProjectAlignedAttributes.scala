@@ -130,7 +130,6 @@ class ProjectAlignedTags extends ProjectAligned {
     val sbuf = new StringBuilder
     val tagElement = tok.props.get("tag")
     val bestLexScore = tok.findBestAttvalOver(0.0,"lex") match {case Some(pv) => pv.sc case None => 0.0}
-    println("best lex score = " + bestLexScore)
     val tt = math.max(t, bestLexScore)
     if (tagElement.isDefined && tagElement.get.head.sc > tt) {
       sbuf append ('<')
