@@ -151,8 +151,15 @@ class ProjectAlignedTags extends ProjectAligned {
       sbuf append tagElement.get.head.vl
       sbuf append ("> ")
     } else {
-      sbuf append tok.tokVal
-      sbuf append ' '
+      if (bestLexScore < t) {
+        sbuf append "<U>"
+        sbuf append tok.tokVal
+        sbuf append "</U>"
+        sbuf append ' '
+      } else {
+        sbuf append tok.tokVal
+        sbuf append ' '
+      }
     }
     sbuf.toString
   }

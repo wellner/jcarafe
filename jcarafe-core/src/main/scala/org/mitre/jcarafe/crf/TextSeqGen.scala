@@ -124,7 +124,7 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
                 if (l != "lex") withinTag = true // only used for multi-token tags
                 state = lab; curAtts = attmap
               case None =>
-                if (opts.partialLabels) {
+                if (opts.partialLabels && (lexAttributedTagSet || (opts.uncertainTag match {case Some(utag) => utag equals l case None => false}))) {                  
                   state = new UncertainLabel
                   curAtts = attmap
                 }

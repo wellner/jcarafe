@@ -153,6 +153,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--random-feature-coefficient" desc "Multiplicative factor for number of random features (default = 3.0)"
   "--granularity"        desc "Size of sequence batches for large files (default 5000)"
   "--partially-labeled"  flag "Enable training over partially labeled sequences"
+  "--uncertain-tag"      desc "Tag denoting regions of unknown/uncertain tags"
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
@@ -208,6 +209,8 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
       case Some(t) => loadTagset(t) 
       case None => 
         new Tagset(optHandler.getAll("--tag").foldLeft(Set.empty:Set[AbstractLabel]){(ac,s) => ac + parseTagSpec(s)})}
+  
+  var uncertainTag = optHandler.get("--uncertain-tag")
   
   var stripOriginalTags = optHandler.check("--strip")
 
@@ -349,6 +352,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.randomFeatureCoefficient_=(randomFeatureCoefficient)
     no.granularity_=(granularity)
     no.partialLabels_=(partialLabels)
+    no.uncertainTag_=(uncertainTag)
   }
   
   def copy() : Options = {
