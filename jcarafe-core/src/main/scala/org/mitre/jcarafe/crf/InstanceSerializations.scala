@@ -49,9 +49,13 @@ object InstanceSerializations extends DefaultProtocol {
       new SourceSequence(ss,par,st,en)){(ss: SourceSequence[String]) => (ss.seq, ss.parentSeq, ss.st, ss.en)}
   }
   
+  implicit def seqSourceMap : Format[Seq[ObsSource[String]]] = {
+    wrap[Seq[ObsSource[String]],List[ObsSource[String]]](_.toList,{(s:List[ObsSource[String]]) => s.toIndexedSeq})
+  }
+  
   implicit def obsSourceMap : Format[ObsSource[String]] = {
     asProduct4((lb: Int, obs: String, bg: Boolean, info: Option[Map[String,String]]) => 
       new ObsSource[String](lb, obs, bg, info)){(os: ObsSource[String]) => (os.label,os.obs.toString,os.beg,os.info)}
   }
-
+  
 }

@@ -57,7 +57,7 @@ class RawInstanceSequenceStringObs(val sGen: SeqGen[String], fp: java.io.File, s
     val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
     sGen.extractFeatures(src).iseq
   }
-  lazy val length = iseq.length
+  override lazy val length = iseq.length
 }
 
 class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
@@ -69,16 +69,28 @@ class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSeq
 object InstSeq {
   import InstanceSerializations._
   var icnt = 0
-  def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
+  
+  def apply[T](sg: SeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
         icnt += 1
+        if (m.toString equals "java.lang.String")
+          sbinary.Operations.toFile[SourceSequence[String]](ss.asInstanceOf[SourceSequence[String]])(ofile)
+        else throw new RuntimeException("Expected valid disk cache ..")
+      case None => throw new RuntimeException("Expected valid disk cache ..")         
+    }
+  }
+  def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
+    CrfInstance.diskCache match {
+      case Some(filePath) =>
+        val ofile = new java.io.File(filePath + "/" + icnt)
+        icnt += 1        
         s match {
           case s: Seq[NonFactoredCrfInstance] =>
             sbinary.Operations.toFile[Seq[NonFactoredCrfInstance]](s)(ofile)
             new NonFactoredCrfDiskInstanceSequence(ofile, st, en, s.length)
-        }
+        }        
       case None => new MemoryInstanceSequence(s, st, en)
     }
   }
@@ -404,6 +416,9 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   }
 
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
+    if (opts.diskCache.isDefined && opts.rawCache) {
+      InstSeq(this.asInstanceOf[SeqGen[String]],dseq.asInstanceOf[SourceSequence[String]],dseq.st,dseq.en)
+    }
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1

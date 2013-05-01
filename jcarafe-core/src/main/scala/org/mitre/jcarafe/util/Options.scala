@@ -154,6 +154,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--granularity"        desc "Size of sequence batches for large files (default 5000)"
   "--partially-labeled"  flag "Enable training over partially labeled sequences"
   "--uncertain-tag"      desc "Tag denoting regions of unknown/uncertain tags"
+  "--raw-cache"          flag "Applicable with the disk-cache option; caches raw source data (recomputes features repeatedly)"
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
@@ -284,6 +285,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var randomFeatureCoefficient        = optHandler.get("--random-feature-coefficient") match {case Some(v) => v.toDouble case None => 3.0}
   var granularity : Int               = optHandler.get("--granularity") match {case Some(v) => v.toInt case None => 1000}
   var partialLabels: Boolean          = optHandler.check("--partially-labeled")
+  var rawCache: Boolean               = optHandler.check("--raw-cache")
   
   def setInto(no: Options) = {
     no.CValue_=(CValue)
@@ -353,6 +355,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.granularity_=(granularity)
     no.partialLabels_=(partialLabels)
     no.uncertainTag_=(uncertainTag)
+    no.rawCache_=(rawCache)
   }
   
   def copy() : Options = {
