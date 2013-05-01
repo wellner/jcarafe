@@ -50,6 +50,16 @@ class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln:
   }
 }
 
+class RawInstanceSequenceStringObs(val sGen: SeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp,st,en,ln) {
+  // serialize just the plain 
+  import InstanceSerializations._
+  def iseq: Seq[AbstractInstance] = {
+    val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
+    sGen.extractFeatures(src).iseq
+  }
+  lazy val length = iseq.length
+}
+
 class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
 
   def iseq: Seq[AbstractInstance] = sGen.extractFeatures(src).iseq

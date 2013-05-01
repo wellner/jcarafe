@@ -43,5 +43,15 @@ object InstanceSerializations extends DefaultProtocol {
   implicit def nfseqMap : Format[Seq[NonFactoredCrfInstance]] = {
     wrap[Seq[NonFactoredCrfInstance],List[NonFactoredCrfInstance]](_.toList,{(s:List[NonFactoredCrfInstance]) => s.toIndexedSeq : Seq[NonFactoredCrfInstance]})
   }
+  
+  implicit def stringSourceSeqMap : Format[SourceSequence[String]] = {
+    asProduct4((ss: Seq[ObsSource[String]], par: Option[SourceSequence[String]], st: Int, en: Int) =>
+      new SourceSequence(ss,par,st,en)){(ss: SourceSequence[String]) => (ss.seq, ss.parentSeq, ss.st, ss.en)}
+  }
+  
+  implicit def obsSourceMap : Format[ObsSource[String]] = {
+    asProduct4((lb: Int, obs: String, bg: Boolean, info: Option[Map[String,String]]) => 
+      new ObsSource[String](lb, obs, bg, info)){(os: ObsSource[String]) => (os.label,os.obs.toString,os.beg,os.info)}
+  }
 
 }
