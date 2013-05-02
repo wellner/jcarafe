@@ -50,6 +50,11 @@ class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln:
   }
 }
 
+class FactoredCachedSourceSequence[T](val sGen: TrainingSeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st,en) {
+  def iseq: Seq[AbstractInstance] = sGen.extractFeaturesDirect(src)
+  override lazy val length = iseq.length
+}
+
 class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
   // serialize just the plain 
   import InstanceSerializations._
@@ -70,6 +75,11 @@ object InstSeq {
   import InstanceSerializations._
   var icnt = 0
 
+  /*
+   * This method creates a new InstanceSequence, RawInstanceSequenceStringObs that lazily re-computes the feature vector for the instance.
+   * WARNING: This method only works for observation sequences parameterized with type java.lang.String since it 
+   * must serialize the instance to disk with a specific type.
+   */
   def apply[T](sg: TrainingSeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]): InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
@@ -80,8 +90,8 @@ object InstSeq {
           val sgA = sg.asInstanceOf[TrainingSeqGen[String]]
           sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
           new RawInstanceSequenceStringObs(sgA, ofile, st, en, ss.length)
-        } else throw new RuntimeException("Expected valid disk cache ..")
-      case None => throw new RuntimeException("Expected valid disk cache ..")
+        } else throw new RuntimeException("Disk caching only allowed with SourceSequence[T] where T = String")
+      case None => new FactoredCachedSourceSequence(sg,ss,st,en)
     }
   }
   def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
@@ -429,7 +439,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   }
 
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
-    if (opts.diskCache.isDefined && opts.rawCache) {
+    if (opts.rawCache) {
       var sid = -1
       val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
         if (dseq(i).beg) sid += 1
