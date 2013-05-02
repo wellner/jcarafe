@@ -50,12 +50,12 @@ class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln:
   }
 }
 
-class RawInstanceSequenceStringObs(val sGen: SeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp,st,en,ln) {
+class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp,st,en,ln) {
   // serialize just the plain 
   import InstanceSerializations._
   def iseq: Seq[AbstractInstance] = {
     val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
-    sGen.extractFeatures(src).iseq
+    sGen.extractFeaturesDirect(src).iseq
   }
   override lazy val length = iseq.length
 }
@@ -70,14 +70,14 @@ object InstSeq {
   import InstanceSerializations._
   var icnt = 0
   
-  def apply[T](sg: SeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) : InstanceSequence = {
+  def apply[T](sg: TrainingSeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) : InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
         icnt += 1
         if (m.toString equals "java.lang.String") { // should be a better way to set this up...
           val ssA = ss.asInstanceOf[SourceSequence[String]]
-          val sgA = sg.asInstanceOf[SeqGen[String]]
+          val sgA = sg.asInstanceOf[TrainingSeqGen[String]]
           sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
           new RawInstanceSequenceStringObs(sgA,ofile,st,en,ss.length)
         } else throw new RuntimeException("Expected valid disk cache ..")
@@ -417,11 +417,8 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       InstSeq(instSeq, dseq.st, dseq.en)
     }
   }
-
-  def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
-    if (opts.diskCache.isDefined && opts.rawCache) {
-      InstSeq(this.asInstanceOf[SeqGen[String]],dseq.asInstanceOf[SourceSequence[String]],dseq.st,dseq.en)
-    } else {
+  
+  def extractFeaturesDirect(dseq:SourceSequence[Obs]) : InstanceSequence = {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -429,7 +426,14 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       frep.applyFeatureFns(inst, dseq, i)
       inst
     }
-    InstSeq(iseq, dseq.st, dseq.en)
+    InstSeq(iseq, dseq.st, dseq.en)    
+  }
+
+  def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
+    if (opts.diskCache.isDefined && opts.rawCache) {
+      InstSeq(this.asInstanceOf[TrainingSeqGen[String]],dseq.asInstanceOf[SourceSequence[String]],dseq.st,dseq.en)
+    } else {
+      extractFeaturesDirect(dseq)
     }
   }
 
