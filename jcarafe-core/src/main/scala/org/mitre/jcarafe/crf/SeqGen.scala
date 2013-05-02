@@ -55,7 +55,7 @@ class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io
   import InstanceSerializations._
   def iseq: Seq[AbstractInstance] = {
     val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
-    sGen.extractFeaturesDirect(src).iseq
+    sGen.extractFeaturesDirect(src)
   }
   override lazy val length = iseq.length
 }
@@ -417,7 +417,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     }
   }
 
-  def extractFeaturesDirect(dseq: SourceSequence[Obs]): InstanceSequence = {
+  def extractFeaturesDirect(dseq: SourceSequence[Obs]): Seq[AbstractInstance] = {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -425,7 +425,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       frep.applyFeatureFns(inst, dseq, i)
       inst
     }
-    InstSeq(iseq, dseq.st, dseq.en)
+    iseq
   }
 
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
@@ -438,7 +438,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       }
       InstSeq(this.asInstanceOf[TrainingSeqGen[String]], dseq.asInstanceOf[SourceSequence[String]], dseq.st, dseq.en)
     } else {
-      extractFeaturesDirect(dseq)
+      InstSeq(extractFeaturesDirect(dseq),dseq.st,dseq.en)
     }
   }
 
