@@ -50,7 +50,7 @@ class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln:
   }
 }
 
-class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp,st,en,ln) {
+class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
   // serialize just the plain 
   import InstanceSerializations._
   def iseq: Seq[AbstractInstance] = {
@@ -69,8 +69,8 @@ class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSeq
 object InstSeq {
   import InstanceSerializations._
   var icnt = 0
-  
-  def apply[T](sg: TrainingSeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) : InstanceSequence = {
+
+  def apply[T](sg: TrainingSeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]): InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
@@ -79,21 +79,21 @@ object InstSeq {
           val ssA = ss.asInstanceOf[SourceSequence[String]]
           val sgA = sg.asInstanceOf[TrainingSeqGen[String]]
           sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
-          new RawInstanceSequenceStringObs(sgA,ofile,st,en,ss.length)
+          new RawInstanceSequenceStringObs(sgA, ofile, st, en, ss.length)
         } else throw new RuntimeException("Expected valid disk cache ..")
-      case None => throw new RuntimeException("Expected valid disk cache ..")         
+      case None => throw new RuntimeException("Expected valid disk cache ..")
     }
   }
   def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
-        icnt += 1        
+        icnt += 1
         s match {
           case s: Seq[NonFactoredCrfInstance] =>
             sbinary.Operations.toFile[Seq[NonFactoredCrfInstance]](s)(ofile)
             new NonFactoredCrfDiskInstanceSequence(ofile, st, en, s.length)
-        }        
+        }
       case None => new MemoryInstanceSequence(s, st, en)
     }
   }
@@ -168,13 +168,12 @@ abstract class SeqGen[Obs](val opts: Options) {
   def getNumberOfFeatures: Int
 
   def getNumberOfNeuralFeatures: Int = 0
-  
+
   def getState(l: AbstractLabel, b: Boolean) =
     l match {
-    	case SLabel("lex") => l
-    	case _ => if (b && !l.uncertain) BeginState(l) else l
+      case SLabel("lex") => l
+      case _ => if (b && !l.uncertain) BeginState(l) else l
     }
-    
 
   /**
    * Creates a source sequence.  Subclasses can over-ride this to add additional infor regarding sequences
@@ -272,13 +271,13 @@ abstract class SeqGen[Obs](val opts: Options) {
    * @return       A sequence of sequences of <code>ObsSource</code> objects
    */
   def toSources(d: DeserializationT): Seqs
-  
+
   def createSeqsWithInput(d: DeserializationT): Seq[InstanceSequence] = extractFeatures(toSources(d))
 
   def createSeqsWithInput(dseq: Seq[DeserializationT]): Seq[InstanceSequence] =
     dseq flatMap { (d: DeserializationT) => createSeqsWithInput(d) }
-  
-  private def gatherFiles : Seq[File] = {
+
+  private def gatherFiles: Seq[File] = {
     opts.inputDir match {
       case Some(dirStr) =>
         val pat = opts.inputFilter match {
@@ -291,7 +290,7 @@ abstract class SeqGen[Obs](val opts: Options) {
           { f: File =>
             if (!f.isFile) false
             else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
-          } 
+          }
       case None =>
         opts.inputFile match {
           case Some(f) => Seq(new File(f))
@@ -301,23 +300,23 @@ abstract class SeqGen[Obs](val opts: Options) {
     }
   }
 
-  def createSourcesFromFiles: Seq[Seqs] = gatherFiles map toSources    
-  
-  def countFeatureTypesFromFiles : Unit = gatherFiles foreach {f => countFeatureTypes(toSources(f))}
+  def createSourcesFromFiles: Seq[Seqs] = gatherFiles map toSources
+
+  def countFeatureTypesFromFiles: Unit = gatherFiles foreach { f => countFeatureTypes(toSources(f)) }
 
   def createInstancesFromFiles: Seq[InstanceSequence] = {
     if (opts.randomFeatures || opts.randomSupportedFeatures) countFeatureTypesFromFiles
-    gatherFiles flatMap {f => extractFeatures(toSources(f))}
+    gatherFiles flatMap { f => extractFeatures(toSources(f)) }
   }
 
   //def createSeqsFromFiles : Seq[InstanceSequence] = extractFeaturesSeq(createSourcesFromFiles)
   def createSeqsFromFiles: Seq[InstanceSequence] = createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
 
   def extractFeatures(spSeqs: Seqs): Seq[InstanceSequence]
-  
-  def countFeatureTypes(src: SourceSequence[Obs]) : Unit = {}
-  
-  def countFeatureTypes(spSeqs: Seqs) : Unit = spSeqs.seq foreach countFeatureTypes
+
+  def countFeatureTypes(src: SourceSequence[Obs]): Unit = {}
+
+  def countFeatureTypes(spSeqs: Seqs): Unit = spSeqs.seq foreach countFeatureTypes
 
   def extractFeatures(src: SourceSequence[Obs]): InstanceSequence
 
@@ -379,7 +378,7 @@ trait FactoredSeqGen[Obs] extends SeqGen[Obs] {
       }
     def isBegin(i: Int) = beginStateCache match { case Some(c) => c.contains(i) case None => false }
   }
-  
+
 }
 
 abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Options) extends SeqGen[Obs](opts) {
@@ -417,8 +416,8 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       InstSeq(instSeq, dseq.st, dseq.en)
     }
   }
-  
-  def extractFeaturesDirect(dseq:SourceSequence[Obs]) : InstanceSequence = {
+
+  def extractFeaturesDirect(dseq: SourceSequence[Obs]): InstanceSequence = {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -426,12 +425,18 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       frep.applyFeatureFns(inst, dseq, i)
       inst
     }
-    InstSeq(iseq, dseq.st, dseq.en)    
+    InstSeq(iseq, dseq.st, dseq.en)
   }
 
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
     if (opts.diskCache.isDefined && opts.rawCache) {
-      InstSeq(this.asInstanceOf[TrainingSeqGen[String]],dseq.asInstanceOf[SourceSequence[String]],dseq.st,dseq.en)
+      var sid = -1
+      val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+        if (dseq(i).beg) sid += 1
+        val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+        frep.applyFeatureFns(inst, dseq, i)
+      }
+      InstSeq(this.asInstanceOf[TrainingSeqGen[String]], dseq.asInstanceOf[SourceSequence[String]], dseq.st, dseq.en)
     } else {
       extractFeaturesDirect(dseq)
     }
