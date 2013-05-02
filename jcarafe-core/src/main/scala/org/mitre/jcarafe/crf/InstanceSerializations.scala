@@ -45,8 +45,8 @@ object InstanceSerializations extends DefaultProtocol {
   }
   
   implicit def stringSourceSeqMap : Format[SourceSequence[String]] = {
-    asProduct4((ss: Seq[ObsSource[String]], par: Option[SourceSequence[String]], st: Int, en: Int) =>
-      new SourceSequence(ss,par,st,en)){(ss: SourceSequence[String]) => (ss.seq, ss.parentSeq, ss.st, ss.en)}
+    asProduct3((ss: Seq[ObsSource[String]], st: Int, en: Int) =>
+      new SourceSequence(ss,None,st,en)){(ss: SourceSequence[String]) => (ss.seq, ss.st, ss.en)}
   }
   
   implicit def seqSourceMap : Format[Seq[ObsSource[String]]] = {
