@@ -70,14 +70,17 @@ object InstSeq {
   import InstanceSerializations._
   var icnt = 0
   
-  def apply[T](sg: SeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) = {
+  def apply[T](sg: SeqGen[T], ss: SourceSequence[T], st: Int, en: Int)(implicit m: Manifest[T]) : InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
         icnt += 1
-        if (m.toString equals "java.lang.String")
-          sbinary.Operations.toFile[SourceSequence[String]](ss.asInstanceOf[SourceSequence[String]])(ofile)
-        else throw new RuntimeException("Expected valid disk cache ..")
+        if (m.toString equals "java.lang.String") { // should be a better way to set this up...
+          val ssA = ss.asInstanceOf[SourceSequence[String]]
+          val sgA = sg.asInstanceOf[SeqGen[String]]
+          sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
+          new RawInstanceSequenceStringObs(sgA,ofile,st,en,ss.length)
+        } else throw new RuntimeException("Expected valid disk cache ..")
       case None => throw new RuntimeException("Expected valid disk cache ..")         
     }
   }
@@ -418,7 +421,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
     if (opts.diskCache.isDefined && opts.rawCache) {
       InstSeq(this.asInstanceOf[SeqGen[String]],dseq.asInstanceOf[SourceSequence[String]],dseq.st,dseq.en)
-    }
+    } else {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -427,6 +430,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       inst
     }
     InstSeq(iseq, dseq.st, dseq.en)
+    }
   }
 
   override def countFeatureTypes(dseq: SourceSequence[Obs]): Unit = {
