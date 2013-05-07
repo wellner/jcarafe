@@ -1,7 +1,7 @@
 package org.mitre.jcarafe.util
 
 import org.mitre.jcarafe.lexer._
-import org.mitre.jcarafe.tokenizer._
+//import org.mitre.jcarafe.tokenizer._
 import GenTokerConstants._
 import java.io._
 
@@ -21,7 +21,7 @@ object SeparateDocs {
           val parser = new GenToker(sr)
           var c = true
           while (c) {
-            val t: Token = parser.getNextToken()
+            val t: org.mitre.jcarafe.lexer.Token = parser.getNextToken()
             t.kind match {
               case EOF => c = false
               case TAGSTART =>
