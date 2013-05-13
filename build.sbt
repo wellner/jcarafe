@@ -1,8 +1,8 @@
 name := "jcarafe"
 
-version in ThisBuild := "0.9.8.6.b-04"
+version in ThisBuild := "0.9.8.6.b-11"
 
-scalaVersion in ThisBuild := "2.10.0"
+scalaVersion in ThisBuild := "2.10.1"
 
 organization := "org.mitre"
 
