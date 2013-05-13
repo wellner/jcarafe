@@ -201,8 +201,9 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     if (opts.keepToks && write) {
       lexInfo match {
         case Some(i) => 
-          os.write("<lex ")
-          i foreach {case (k,v) => os.write(k); os.write("="); os.write('\"'); os.write(v); os.write('\"'); os.write('>')}
+          os.write("<lex")
+          i foreach {case (k,v) => os.write(' '); os.write(k); os.write("="); os.write('\"'); os.write(v); os.write('\"')}
+          os.write('>')
         case None => os.write("<lex>")
       }
       os.write(t)
