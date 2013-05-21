@@ -45,7 +45,7 @@ class RunTimeMaxEntDocumentTrainer extends MaxEntTrainer(RunTimeOptions) {
   }
   
   def xvalidate : Double = {
-    val confMatrix = evaluator.xValidate(5)
+    val confMatrix = evaluator.xValidate(5) map {_._1}
     val nls = confMatrix(0).length
     val totalMat = Array.fill(nls,nls)(0)
     confMatrix foreach {mat => evaluator.addTo(totalMat,mat)}

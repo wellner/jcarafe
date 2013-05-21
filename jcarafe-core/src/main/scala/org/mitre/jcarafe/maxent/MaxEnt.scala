@@ -41,6 +41,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--ss-iters" desc "Number of iterations for self-induced feature parameterization"
   "--unlabeled-input-dir" desc "Directory containing files of unlabeled data for use with semi-supervised learning"
   "--weighted-feature-vectors" desc "Induced feature vectors"
+  "--binomial-report" desc "Only report cross-entropy on test sets"
 }
 
 class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
@@ -816,7 +817,7 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
   }
 }
 
-class MaxEntTrainer(opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](opts) with LinearCRFTraining[List[(FeatureId, Double)]] {
+class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureId, Double)]](opts) with LinearCRFTraining[List[(FeatureId, Double)]] {
   import MaxEntSerializer._
   def this() = this(new MEOptions(Array(), new MaxEntOptionHandler(Array())))
   type TrSeqGen = MaxEntTrainingSeqGen
@@ -1019,6 +1020,7 @@ class MEOptions(override val argv: Array[String], override val optHandler: MaxEn
   val fileBased: Boolean = optHandler.check("--file-processing")
   val dumpInstances = optHandler.get("--dump-instances")
   val minCnt : Int = optHandler.get("--min-cnt").getOrElse("1").toInt
+  val binomial : Boolean = optHandler.check("--binomial-report")
 
   override def copy(): MEOptions = {
     val no = new MEOptions(argv, optHandler, false)
@@ -1185,6 +1187,8 @@ class RuntimeMaxEntDecoder(m: MaxEntModel) extends MaxEntDecoder(m) {
 
   def decodeValuedInstanceAsDistribution(fs: java.util.List[(String, java.lang.Double)]): java.util.List[(String, java.lang.Double)] =
     decodeInstanceAsDistribution(fs.asScala.toList.map { case (s, v) => (s, v.asInstanceOf[Double]) })
+    
+  def decodeInstanceAsDistribution(i: AbstractInstance) : List[(Double,Int)] = meDecoder.getInstanceDistribution(i)
 
   def decodeInstance(fs: java.util.List[String]): String = decodeInstance(fs.asScala.toList.map { f => (FeatureId(f), 1.0) })
 
