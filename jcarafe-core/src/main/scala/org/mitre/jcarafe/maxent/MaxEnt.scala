@@ -41,7 +41,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--ss-iters" desc "Number of iterations for self-induced feature parameterization"
   "--unlabeled-input-dir" desc "Directory containing files of unlabeled data for use with semi-supervised learning"
   "--weighted-feature-vectors" desc "Induced feature vectors"
-  "--binomial-report" desc "Only report cross-entropy on test sets"
+  "--binomial-report" flag "Only report cross-entropy on test sets"
 }
 
 class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
