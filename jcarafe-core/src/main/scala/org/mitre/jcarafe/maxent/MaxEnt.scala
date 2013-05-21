@@ -29,6 +29,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--sgd" flag "Use 'standard' stochastic gradient descent"
   "--model" desc "Model file"
   "--fspec" desc "Feature spec"
+  "--min-cnt" desc "Minimum number of feature occurrences"
   "--evaluate" desc "Evaluate decoder on gold-standard test data"
   "--word-properties" desc "Word properties file"
   "--word-scores" desc "Word scores file"
@@ -462,11 +463,22 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
     case None => new Alphabet[Long]()
   }
   val unkCode = hash("$=BIAS=$", 0)
+  
+  var featureStatistics : Map[Int,(Int,Double)] = Map()
+  
+  def updateStatistics(fid: Int, v: Double) = {
+    val (curCnt,curMax) = featureStatistics.get(fid).getOrElse((1,0.0))
+    val nCnt = curCnt + 1
+    val nMax = math.max(curMax,v)
+    featureStatistics += ((fid,(nCnt,nMax)))
+  }
 
   def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None): Unit = {
     val fid = fMap.update(fname)
-    if (fid >= 0)
+    if (fid >= 0) {
+      updateStatistics(fid,vl)
       inst add (new CompactFeature(vl, fid, clWts))
+    }
   }
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
@@ -702,27 +714,25 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
       val lineElements = l.split(" ")
       val labDist = getLabelDistribution(lineElements)
       if (labDist.length > 1) {
-      var i = labDist.length
-      val nEls = lineElements.length
-      val firstLab = labDist.head
-      val fbuf = new collection.mutable.ListBuffer[(FeatureId, Double)]
-      while (i < nEls) {
-        val el = lineElements(i)
-        val pair = el.split(":").toList match {
-          case a :: b :: Nil => (FeatureId(a), b.toDouble)
-          case a :: _ => (FeatureId(a), 1.0)
-          case Nil => throw new RuntimeException("Feature vector parse failed")
+        var i = labDist.length
+        val nEls = lineElements.length
+        val firstLab = labDist.head
+        val fbuf = new collection.mutable.ListBuffer[(FeatureId, Double)]
+        while (i < nEls) {
+          val el = lineElements(i)
+          val pair = el.split(":").toList match {
+            case a :: b :: Nil => (FeatureId(a), b.toDouble)
+            case a :: _ => (FeatureId(a), 1.0)
+            case Nil => throw new RuntimeException("Feature vector parse failed")
+          }
+          fbuf append pair
+          i += 1
         }
-        fbuf append pair
-        i += 1
-      }
-      val src = createSource(SLabel(firstLab._1), fbuf.toList)
-      val inst = frep.createMEInstance(src.label, src.label)
-      labDist foreach { case (l, v) => inst.setConditionalProb(getIndex(SLabel(l)), v) }
-      println("Label dist: ")
-      inst.condProbTbl foreach {case (k,v) => println(k + " => " + v)}
-      addInFeatures(inst, src)
-      Some(inst)
+        val src = createSource(SLabel(firstLab._1), fbuf.toList)
+        val inst = frep.createMEInstance(src.label, src.label)
+        labDist foreach { case (l, v) => inst.setConditionalProb(getIndex(SLabel(l)), v) }
+        addInFeatures(inst, src)
+        Some(inst)
       } else buildInstance(l)
     } else None
   }
@@ -745,7 +755,23 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     }
     println("\n...finished reading in dataset...")
     inReader.close()
-    InstSeq(tmpBuf.toIndexedSeq)
+    val insts = tmpBuf.toIndexedSeq
+    filterAndNormalizeFeatures(insts)
+    InstSeq(insts)
+  }
+  
+  protected def filterAndNormalizeFeatures(insts: Seq[MaxEntInstance]) = {
+    insts foreach {inst =>
+      val vec = inst.getCompactVec
+      val ln = vec.length
+      var i = 0
+      while (i < ln) {
+        val f = vec(i)
+        val (cnt,msc) = frep.featureStatistics(f.fid)
+        vec(i) = new CompactFeature(f.v / msc, f.fid, f.classLabelWeights)
+        i += 1
+      }
+    }
   }
 }
 
@@ -992,6 +1018,7 @@ class MEOptions(override val argv: Array[String], override val optHandler: MaxEn
   def this() = this(Array(), new MaxEntOptionHandler(Array()))
   val fileBased: Boolean = optHandler.check("--file-processing")
   val dumpInstances = optHandler.get("--dump-instances")
+  val minCnt : Int = optHandler.get("--min-cnt").getOrElse("1").toInt
 
   override def copy(): MEOptions = {
     val no = new MEOptions(argv, optHandler, false)
