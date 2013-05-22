@@ -23,6 +23,8 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
 
   var instances: Option[InstanceSequence] = None
 
+  val decodedOutputStream = opts.outputFile map { f => new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(f)), "UTF-8") }
+
   def setInstances: Unit = { instances = Some(InstSeq(Random.shuffle(instances.get.iseq))) }
 
   def addInstances(i: InstanceSequence) = instances = Some(i)
@@ -63,6 +65,10 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
           klDiv += empiricalProb * (math.log(empiricalProb) - math.log(s))
       }
       decoder.decodeInstance(inst)
+      decodedOutputStream foreach {s =>
+        s.write(inst.orig.toString + '\t' + inst.conditionalProb(inst.label).toString)
+        s.write('\n')
+        }
       (inst.orig, inst.label)
     }
     val ns: Int = seqGen.getNumberOfStates
@@ -75,11 +81,14 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     val s = instanceVec.size
     val fSize = if ((s % n) == 0) s / n else (s / n) + 1
     val folds = instanceVec.sliding(fSize, fSize).toIndexedSeq
-    for (i <- 0 until n) yield {
-      val testFold = folds(i)
-      val trainingFolds = for (j <- 0 until n if j != i) yield folds(j)
-      trainAndEvaluate(trainingFolds.flatten, testFold)
-    }
+    val r =
+      for (i <- 0 until n) yield {
+        val testFold = folds(i)
+        val trainingFolds = for (j <- 0 until n if j != i) yield folds(j)
+        trainAndEvaluate(trainingFolds.flatten, testFold)
+      }
+    decodedOutputStream foreach { _.close }
+    r
   }
 
   def getLabel(i: Int, invMap: scala.collection.mutable.Map[Int, AbstractLabel]) = {
@@ -141,13 +150,13 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     val lSize = seqGen.getNumberOfStates
     os.write("Cross Validation Report\n\n")
     if (opts.binomial) {
-      val klScores = confMatsAndDivergence map {_._2}
+      val klScores = confMatsAndDivergence map { _._2 }
       var i = 0
-      klScores foreach {s =>
+      klScores foreach { s =>
         os.write("KL-Divergence -- fold: " + i + " => " + s)
-        os.write('\n')        
+        os.write('\n')
       }
-      os.write("KL Average: " + (klScores.foldLeft(0.0){_ + _}/klScores.length))
+      os.write("KL Average: " + (klScores.foldLeft(0.0) { _ + _ } / klScores.length))
       os.write('\n')
     } else {
       os.write("Label categories: ")
