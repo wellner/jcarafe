@@ -66,7 +66,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
       }
       decoder.decodeInstance(inst)
       decodedOutputStream foreach {s =>
-        s.write(inst.orig.toString + '\t' + inst.conditionalProb(inst.label).toString)
+        s.write(inst.orig.toString + '\t' + inst.conditionalProb(inst.orig).toString)
         s.write('\n')
         }
       (inst.orig, inst.label)
