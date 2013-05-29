@@ -143,6 +143,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--unlabeled-input-dir" desc "Directory containing files of unlabeled data for use with semi-supervised learning"
   "--weighted-feature-vectors" desc "Induced feature vectors"
   "--confidences"        flag "Output sequence and token posterior probabilities (JSON mode only)"
+  "--posteriors"         flag "Output sequence and token posterior distributions (JSON mode only)"
   "--p-alpha"            desc "Set the p-alpha for SGD training"
   "--no-sent-break"      flag "Do NOT break sentences/sequences - treat entire zones/regions as single sequences"
   "--tokenizer-patterns" desc "Split and Merge tokenizer post-processing patterns"
@@ -274,7 +275,8 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var xValFolds                       = optHandler.get("--folds") map {x => x.toInt}
   var report                          = optHandler.get("--report")
   var inducedFVecsFile                = optHandler.get("--weighted-feature-vectors")
-  var posteriors                      = optHandler.check("--confidences")
+  var posteriors                      = optHandler.check("--posteriors")
+  var confidences                     = optHandler.check("--confidences")
   var pAlpha : Double                 = optHandler.get("--p-alpha") match {case Some(v) => v.toDouble case None => 0.9}
   var noSentBreak                     = optHandler.check("--no-sent-break")
   var tokenizerPatterns               = optHandler.get("--tokenizer-patterns")
@@ -323,6 +325,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.pAlpha_=(pAlpha)
     no.parallel_=(parallel)
     no.posteriors_=(posteriors)
+    no.confidences_=(confidences)
     no.preModels_=(preModels)
     no.preProc_=(preProc)
     no.priorAdjust_=(priorAdjust)

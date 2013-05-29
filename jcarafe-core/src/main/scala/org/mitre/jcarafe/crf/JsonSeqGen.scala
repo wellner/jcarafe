@@ -247,6 +247,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   val seqConfidenceAnnotationType = Label("seq_confidence", Map("posterior" -> ""))
   val tokConfidenceAnnotationType = Label("tok_confidence", Map("posterior" -> "", "entropy" -> ""))
+  lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.foldLeft(Map[String,String]()){case (ac,(l,i)) => ac + (l.labelString -> "")})
   val logVal2 = math.log(2.0)
   def log2(x: Double) = math.log(x) / logVal2
 
@@ -265,7 +266,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       val seq = seqs(i).iseq
       if (seq.length > 0) {
         val rawPairs = pairs(i)
-        if (opts.posteriors) {
+        if (opts.confidences) {
           val seqStart = rawPairs(0).info match { case Some(am) => am("st").toInt case None => -1 }
           val seqEnd = rawPairs(0 max (seq.length - 1)).info match { case Some(am) => am("en").toInt case None => -1 }
           val nannot = new Annotation(seqStart, seqEnd, false, Label("seq_confidence", Map("posterior" -> seqs(i).seqPosteriorProbability.toString)), None)
@@ -281,7 +282,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           val lstr = lab.labelString
           var st = -1
           var en = -1
-          if (opts.posteriors) {
+          if (opts.confidences) {
             //var entropy = 0.0
             st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
             en = rawPairs(c).info match { case Some(amap) => amap("en").toInt case None => (-1) }
@@ -292,7 +293,16 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
                   "entropy" -> tokEntropy.toString)), None)
             if (!annotTbl.contains(tokConfidenceAnnotationType)) annotTbl = annotTbl + (tokConfidenceAnnotationType -> new ListBuffer[Annotation])
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
+          } else if (opts.posteriors) {
+            st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
+            en = rawPairs(c).info match { case Some(amap) => amap("en").toInt case None => (-1) }
+            val cp = seq(c)
+            val tokPosteriorMap = lAlphabet.foldLeft(Map():Map[String,String]){case (ac,(lab,i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString)}
+            val tokPosteriors = new Annotation(st,en,false,Label("tok_posterior_dist",tokPosteriorMap),None)
+            if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
+            annotTbl(tokPosteriorAnnotationType) += tokPosteriors
           }
+          
           if (!(lstr == "lex")) {
             if (!opts.posteriors) st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
             var curLab = normLab
