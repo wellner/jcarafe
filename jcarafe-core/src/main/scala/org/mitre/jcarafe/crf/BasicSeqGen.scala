@@ -14,6 +14,24 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
 
   type DeserializationT = BasicSeqDeserialization
   val utf8_codec = scala.io.Codec("utf-8")
+  
+  private val LabRe = """([A-z]+)=([0-9\.]+)""".r
+
+  private def getLabelDistribution(lst: Array[String]) = {
+    val buf = new collection.mutable.ListBuffer[(String, Double)]
+    var i = 0;
+    var c = true
+    while (i < lst.length && c) {
+      if (LabRe.findFirstIn(lst(i)).isDefined) {
+        lst(i) match {
+          case LabRe(l, v) => buf append ((l, v.toDouble))
+        }
+      } else c = false
+      i += 1
+    }
+    buf.toList
+  }
+
 
   def deserializeFromFile(file: String): DeserializationT = {
     val src = scala.io.Source.fromFile(new java.io.File(file))
@@ -48,10 +66,15 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
     d.elements.foreach { seq =>
       val tmpBuf = new ListBuffer[ObsSource[String]]
       seq foreach { line =>
-        val chunks = line.split(splitChar).toIndexedSeq
+        val chunks = line.split(splitChar).toArray
         var counter = 0
         var commenting = false
-        while (counter < chunks.length) {
+        val labelDist = getLabelDistribution(chunks)
+        val nEls = chunks.length
+        if (labelDist.length > 1) {
+          counter = labelDist.length          
+        }
+        while (counter < nEls) {
           if (counter == 0) {
             curLabel = chunks(0)
           } else {
@@ -65,7 +88,11 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
           }
           counter += 1
         }
-        if (chunks.length > 0) tmpBuf += createSource(new SLabel(curLabel), "", true, curAtts)
+        if (chunks.length > 0) {
+          if (labelDist.length > 1) 
+            tmpBuf += createDistributionalSource((labelDist map {case (l,s) => (SLabel(l),s)}),"",true,curAtts)
+          else tmpBuf += createSource(new SLabel(curLabel), "", true, curAtts)
+        }
         curAtts = Map() // reset map
       }
       if (tmpBuf.size > 0) {

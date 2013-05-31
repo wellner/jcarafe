@@ -233,6 +233,8 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) {
   // these two cases are for recoding
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]], st: Int, en: Int) = new RecodedObsSource(l, o, b, i, st, en)
   def createSource(l: Int, o: Obs, b: Boolean, st: Int, en: Int) = new RecodedObsSource(l, o, b, None, st, en)
+  
+  def createDistributionalSource(dist: List[(Int,Double)], o: Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs]
 
   def createInstance(l: Int, o: Int, sId: Int): AbstractInstance
 
@@ -263,17 +265,25 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
 
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
     val src = new ObsSource(l, o, b, i)
-    mgr.lex match {
-      case Some(lex) =>
-        src.setLexCodes(lex.get(o.toString))
-      case None =>
-    }
+    setLex(src,o)
     src
   }
 
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource(l, o, b, None)
   def createInstance(l: Int, o: Int, sId: Int) = new CrfInstance(l, o, sId)
   def createInstance(l: Int, o: Int) = new CrfInstance(l, o, -1)
+  
+  private def setLex(src: ObsSource[Obs],o: Obs) = {
+    mgr.lex foreach { lex =>
+        src.setLexCodes(lex.get(o.toString))
+    }
+  }
+  
+  def createDistributionalSource(dist: List[(Int,Double)], o:Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs] = {
+    val src = new DistributionalObsSource(dist,o,b,i)
+    setLex(src,o)
+    src
+  }
 
   def getFeatureSetName = mgr.iString
   def getLexicon = mgr.lex
@@ -617,6 +627,12 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   val random = opts.numRandomFeatures > 0
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, i)
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, None)
+  
+  def createDistributionalSource(dist: List[(Int,Double)], o:Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs] = {
+    val src = new DistributionalObsSource(dist,o,b,i)
+    src
+  }
+  
   def getFeatureSetName = mgr.iString
   def getLexicon = mgr.lex
   def getWordProps = mgr.wdProps

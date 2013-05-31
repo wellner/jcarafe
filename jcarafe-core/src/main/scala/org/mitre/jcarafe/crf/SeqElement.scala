@@ -189,6 +189,13 @@ class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[
   def setLexCodes(l: Option[List[Long]]) = l match { case Some(l) => lexCodes = l case None => }
 }
 
+class DistributionalObsSource[Obs](labDist: List[(Int,Double)], obs: Obs, beg: Boolean, info: Option[Map[String, String]] = None) extends ObsSource(0, obs, beg, info) {
+  var condTable = Map[Int,Double]()
+  labDist foreach {case (l,s) => setConditionalProb(l,s)}
+  override def conditionalProb(i: Int) : Double = condTable.get(i).getOrElse(1.0)
+  override def setConditionalProb(i: Int, v: Double) = condTable += (i -> v)
+}
+
 /*
  * A recoded ObsSource keeps track of where it is situatated in the original ObsSource sequence
  * with start and end indices

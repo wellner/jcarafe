@@ -156,6 +156,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--partially-labeled"  flag "Enable training over partially labeled sequences"
   "--uncertain-tag"      desc "Tag denoting regions of unknown/uncertain tags"
   "--raw-cache"          flag "Applicable with the disk-cache option; caches raw source data (recomputes features repeatedly)"
+  "--empirical-dist-train" flag "Train using empirical per-state marginal distributions"
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
@@ -267,7 +268,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var seed : Option[Int]              = optHandler.get("--seed")
   var batchSize : Int                 = optHandler.get("--batch-size") match {case Some(v) => v.toInt case None => 1} 
   var CValue : Double                 = optHandler.get("--l1-C") match {case Some(v) => v.toDouble case None => 0.1} 
-
+  var empDistTrain : Boolean          = optHandler.check("--empirical-dist-train")
   var weightedFeatureMap              = optHandler.get("--weighted-feature-map")
   var selfInducedIterations           = optHandler.get("--ss-iters") match {case Some(v) => v.toInt case None => 0} 
   var unlabeledInputDir               = optHandler.get("--unlabeled-input-dir")
@@ -359,6 +360,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.partialLabels_=(partialLabels)
     no.uncertainTag_=(uncertainTag)
     no.rawCache_=(rawCache)
+    no.empDistTrain_=(empDistTrain)
   }
   
   def copy() : Options = {

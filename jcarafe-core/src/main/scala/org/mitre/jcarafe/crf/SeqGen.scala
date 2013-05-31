@@ -345,6 +345,9 @@ abstract class SeqGen[Obs](val opts: Options) {
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean, i: Map[String, String]) = createSourceI(getIndex(l), o, beg, Some(i))
   def createSource(l: AbstractLabel, o: Obs, i: Map[String, String]) = createSourceI(getIndex(l), o, false, Some(i))
   def createSource(o: Obs, i: Map[String, String]) = createSourceI(-1, o, false, Some(i)) // label of -1 means that the label is missing/unknown
+  
+  def createDistributionalSource(dist: List[(AbstractLabel,Double)], obs: Obs, beg: Boolean, i: Map[String,String]) : ObsSource[Obs] = 
+    frep.createDistributionalSource(dist map {case (al,s) => (getIndex(al),s)},obs,beg,Some(i))
 
   // ---- Stuff for handling scoring/evaluation - possibly useful for Training time as well, so put this here rather than in DecodingSeqGen
   var totalTokCnt = 0

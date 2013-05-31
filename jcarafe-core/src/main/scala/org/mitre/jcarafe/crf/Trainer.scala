@@ -46,9 +46,11 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
         case Some(n) => n
       }
 
-  def getCrf: Crf = {
+  def getCrf(empDist: Boolean = false): Crf = {
     if (opts.neural) {
       NeuralCrf(sGen, opts)
+    } else if (empDist) {
+      new KLDivMinimizingCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     } else if (opts.semiCrf) {
       val s = sGen.getMaxSegmentSize
       CrfInstance.maxSegSize = s // "global" value for maximum seg size
@@ -95,7 +97,7 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
 
   def xValidate(): Unit = {
     val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
-    val crf = getCrf
+    val crf = getCrf()
     if (adjust) crf.adjustible_=(true)
     val nf = opts.xValFolds.getOrElse(10)
     xValidate(sGen,crf,new MemoryAccessSeq(seqs, opts.seed), opts.maxIters, nf)
@@ -103,7 +105,7 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   
   def xValidateFromSeqs(seqs: Seq[SourceSequence[Obs]]) = {
     val aSeqs = sGen.extractFeatures(seqs)
-    val crf = getCrf
+    val crf = getCrf()
     if (adjust) crf.adjustible_=(true)
     val nf = opts.xValFolds.getOrElse(10)
     xValidate(sGen,crf,new MemoryAccessSeq(aSeqs, opts.seed), opts.maxIters, nf)
@@ -120,9 +122,18 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     if (opts.neural) println("Using hidden gates ... \"neural\" CRF ")
     
   }
+  
+  private def detectedEmpDistribution(seqs: Seq[InstanceSequence]) = {
+    if (seqs.seq.length > 0) {
+      val s1 = seqs.seq(0)
+      if (s1.iseq.length > 0) {
+        s1.iseq(0).condProbTbl.size > 0 // if this table is greater than zero, we're using empiricial distributions to train
+      } else false
+    } else false
+  }
 
-  def trainingRoutine(seqs: Seq[InstanceSequence]) = {
-    val dCrf: Crf = getCrf
+  def trainingRoutine(seqs: Seq[InstanceSequence]) = {    
+    val dCrf: Crf = getCrf(opts.empDistTrain || detectedEmpDistribution(seqs))
     if (adjust) dCrf.adjustible_=(true)
     val aseqs = if (opts.partialLabels && false) {
       val filteredSeqs = new ArrayBuffer[InstanceSequence]
