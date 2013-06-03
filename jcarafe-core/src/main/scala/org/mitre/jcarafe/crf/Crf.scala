@@ -330,7 +330,8 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
           gradient(inst.fid) -= inst.value
           seqLogLi += lambdas(inst.fid) * inst.value
         }
-        if (inst.prv < 0) featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value
+        if (inst.prv < 0) 
+          featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value
         else featureExpectations(inst.fid) += curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value
         k += 1
       }

@@ -233,8 +233,10 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) {
   // these two cases are for recoding
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]], st: Int, en: Int) = new RecodedObsSource(l, o, b, i, st, en)
   def createSource(l: Int, o: Obs, b: Boolean, st: Int, en: Int) = new RecodedObsSource(l, o, b, None, st, en)
-  
-  def createDistributionalSource(dist: List[(Int,Double)], o: Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs]
+
+  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs]
+
+  def createInstance(src: ObsSource[Obs], sid: Int): AbstractInstance
 
   def createInstance(l: Int, o: Int, sId: Int): AbstractInstance
 
@@ -265,23 +267,28 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
 
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
     val src = new ObsSource(l, o, b, i)
-    setLex(src,o)
+    setLex(src, o)
     src
   }
 
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource(l, o, b, None)
+  def createInstance(src: ObsSource[Obs], sid: Int = (-1)): CrfInstance = {
+    val ci = new CrfInstance(src.label, src.label, sid)
+    for (i <- 0 until CrfInstance.numLabels) ci.setConditionalProb(i, src.conditionalProb(i))
+    ci
+  }
   def createInstance(l: Int, o: Int, sId: Int) = new CrfInstance(l, o, sId)
   def createInstance(l: Int, o: Int) = new CrfInstance(l, o, -1)
-  
-  private def setLex(src: ObsSource[Obs],o: Obs) = {
+
+  private def setLex(src: ObsSource[Obs], o: Obs) = {
     mgr.lex foreach { lex =>
-        src.setLexCodes(lex.get(o.toString))
+      src.setLexCodes(lex.get(o.toString))
     }
   }
-  
-  def createDistributionalSource(dist: List[(Int,Double)], o:Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs] = {
-    val src = new DistributionalObsSource(dist,o,b,i)
-    setLex(src,o)
+
+  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
+    val src = new DistributionalObsSource(dist, o, b, i)
+    setLex(src, o)
     src
   }
 
@@ -587,17 +594,37 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   //   Set this up so that if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
     val upTo = (maxSegSize min pos)
-    val yp = dseq(pos).label
-    for (d <- 0 to upTo) {
-      val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
-      addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)
-      mgr.fnList foreach { fn =>
-        val fresult: FeatureReturn = fn(d, dseq, pos)
-        if (!fresult.edgeP || (pos > 0)) {
-          fresult.features foreach { f =>
-            if (static) addFeatureStatic(d, inst, f) else addFeature(d, inst, (if (fresult.edgeP) yprv else (-2)), yp, f, false, fresult.fcat)
+    if (dseq(pos).isInstanceOf[DistributionalObsSource[_]]) { // check for whether we have empirical distributions that factor in to loss
+      // if so, add in all (unsupported+supported) features
+      for (d <- 0 to upTo) {
+        mgr.fnList foreach { fn =>
+          val fresult: FeatureReturn = fn(d, dseq, pos)
+          if (!fresult.edgeP || (pos > 0)) {
+            fresult.features foreach { f =>
+              if (fresult.edgeP) {
+                for (i <- 0 until CrfInstance.numLabels; j <- 0 until CrfInstance.numLabels) // explicitly add full cross-product here 
+                  addFeature(d, inst, j, i, f, false, fresult.fcat)
+              } else
+                for (i <- 0 until CrfInstance.numLabels) 
+                  addFeature(d,inst, -2, i, f, false, fresult.fcat)                  
+            }
           }
-          if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
+        }
+      }
+    } else {
+      val yp = dseq(pos).label
+      for (d <- 0 to upTo) {
+        val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
+        addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)
+        mgr.fnList foreach { fn =>
+          val fresult: FeatureReturn = fn(d, dseq, pos)
+          if (!fresult.edgeP || (pos > 0)) {
+            fresult.features foreach { f =>
+              if (static) addFeatureStatic(d, inst, f)
+              else addFeature(d, inst, (if (fresult.edgeP) yprv else (-2)), yp, f, false, fresult.fcat)
+            }
+            if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
+          }
         }
       }
     }
@@ -627,18 +654,23 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   val random = opts.numRandomFeatures > 0
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, i)
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, None)
-  
-  def createDistributionalSource(dist: List[(Int,Double)], o:Obs, b: Boolean, i: Option[Map[String,String]]) : ObsSource[Obs] = {
-    val src = new DistributionalObsSource(dist,o,b,i)
+
+  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
+    val src = new DistributionalObsSource(dist, o, b, i)
     src
   }
-  
+
   def getFeatureSetName = mgr.iString
   def getLexicon = mgr.lex
   def getWordProps = mgr.wdProps
   def getWordScores = None
   def getInducedFeatureMap = None
 
+  def createInstance(src: ObsSource[Obs], sid: Int = (-1)): NonFactoredCrfInstance = {
+    val ci = new FastNonFactoredCrfInstance(src.label, src.label)
+    for (i <- 0 until CrfInstance.numLabels) ci.setConditionalProb(i, src.conditionalProb(i))
+    ci
+  }
   def createInstance(l: Int, o: Int, sId: Int): NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, sId)
   def createInstance(l: Int, o: Int): NonFactoredCrfInstance = if (random) new FastNonFactoredCrfInstance(l, o) else new NonFactoredCrfInstance(l, o, -1)
 

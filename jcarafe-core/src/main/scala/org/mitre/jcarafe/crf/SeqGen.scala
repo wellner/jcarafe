@@ -413,7 +413,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
         var sid = -1
         val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
           if (dseq(i).beg) sid += 1
-          val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+          val inst = frep.createInstance(dseq(i), sid)
           frep.extractSupportedFeatures(inst, dseq, i)
           inst
         }
@@ -434,7 +434,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
-      val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+      val inst = frep.createInstance(dseq(i), sid)
       frep.applyFeatureFns(inst, dseq, i)
       inst
     }
@@ -446,7 +446,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       var sid = -1
       val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
         if (dseq(i).beg) sid += 1
-        val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+        val inst = frep.createInstance(dseq(i), sid)
         frep.applyFeatureFns(inst, dseq, i)
       }
       InstSeq(this.asInstanceOf[TrainingSeqGen[String]], dseq.asInstanceOf[SourceSequence[String]], dseq.st, dseq.en)
@@ -504,7 +504,7 @@ abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], op
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
-      val inst = frep.createInstance(dseq(i).label, dseq(i).label, sid)
+      val inst = frep.createInstance(dseq(i), sid)
       frep.applyFeatureFns(None, inst, dseq, i)
       inst: AbstractInstance
     }

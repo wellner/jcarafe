@@ -133,7 +133,7 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   }
 
   def trainingRoutine(seqs: Seq[InstanceSequence]) = {    
-    val dCrf: Crf = getCrf(opts.empDistTrain || detectedEmpDistribution(seqs))
+    val dCrf: Crf = getCrf(opts.empDistTrain)
     if (adjust) dCrf.adjustible_=(true)
     val aseqs = if (opts.partialLabels && false) {
       val filteredSeqs = new ArrayBuffer[InstanceSequence]

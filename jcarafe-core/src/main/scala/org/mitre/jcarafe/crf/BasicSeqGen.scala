@@ -74,7 +74,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
         if (labelDist.length > 1) {
           counter = labelDist.length          
         }
-        while (counter < nEls) {
+        while ((counter < nEls) && !commenting) {
           if (counter == 0) {
             curLabel = chunks(0)
           } else {

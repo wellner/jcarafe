@@ -25,14 +25,14 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
         if (inst.prv < 0) {
           val empiricalMarginal = abstractInst.conditionalProb(inst.cur)
           gradient(inst.fid) -= inst.value * empiricalMarginal          
-          seqLogLi += lambdas(inst.fid) * inst.value * empiricalMarginal
-          featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value * empiricalMarginal
+          seqLogLi += lambdas(inst.fid) * inst.value * empiricalMarginal          
+          featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value          
         } else if (i > 0) {
           val prevInst = iseq(i-1)
           val pairMarginal = abstractInst.conditionalProb(inst.cur) * prevInst.conditionalProb(inst.prv) 
           gradient(inst.fid) -= inst.value * pairMarginal
           seqLogLi += lambdas(inst.fid) * inst.value * pairMarginal
-          featureExpectations(inst.fid) += curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value * pairMarginal
+          featureExpectations(inst.fid) += curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value
         }
         k += 1
       }

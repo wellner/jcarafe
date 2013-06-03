@@ -449,6 +449,11 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
   def createSource(l: Int, o: Obs, b: Boolean) = new ObsSource(l, o, b, None)
   def createInstance(l: Int, o: Int, sId: Int) = new MaxEntInstance(l, o)
   def createInstance(l: Int, o: Int) = new MaxEntInstance(l, o)
+  def createInstance(src: ObsSource[Obs],sid: Int = (-1)) : AbstractInstance = {
+    val ci = new MaxEntInstance(src.label,src.label)
+    for (i <- 0 until CrfInstance.numLabels) ci.setConditionalProb(i, src.conditionalProb(i))
+    ci
+  }
   def createDistributionalSource(dist: List[(Int,Double)],o:Obs,b:Boolean,i:Option[Map[String,String]]) = new DistributionalObsSource(dist,o,b,i)
   def getFeatureSetName: String = ""
   def getLexicon: Option[BloomLexicon] = None
