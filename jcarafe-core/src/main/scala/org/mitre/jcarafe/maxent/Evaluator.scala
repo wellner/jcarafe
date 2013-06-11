@@ -69,7 +69,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
         s.write(inst.orig.toString + '\t' + inst.conditionalProb(inst.orig).toString)
         s.write('\n')
         }
-      (inst.orig, inst.label)
+      (inst.label, inst.orig)
     }
     val ns: Int = seqGen.getNumberOfStates
     (getConfusionMatrix(ns, pairs), klDiv)
