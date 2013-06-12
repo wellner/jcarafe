@@ -294,10 +294,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           val lstr = lab.labelString
           var st = -1
           var en = -1
+          val (s,e) = getStartEnd(rawPairs(c).info)
+          st = s
+          en = e
           if (opts.confidences) {
             //var entropy = 0.0
-            st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
-            en = rawPairs(c).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val tokEntropy = getEntropy(seq(c).condProbTbl)
             val tokConfidence = new Annotation(st, en, false,
               Label("tok_confidence",
@@ -306,7 +307,6 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             if (!annotTbl.contains(tokConfidenceAnnotationType)) annotTbl = annotTbl + (tokConfidenceAnnotationType -> new ListBuffer[Annotation])
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
           } else if (opts.posteriors) {
-            val (st,en) = getStartEnd(rawPairs(c).info)
             val cp = seq(c)
             annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
@@ -318,7 +318,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             if (c < seq.length) { // advance counter to the end of the phrase              
               do {
                 curLab = seq(c).label
-                val (st,en) = getStartEnd(rawPairs(c).info)
+                val (s,e) = getStartEnd(rawPairs(c).info)
                 val cp = seq(c)
                 annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)              
                 c += 1                
