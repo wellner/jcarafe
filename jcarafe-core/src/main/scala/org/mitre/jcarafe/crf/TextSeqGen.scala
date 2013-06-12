@@ -211,17 +211,18 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
     } else os.write(t)
   }
 
-  def seqsToStream(d: DeserializationT, seqs: Seq[InstanceSequence], ostr: java.io.OutputStream): Unit = {
+  def seqsToStream(d: DeserializationT, seqs: Seq[InstanceSequence], ostr: java.io.OutputStream, close: Boolean = true): Unit = {
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
     seqsToWriter(d, seqs, os)
-    os.close
+    if (close) os.close
   }
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter): Unit = {
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit = {
     seqs foreach { seq =>
       val nd = d.getSlice(seq.st, seq.en)
       seqToWriter(nd, seq, os)
     }
+    if (close) os.close
   }
   
   def seqToWriter(d: DeserializationT, iSeq: InstanceSequence, os: java.io.OutputStreamWriter): Unit = {

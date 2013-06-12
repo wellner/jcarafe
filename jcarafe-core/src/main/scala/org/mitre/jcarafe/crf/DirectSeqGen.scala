@@ -113,7 +113,7 @@ trait DirectSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): Map[AbstractLabel, ListBuffer[Annotation]] =
     throw new RuntimeException("Unsupported method: seqsToAnnotations")
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter): Unit =
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit =
     throw new RuntimeException("Seqs to Writer NOT SUPPORTED in Basic mode")
 
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: java.io.File): Unit =

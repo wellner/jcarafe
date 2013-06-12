@@ -535,7 +535,7 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
     throw new RuntimeException("UNSUPPORTED")
   //new MaxEntDeserialization(Vector.tabulate(seqs(0).length){(x:Int) => invLa(seqs(0).iseq(x).label).labelString})
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter): Unit =
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit =
     throw new RuntimeException("Seqs to Writer NOT SUPPORTED in Xml mode")
 
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: java.io.File): Unit = {

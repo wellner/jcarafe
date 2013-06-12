@@ -183,9 +183,9 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   def seqsToString(d: DeserializationT, seqs: Seq[InstanceSequence]) =
     Json.writeJsonToString(seqsToDeserialized(d, seqs).json)
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter): Unit = {
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit = {
     Json.writeJson(seqsToDeserialized(d, seqs).json, os)
-    os.close
+    if (close) os.close
   }
 
   def toSources(d: DeserializationT): Seqs = {

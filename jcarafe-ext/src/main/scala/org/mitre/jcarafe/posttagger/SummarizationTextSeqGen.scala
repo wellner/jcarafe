@@ -8,7 +8,7 @@ import org.mitre.jcarafe.tokenizer.{Tag}
 
 trait SummarizationTextSeqGen extends PostTextSeqGen {
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter) : Unit = {
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true) : Unit = {
     assert(seqs.length == 1) // this assumes there is a single sequence for each deserialization    
     val flatSeqs = seqs(0).iseq.toArray
     println("length d = " + d.elements.length)
@@ -33,7 +33,10 @@ trait SummarizationTextSeqGen extends PostTextSeqGen {
       case Tag(t,false) => os.write(t)
       case t => os.write(t.getString)
     }
+    if (close) os.close()
   }
+  
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter) = seqsToWriter(d,seqs,os,true)
 
 
 }

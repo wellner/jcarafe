@@ -55,7 +55,7 @@ trait XmlParserSeqGen extends SeqGen[String] {
   def seqsToString(d: DeserializationT, seqs: Seq[InstanceSequence]) : String = 
     throw new RuntimeException("Unsupported method: seqsToString")	 
 
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter) : Unit = 
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true) : Unit = 
     throw new RuntimeException("Seqs to Writer NOT SUPPORTED in Xml mode")
   
   def seqsToAnnotations(d:DeserializationT, seqs: Seq[InstanceSequence]) : Map[AbstractLabel,ListBuffer[Annotation]] =

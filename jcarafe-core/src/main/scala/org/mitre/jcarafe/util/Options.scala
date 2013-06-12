@@ -157,6 +157,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--uncertain-tag"      desc "Tag denoting regions of unknown/uncertain tags"
   "--raw-cache"          flag "Applicable with the disk-cache option; caches raw source data (recomputes features repeatedly)"
   "--empirical-dist-train" flag "Train using empirical per-state marginal distributions"
+  "--multi-line-input"   flag "Process a single input file; assume separate documents on each line (JSON mode)"
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
@@ -289,6 +290,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var granularity : Int               = optHandler.get("--granularity") match {case Some(v) => v.toInt case None => 1000}
   var partialLabels: Boolean          = optHandler.check("--partially-labeled")
   var rawCache: Boolean               = optHandler.check("--raw-cache")
+  var multiLine: Boolean              = optHandler.check("--multi-line-input")
   
   def setInto(no: Options) = {
     no.CValue_=(CValue)
@@ -361,6 +363,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.uncertainTag_=(uncertainTag)
     no.rawCache_=(rawCache)
     no.empDistTrain_=(empDistTrain)
+    no.multiLine_=(multiLine)
   }
   
   def copy() : Options = {

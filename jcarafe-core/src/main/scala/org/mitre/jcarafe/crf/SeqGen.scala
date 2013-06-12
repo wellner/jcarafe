@@ -543,7 +543,7 @@ abstract class DecodingSeqGen[Obs](model: Model, val decodingOpts: Options) exte
 
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: String): Unit = seqsToFile(d, seqs, new File(f))
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: File): Unit
-  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter): Unit
+  def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit
 
   def seqsToString(d: DeserializationT, seqs: Seq[InstanceSequence]): String
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): scala.collection.immutable.Map[AbstractLabel, ListBuffer[Annotation]]

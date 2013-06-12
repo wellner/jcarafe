@@ -201,6 +201,12 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
         outFile match { case Some(outFile) => sGen.seqsToFile(dobj, seqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
     }
   }
+  
+  def applyDecoder(dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, writer: java.io.OutputStreamWriter) = {
+    val seqs = sGen.createSeqsWithInput(dobj)
+    seqs foreach { decoder.assignBestSequence(_) }
+    sGen.seqsToWriter(dobj, seqs, writer)
+  }
 
   private def applyDecoderParallel(srcs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
     val nsrcs = sGen.toSources(dobj)
@@ -238,8 +244,20 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
       case None =>
         opts.inputFile match {
           case Some(f) =>
-            val deser = sGen.deserializeFromFile(f)
-            runDecoder(deser, decoder, opts.outputFile)
+            if (opts.multiLine) { // this covers situation where we have multiple documents within a single file
+              val lns = io.Source.fromFile(f).getLines
+              val ostr = new java.io.FileOutputStream(opts.outputFile.get)
+              val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")              
+              lns foreach {l =>
+                val deser = sGen.deserializeFromString(l)
+                applyDecoder(deser,decoder,os)
+                }
+              os.flush()
+              os.close()
+            } else {
+              val deser = sGen.deserializeFromFile(f)
+              runDecoder(deser, decoder, opts.outputFile)
+            }
           case None =>
             throw new RuntimeException("Expecting input file or input directory")
         }
