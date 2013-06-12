@@ -251,6 +251,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
               lns foreach {l =>
                 val deser = sGen.deserializeFromString(l)
                 applyDecoder(deser,decoder,os)
+                os.write('\n') // explicitly add in a newline here
                 }
               os.flush()
               os.close()
