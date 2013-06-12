@@ -205,7 +205,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def applyDecoder(dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, writer: java.io.OutputStreamWriter) = {
     val seqs = sGen.createSeqsWithInput(dobj)
     seqs foreach { decoder.assignBestSequence(_) }
-    sGen.seqsToWriter(dobj, seqs, writer)
+    sGen.seqsToWriter(dobj, seqs, writer, false) // write but do not close the stream writer
   }
 
   private def applyDecoderParallel(srcs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
