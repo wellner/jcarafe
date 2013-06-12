@@ -239,14 +239,14 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     tokLists.reverse map { el: List[Annotation] =>
       val sss = seqOfTokArr(el.toArray).toSeq
       createSourceSequence(sss)
-    } 
+    }
   }
 
   def getAState(l: AbstractLabel, v: Boolean) = if (addBeginStates) getState(l, v) else l
 
   val seqConfidenceAnnotationType = Label("seq_confidence", Map("posterior" -> ""))
   val tokConfidenceAnnotationType = Label("tok_confidence", Map("posterior" -> "", "entropy" -> ""))
-  lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.foldLeft(Map[String,String]()){case (ac,(l,i)) => ac + (l.labelString -> "")})
+  lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.foldLeft(Map[String, String]()) { case (ac, (l, i)) => ac + (l.labelString -> "") })
   val logVal2 = math.log(2.0)
   def log2(x: Double) = math.log(x) / logVal2
 
@@ -254,6 +254,19 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     var e = 0.0
     map foreach { case (i, v) => e -= log2(v) * v }
     e
+  }
+
+  private def addTokenDistAnnotation(atbl: Map[AbstractLabel, ListBuffer[Annotation]], cp: AbstractInstance, st: Int, en: Int) = {
+    var annotTbl = atbl
+    val tokPosteriorMap = lAlphabet.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
+    val tokPosteriors = new Annotation(st, en, false, Label("tok_posterior_dist", tokPosteriorMap), None)
+    if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
+    annotTbl(tokPosteriorAnnotationType) += tokPosteriors
+    annotTbl
+  }
+  
+  private def getStartEnd(info: Option[Map[String,String]]) = {
+    info match {case Some(i) => (i("st").toInt, i("en").toInt) case None => (-1,-1)}
   }
 
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): scala.collection.immutable.Map[AbstractLabel, ListBuffer[Annotation]] = {
@@ -293,25 +306,23 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             if (!annotTbl.contains(tokConfidenceAnnotationType)) annotTbl = annotTbl + (tokConfidenceAnnotationType -> new ListBuffer[Annotation])
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
           } else if (opts.posteriors) {
-            st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
-            en = rawPairs(c).info match { case Some(amap) => amap("en").toInt case None => (-1) }
+            val (st,en) = getStartEnd(rawPairs(c).info)
             val cp = seq(c)
-            val tokPosteriorMap = lAlphabet.foldLeft(Map():Map[String,String]){case (ac,(lab,i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString)}
-            val tokPosteriors = new Annotation(st,en,false,Label("tok_posterior_dist",tokPosteriorMap),None)
-            if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
-            annotTbl(tokPosteriorAnnotationType) += tokPosteriors
+            annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
-          
+
           if (!(lstr == "lex")) {
             if (!opts.posteriors) st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
             var curLab = normLab
             c += 1
-            if (c < seq.length) { // advance counter to the end of the phrase
-              curLab = seq(c).label
-              while ((curLab == normLab) && c < (seq.length - 1)) {
-                c += 1
+            if (c < seq.length) { // advance counter to the end of the phrase              
+              do {
                 curLab = seq(c).label
-              }
+                val (st,en) = getStartEnd(rawPairs(c).info)
+                val cp = seq(c)
+                annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)              
+                c += 1                
+              } while ((curLab == normLab) && c < seq.length) 
             }
             en = rawPairs(c - 1).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val annot = new Annotation(st, en, false, nlabState, None)
