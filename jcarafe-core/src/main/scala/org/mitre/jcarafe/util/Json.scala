@@ -76,7 +76,7 @@ object Json {
     os.close
   }
 
-  def writeJson(obj: JsonType, writer: java.io.Writer) : Unit = {
+  def writeJson(obj: JsonType, writer: java.io.Writer, close: Boolean = true) : Unit = {
     val f = new org.codehaus.jackson.JsonFactory()
     val g = f.createJsonGenerator(writer)
     def sendJson(obj: JsonType) : Unit = obj match {
@@ -97,7 +97,7 @@ object Json {
     }
     sendJson(obj)
     g.flush()
-    g.close()
+    if (close) g.close()
   }	
 
   def writeJsonToString(obj: JsonType) : String = {
