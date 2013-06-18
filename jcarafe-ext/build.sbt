@@ -1,8 +1,8 @@
 name := "jcarafe-ext"
 
-libraryDependencies += "org.codehaus.jackson" % "jackson-core-asl" % "1.5.0"
+libraryDependencies += "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6"
 
-libraryDependencies += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.5.0"
+libraryDependencies += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6"
 
 libraryDependencies += "org.scala-tools.sbinary" % "sbinary_2.10" % "0.4.1"
 
