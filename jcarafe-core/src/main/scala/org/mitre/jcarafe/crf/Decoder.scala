@@ -8,9 +8,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future, ExecutionContext, Promise }
 import org.mitre.jcarafe.tokenizer.FastTokenizer
 import org.mitre.jcarafe.util._
-import akka.actor._
-import akka.util.Timeout
-import akka.pattern.{ ask, pipe }
 import java.util.concurrent.Executors
 
 abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
@@ -30,13 +27,6 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def setDecoder(b: Boolean): Unit = {
     model.fixAlphabet(b)
     if (model.beg) sGen.setBegin
-    /*
-    if (numDecWorkers > 1) {
-      System.setProperty("actors.corePoolSize", numDecWorkers.toString)
-      decoderWorkers = Vector.tabulate(numDecWorkers) { _ => 
-        actorSystem.actorOf(Props(new DecoderWorker(viterbiDecoder.getCopyOf))) }
-    }
-    */
   }
 
   def decodeString(s: String): String = {

@@ -4,7 +4,6 @@
 
 package org.mitre.jcarafe.crf
 import org.mitre.jcarafe.util.Options
-import akka.actor._
 
 case class SectionUpdate(lambdas: Array[Double], etas: Array[Double])
 
