@@ -659,7 +659,8 @@ abstract class FeatureManager[Obs](val iString: String) {
 
   def weightedAttributes(s: Int, sarr: SourceSequence[Obs], pos: Int) = sarr(pos).info match {
     case Some(i) =>
-      FeatureReturn((i.foldLeft(Nil: List[(String, Double)]) { case (ac, vs) => vs match { case (k, v) => (k, (try { v.toDouble } catch { case _ => 1.0 })) :: ac } }))
+      FeatureReturn((i.foldLeft(Nil: List[(String, Double)]) { case (ac, vs) => vs match { 
+        case (k, v) => (k, (try { v.toDouble } catch { case _:Throwable => 1.0 })) :: ac } }))
     case None => new FeatureReturn
   }
 
