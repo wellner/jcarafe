@@ -13,9 +13,18 @@ from source.
 
 1) Download and install the latest version of Simple Build Tool (SBT)
 
-   Available at: https://github.com/harrah/xsbt/wiki/Getting-Started-Setup
+   Available at: http://www.scala-sbt.org
 
-2) Place the "sbt" shell script or "sbt.bat" file in your path
+   ** Note: Ensure proxy settings are appropriate and ensure your machine has
+      a connection to the Internet.  See the SBT documentation for setting
+      the http proxy.  Typically, this involves adding 
+      "-Dhttp.proxyHost=<hostname>" and "-Dhttp.proxyPort=<port number>" as 
+      arguments to the "java" invocation that launches SBT.  
+      It is also recommended to set the Java runtime heap allocation to 
+      at least 1024m, more if available.
+   
+
+2) Place the "sbt" shell script or "sbt.bat" file in your path, following the SBT instructions.
 
 3) Build jcarafe-core and jcarafe-ext.  Execute the commands below from the top-level "jcarafe" directory.
 
@@ -42,9 +51,5 @@ Enter the top-level "jcarafe/" directory and execute the following SBT command:
 
 This will generate source-level documentation in the following directories:
 
-        jcarafe/jcarafe-core/target/scala-2.9.2/api
-        jcarafe/jcarafe-ext/target/scala-2.9.2/api
-
-=====================================
-Using Proguard
-=====================================
+        jcarafe/jcarafe-core/target/scala-2.10/api
+        jcarafe/jcarafe-ext/target/scala-2.10/api
