@@ -10,10 +10,9 @@ class ConvexOptimizerSpec extends Spec {
       val fn = new FunctionEvaluation {
         def evaluate(x: Array[Double], gradient: Array[Double], n: Int, step: Double) : Double = {
           println("x[0] = " + x(0))          
-          val res = x(0) - t
-          val loss = res * res
-          gradient(0) = res
-          loss
+          val fval = math.pow((x(0) - t),2.0)
+          gradient(0) = 2 * (x(0) - t)
+          fval
         }
       }
       val p = new Params
