@@ -268,6 +268,11 @@ abstract class LineSearch(n: Int) extends Numerical(n) {
 
 class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) {
   
+  private def printVec(g: Array[Double]) = {
+    g foreach {e => print(" " + e)}
+    println
+  }
+  
   def search(x: Array[Double],
     f: Cell[Double],
     g: Array[Double],
@@ -291,6 +296,10 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     dgTest = params.ftol * dgInit
     
     var continue = true
+    println("dgTest = " + dgTest)
+    println("s vec = ")
+    printVec(s)
+    
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
