@@ -298,10 +298,12 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     var continue = true
     println("dgInit = " + dgInit) 
     println("dgTest = " + dgTest)
-    println("s vec = ")
+    print("g vec = ")
+    printVec(g)
+    print("s vec = ")
     printVec(s)
     println("step = " + stp.get)
-    assert(dgInit >= 0.0)
+    assert(dgInit <= 0.0)
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
