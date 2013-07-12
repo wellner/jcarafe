@@ -163,6 +163,10 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
   var curStor = IterationData(0,Array.fill(n)(0.0),Array.fill(n)(0.0),0)
   val pf = Array.fill(params.past)(0.0)
     
+  private def printVec(g: Array[Double]) = {
+    g foreach {e => print(" " + e)}
+    println
+  }
   
   def optimize() : Result = {
     
@@ -182,7 +186,9 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
     while (continue) {
       vecCopy(xp, x)
       vecCopy(gp, g)
+      println("Invoking line search...")
       val ls = lSearch.search(x, fx, g, d, step, xp, gp, w)
+      println("Line search result: " + ls)
       if (OptimizerStatus.isError(ls)) { // revert to previous point and return
         vecCopy(x, xp)
         vecCopy(g, gp)
@@ -190,6 +196,7 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
       }
       xnorm = vec2norm(x)
       gnorm = vec2norm(g)
+      println("gnorm = " + gnorm)
       if (xnorm < 1.0) xnorm = 1.0
       if ((gnorm / xnorm) <= params.epsilon) {
         ret.status = Success
