@@ -48,7 +48,7 @@ case object LineSearchBacktrackingWolfe extends LineSearchAlg
 
 
 class Params(
-    val lineSearch : LineSearchAlg,
+    val lineSearch : LineSearchAlg = LineSearchMoreThuente,
     var m: Int = 6,
     var epsilon: Double = 1E-5,
     var past: Int = 3,
@@ -71,7 +71,7 @@ class Cell[T](var v: T) {
   final def get = v
 }
 
-trait FunctionEvaluation {
+abstract class FunctionEvaluation {
   def evaluate(x: Array[Double], gradient: Array[Double], n: Int, step: Double) : Double
 }
 
@@ -135,15 +135,15 @@ abstract class ConvexOptimizer(n: Int) extends Numerical(n) {
   
   case class IterationData(var alpha: Double, val s: Array[Double], val y: Array[Double], var ys: Double)
   
-  def optimize(x: Array[Double], evaluator: FunctionEvaluation, params: Params) : Result
+  def optimize() : Result
   
 }
 
  
 
-abstract class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) {
+class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) {
   
-  val lSearch : LineSearch
+  val lSearch : LineSearch = new BackTrackingLineSearch(x.length, evaluator, params)
 
   val xp       = Array.fill(n)(0.0)
   val g        = Array.fill(n)(0.0)
@@ -163,7 +163,7 @@ abstract class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvalu
   val pf = Array.fill(params.past)(0.0)
     
   
-  def optimize(params: Params) : Result = {
+  def optimize() : Result = {
     
     fx.set(evaluator.evaluate(x, g, n, 0.0))
     pf(0) = fx.get
