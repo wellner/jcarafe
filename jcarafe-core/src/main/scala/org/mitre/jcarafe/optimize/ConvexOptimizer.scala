@@ -93,7 +93,7 @@ abstract class Numerical(val n: Int) {
   @inline
   final def vecAdd(y: Array[Double], x: Array[Double], c: Double) = {
     var i = 0; while (i < n) {
-      y(i) = c * x(i)
+      y(i) += c * x(i)
       i += 1
     }
   }
