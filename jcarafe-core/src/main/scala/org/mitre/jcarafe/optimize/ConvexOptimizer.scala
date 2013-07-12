@@ -42,13 +42,14 @@ object OptimizerStatus {
 }
 
 abstract class LineSearchAlg
+case object LineSearchBacktracking extends LineSearchAlg
 case object LineSearchMoreThuente extends LineSearchAlg
 case object LineSearchBacktrackingArmijo extends LineSearchAlg
 case object LineSearchBacktrackingWolfe extends LineSearchAlg
 
 
 class Params(
-    val lineSearch : LineSearchAlg = LineSearchMoreThuente,
+    val lineSearch : LineSearchAlg = LineSearchBacktracking,
     var m: Int = 6,
     var epsilon: Double = 1E-5,
     var past: Int = 3,
@@ -280,13 +281,14 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     
     dgInit = vecDot(g, s)
     fInit = f.get
-    dgTest = params.ftol
+    dgTest = params.ftol * dgInit
     
     var continue = true
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
       f set evaluator.evaluate(x, g, n, stp.get)
+      println("f = " + f.get)
       cnt += 1
       if (f.get > fInit + stp.get * dgTest) 
         width = dec
@@ -295,17 +297,17 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
           return Success
         } else {
           dg = vecDot(g, s)
-          if (dg < params.wolfe * dgInit) width = inc
+          if (dg < (params.wolfe * dgInit)) width = inc
           else {
             if (params.lineSearch == LineSearchBacktrackingWolfe) return Success
-            if (dg > -params.wolfe * dgInit) width = dec else return Success
+            if (dg > (-params.wolfe * dgInit)) width = dec else return Success
             
           }
         }        
       }
       if (stp.get < params.minStep) return ErrMinimumstep
       if (stp.get > params.maxStep) return ErrMaximumstep
-      if (params.maxLineSearch < cnt) return ErrMaximumlinesearch
+      if (params.maxLineSearch <= cnt) return ErrMaximumlinesearch
       stp set (stp.get * width)
     }
     
