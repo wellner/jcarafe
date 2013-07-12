@@ -18,7 +18,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   val sGen: DecodingSeqGen[Obs]
   val model: M
   lazy val ss = model.segSize
-  
+
   val granularity = opts.granularity // set granularity for breaking up large files into chunks
 
   lazy val viterbiDecoder: DecodingAlgorithm = Viterbi(dynamic, ss, model.crf, opts.posteriors)
@@ -123,30 +123,31 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   }
 
   private def applyToSeqsStreamingParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
-    outFile foreach {f =>
+    outFile foreach { f =>
       val ostr = new java.io.FileOutputStream(f)
-	  val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
+      val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
       val sl = seqs.length
-      val amounts = Vector.tabulate((sl/granularity) + 1){f => 
-        val end = if (f == (sl/granularity)) sl else (granularity * (f+1))
+      val amounts = Vector.tabulate((sl / granularity) + 1) { f =>
+        val end = if (f == (sl / granularity)) sl else (granularity * (f + 1))
         val st = f * granularity
-        (st,end)
-        }
-      amounts foreach {case (sSt,sEn) =>
-        val aseqs = seqs.slice(sSt,sEn)
-        val iseqs = aseqs.par map {s =>
-          val iseq = sGen.extractFeatures(s)
-          decoder.assignBestSequence(iseq)
-          iseq
+        (st, end)
+      }
+      amounts foreach {
+        case (sSt, sEn) =>
+          val aseqs = seqs.slice(sSt, sEn)
+          val iseqs = aseqs.par map { s =>
+            val iseq = sGen.extractFeatures(s)
+            decoder.assignBestSequence(iseq)
+            iseq
           }
-        print("-")
-        sGen.seqsToWriter(dobj,iseqs.seq,os)
-        }
+          print("-")
+          sGen.seqsToWriter(dobj, iseqs.seq, os, false) // don't close the stream
+      }
       os.flush()
       os.close()
       ostr.flush
       ostr.close
-      }
+    }
   }
 
   private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
@@ -191,7 +192,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
         outFile match { case Some(outFile) => sGen.seqsToFile(dobj, seqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
     }
   }
-  
+
   def applyDecoder(dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, writer: java.io.OutputStreamWriter) = {
     val seqs = sGen.createSeqsWithInput(dobj)
     seqs foreach { decoder.assignBestSequence(_) }
@@ -237,12 +238,12 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
             if (opts.multiLine) { // this covers situation where we have multiple documents within a single file
               val lns = io.Source.fromFile(f).getLines
               val ostr = new java.io.FileOutputStream(opts.outputFile.get)
-              val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")              
-              lns foreach {l =>
+              val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
+              lns foreach { l =>
                 val deser = sGen.deserializeFromString(l)
-                applyDecoder(deser,decoder,os)
+                applyDecoder(deser, decoder, os)
                 os.write('\n') // explicitly add in a newline here
-                }
+              }
               os.flush()
               os.close()
             } else {
@@ -327,15 +328,16 @@ abstract class StdDecoder(opts: Options, m: String, r: Option[java.io.InputStrea
   def this(m: String) = this(None, m)
   val model: M = {
     val model = r match { case Some(r) => readModel(r) case None => readModel(m) }
-    opts.priorWeightFile foreach {f =>
+    opts.priorWeightFile foreach { f =>
       val weightedTagset = WeightedTagset.loadWeightedTagset(new java.io.File(f))
       val pr = IncrementalMurmurHash.hash(":U:", 0L) // XXX - bit dangerous      
-      weightedTagset.weightMap foreach {case (al,w) =>
-        val beginAl = sGen.getState(al,true)
-        if (!(al equals beginAl)) model.adjustParameter(pr,beginAl,w)
-        model.adjustParameter(pr,al,w)
-        }
+      weightedTagset.weightMap foreach {
+        case (al, w) =>
+          val beginAl = sGen.getState(al, true)
+          if (!(al equals beginAl)) model.adjustParameter(pr, beginAl, w)
+          model.adjustParameter(pr, al, w)
       }
+    }
     opts.priorAdjust match { case Some(v) => model.adjustParameter(IncrementalMurmurHash.hash(":U:", 0), SLabel("lex"), v) case None => }
     model
   }
