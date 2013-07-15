@@ -1,5 +1,44 @@
 package org.mitre.jcarafe.optimize
 
+/*
+ * The software contained within this file is a PORT of the L-BFGS convex 
+ * optimization algorithm as implemented in the libLBFGS library: 
+ * http://www.chokkan.org/software/liblbfgs/
+ * 
+ * The original FORTRAN implementation is available here:
+ * http://users.eecs.northwestern.edu/~nocedal/lbfgs.html
+ * 
+ * This PORT from libBFGS (in C) to a derivative implementation in 
+ * Scala was authored by Ben Wellner, The MITRE Corporation.
+ * This software inherits the MIT License from libLBFGS:
+
+
+ * The MIT License
+
+Copyright (c) 1990 Jorge Nocedal
+Copyright (c) 2007-2010 Naoaki Okazaki
+Copyright (c) 2013 The MITRE Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+ * 
+ */
+
 abstract class OptimizerStatus 
 case object Success extends OptimizerStatus
 case object Stopped extends OptimizerStatus
@@ -324,9 +363,7 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
       if (stp.get > params.maxStep) return ErrMaximumstep
       if (params.maxLineSearch <= cnt) return ErrMaximumlinesearch
       stp set (stp.get * width)
-    }
-    
-    Success
-    
+    }    
+    Success    
   }
 }
