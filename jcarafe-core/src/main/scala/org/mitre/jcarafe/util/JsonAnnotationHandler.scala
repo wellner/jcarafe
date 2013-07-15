@@ -23,7 +23,7 @@ object JsonAnnotationHandler {
                   tagset.set.exists { al =>
                     al match {
                       case Label(l, avs) =>
-                        val t = (l == s && avs.forall { case (k, v) => ar.contains(k) })
+                        val t = (l == s && (justLabel || avs.forall { case (k, v) => ar.contains(k) }))
                         t
                       case SLabel(l) if ((l == s)) => true // select annotations ignoring attributes
                       case _ => false

@@ -87,11 +87,13 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val asets = json match { case JsObject(o) => try { o("asets") } catch { case _: Throwable => preProc = true; new JsArray(Nil) } case _ => preProc = true; new JsArray(Nil) }
     val tokSet = new Tagset(Set(SLabel("lex")))
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
-    val preExistingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
+    val existingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
+    val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(SLabel("tok_posterior_dist")))), true, true).sortWith(_ < _)
     val zones = getAnnotations(None, asets, zoneSet) match {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
     }
+    val preExistingTokens = if (tokenLabelDistributions.length > 1) tokenLabelDistributions else existingTokens
     val t_toks = if (opts.preProc || preProc) getTokensViaSignal(signal, zones) else sentenceSegmentTokenAnnotations(signal, preExistingTokens)
     val s_toks = t_toks.sortWith(_ < _) // sort ascending
     val toks = preExistingTokens match {
@@ -186,6 +188,20 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit = {
     Json.writeJson(seqsToDeserialized(d, seqs).json, os, close)
   }
+  val digits = "(\\p{Digit}+)"  
+
+  val fpRegex    =
+            ("[\\x00-\\x20]*"+  // Optional leading "whitespace"
+             "[+-]?(" + // Optional sign character
+             "NaN|" +           // "NaN" string
+             "Infinity|" +      // "Infinity" string
+             "((("+digits+"(\\.)?("+digits+"?))|"+
+             "(\\.("+digits+"))|"+
+       "((" +
+        ")[pP][+-]?" + digits + "))" +
+             "[fFdD]?))" +
+             "[\\x00-\\x20]*").r;
+
 
   def toSources(d: DeserializationT): Seqs = {
     val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
@@ -211,8 +227,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }
         if (addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
-        } else
-          createSource(pt.typ, obs, pt.beg, info)
+        } else {
+          if (pt.typ equals "tok_posterior_dist") 
+            createDistributionalSource((info.toList.filter{case (l,s) => fpRegex.findFirstIn(s).isDefined}.map {case (l,s) => (SLabel(l),s.toDouble)}),"",true,Map())
+          else createSource(pt.typ, obs, pt.beg, info)
+        }
       }
     }
 
