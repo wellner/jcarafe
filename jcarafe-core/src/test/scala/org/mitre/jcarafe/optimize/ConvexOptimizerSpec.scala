@@ -17,11 +17,13 @@ class ConvexOptimizerSpec extends Spec {
       }
       val p = new Params
       val sol = Array(0.0)
-      val optimizer = new LbfgsOptimizer(sol, fn, p)
+      val g = Array(0.0)
+      val optimizer = new LbfgsOptimizer(sol, g, fn, p)
       val res = optimizer.optimize()
       println("-- Result: " + res)
       println("-- Mean Test Solution: " + sol(0))
       
     }
   }
+  
 }

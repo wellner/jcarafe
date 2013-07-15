@@ -2,7 +2,7 @@ package org.mitre.jcarafe.optimize
 
 abstract class OptimizerStatus 
 case object Success extends OptimizerStatus
-case object Stop extends OptimizerStatus
+case object Stopped extends OptimizerStatus
 case object AlreadyMinimized extends OptimizerStatus
 case object NotStarted extends OptimizerStatus
 case object ErrUnknownerror extends OptimizerStatus
@@ -38,7 +38,7 @@ case object ErrInvalidparameters extends OptimizerStatus
 case object ErrIncreasegradient extends OptimizerStatus
 
 object OptimizerStatus {
-  def isError(e: OptimizerStatus) = !(e == Success || e == Stop || e == AlreadyMinimized || e == NotStarted) 
+  def isError(e: OptimizerStatus) = !(e == Success || e == Stopped || e == AlreadyMinimized || e == NotStarted) 
 }
 
 abstract class LineSearchAlg
@@ -61,11 +61,12 @@ class Params(
     var ftol : Double = 1E-4,
     var wolfe : Double = 0.9,
     var gtol : Double = 0.9,
-    var xtol : Double = 1E-16
-    
+    var xtol : Double = 1E-16,
+    var verbose : Boolean = false
     )
     
-case class Result(var status: OptimizerStatus, var additionalStatus: Int = 0, var objective: Double = 0.0)
+case class Result(var status: OptimizerStatus, var additionalStatus: Int = 0, var objective: Double = 0.0, var gnorm: Double = 0.0,
+    var numIterations: Int = 0)
 
 class Cell[T](var v: T) {
   final def set(x: T) = v = x
@@ -142,12 +143,12 @@ abstract class ConvexOptimizer(n: Int) extends Numerical(n) {
 
  
 
-class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) {
+class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) {
   
   val lSearch : LineSearch = new BackTrackingLineSearch(x.length, evaluator, params)
 
   val xp       = Array.fill(n)(0.0)
-  val g        = Array.fill(n)(0.0)
+  //val g        = Array.fill(n)(0.0)
   val gp       = Array.fill(n)(0.0)
   val d        = Array.fill(n)(0.0)
   val w        = Array.fill(n)(0.0)
@@ -179,34 +180,34 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
     var k = 0
     var end = 0
     if (xnorm < 1.0) xnorm = 1.0
-    if ((gnorm / xnorm) <= params.epsilon) return Result(AlreadyMinimized)
+    if ((gnorm / xnorm) <= params.epsilon) return Result(AlreadyMinimized, gnorm = gnorm)
     step set vec2normInv(d)
     
     var continue = true
     while (continue) {
       vecCopy(xp, x)
       vecCopy(gp, g)
-      println("Invoking line search...")
       val ls = lSearch.search(x, fx, g, d, step, xp, gp, w)
-      println("Line search result: " + ls)
       if (OptimizerStatus.isError(ls)) { // revert to previous point and return
         vecCopy(x, xp)
         vecCopy(g, gp)
-        return Result(ls,0,fx.get)
+        return Result(ls,0,fx.get,gnorm,numIterations = k)
       }
       xnorm = vec2norm(x)
       gnorm = vec2norm(g)
-      println("gnorm = " + gnorm)
       if (xnorm < 1.0) xnorm = 1.0
       if ((gnorm / xnorm) <= params.epsilon) {
         ret.status = Success
         continue = false
       }
       val ffx = fx.get
+      if (params.verbose) {
+        println(f"Obj = $ffx%10.6f  (Iter = $k%d)")
+      }
       if (continue && params.past <= k) {
         improvementRate = (pf(k % params.past) - ffx) / ffx
         if (improvementRate < params.delta) {
-          ret.status = Stop
+          ret.status = Stopped
           continue = false
         }
       }
@@ -226,7 +227,7 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
       curStor.ys = ys
       val bound = if (params.m <= k) params.m else k
       k += 1
-      end = (end + 1) % k
+      end = (end + 1) % params.m
       vecCopyNegate(d, g)
       
       
@@ -251,6 +252,8 @@ class LbfgsOptimizer(val x: Array[Double], val evaluator: FunctionEvaluation, va
       step set 1.0
     } // end of BIG while loop
     ret.objective = fx.get
+    ret.gnorm = gnorm
+    ret.numIterations = k
     ret
   }
 }
@@ -296,19 +299,11 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     dgTest = params.ftol * dgInit
     
     var continue = true
-    println("dgInit = " + dgInit) 
-    println("dgTest = " + dgTest)
-    print("g vec = ")
-    printVec(g)
-    print("s vec = ")
-    printVec(s)
-    println("step = " + stp.get)
     assert(dgInit <= 0.0)
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
       f set evaluator.evaluate(x, g, n, stp.get)
-      println("f = " + f.get)
       cnt += 1
       if (f.get > fInit + stp.get * dgTest) 
         width = dec
