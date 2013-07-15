@@ -3,7 +3,7 @@
  */
 
 package org.mitre.jcarafe.crf
-import org.mitre.jcarafe.optimize.LBFGS
+import org.mitre.jcarafe.optimize.{ConvexOptimizer, FunctionEvaluation, LbfgsOptimizer, Params}
 import org.mitre.jcarafe.util.FastLoops._
 
 trait CrfLearner {
@@ -24,38 +24,29 @@ trait CrfLearner {
 trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
 
   def train(accessSeq: AccessSeq[T], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
-    var diagco = false
-    val diag = Array.fill(numParams)(0.0)
-    val eps = 1.0e-3
-    val xtol = 4.9e-16
-    val m = 4
-    val iflag = Array.fill(2)(0)
     var iter = 0
-    val iprint = Array.fill(2)(0)
-
-    iprint(0) = 1
-    println("Conditional Log-likelihood Training with " + accessSeq.length + " sequences")
-    println("\t max_iters= " + max_iters)
-    println("\t Number of features:  " + numParams)
+    println("Conditional Maximum Likelihood Training - Batch optimization using L-BFGS method")
+    println("There are " + accessSeq.length + " training sequences")
+    println("\t Number of features/parameters:  " + numParams)
+    println("\t Maximum iterations = " + max_iters)    
     initialize()
-    val maxRestarts = 5
-    var nrestarts = 0
     val t_s = System.nanoTime
-    do {
-      iter += 1
-      val Some(f) = getGradient(accessSeq)
-      try {
-        LBFGS.lbfgs(numParams, m, lambdas, f, gradient, diagco, diag, iprint, eps, xtol, iflag, false)
-      } catch {
-        case ex: LBFGS.ExceptionWithIflag =>
-          forIndex(iflag.length) { i => iflag(i) = 0 }
-          forIndex(numParams) { i => diag(i) = 0.0 }
-          nrestarts += 1
-          LBFGS.lbfgs(numParams, m, lambdas, f, gradient, diagco, diag, iprint, eps, xtol, iflag, true)
-      }
-    } while ((iter <= max_iters) && (iflag(0) > 0) && (nrestarts <= maxRestarts));
-
-    println("\n...Training completed in " + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")
+    val fn = new FunctionEvaluation {
+      def evaluate(x: Array[Double], g: Array[Double], n: Int, st: Double) = {
+        val Some(f) = getGradient(accessSeq)
+        f
+      } 
+    }
+    val p = new Params
+    p.maxIters_=(max_iters)
+    p.verbose_=(true)
+    val optimizer = new LbfgsOptimizer(lambdas,gradient,fn,p)
+    val result = optimizer.optimize()
+    println("\n...L-BFGS optimization complete; status: " + result.status)
+    println("...Negative log-likelihood: \t" + result.objective)
+    println("...Gradient norm: \t\t" + result.gnorm)
+    println("...Number of iterations: \t" + result.numIterations)
+    println("...Training completed in \t" + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")
     print_zero_wt_feature_cnt(lambdas, numParams)
     getCoreModel()
   }
