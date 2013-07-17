@@ -30,8 +30,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
   var clusterData: Option[ClusterData] = None
 
   val symbolTable = new Alphabet[String]
-  val tmpSymbolTable = new Alphabet[String]
-
   val revTable = new collection.mutable.HashMap[Int, String]
 
   var secondStageId = 0
@@ -226,17 +224,19 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
   private def filterTablesBasedOnFrequency(freqs: ArrayBuffer[Int], lCntxt: ArrayBuffer[HistoGram], rCntxt: ArrayBuffer[HistoGram]) = {
     val tmpRevTbl = new collection.mutable.HashMap[Int,String]    
     val tableMapping = new collection.mutable.HashMap[Int,Int] // map of old ids to new ones
+    val l1 = symbolTable.size
     symbolTable foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
-    symbolTable.clear
-    val l1 = freqs.length
+    symbolTable.clear    
     for (i <- 0 until l1) {
       if (freqs(i) >= minFreq) {
         val str = tmpRevTbl(i)
-        symbolTable update str
+        symbolTable update str        
         symbolTable.get(str) map {newIndex => tableMapping += (i -> newIndex)}         
       }
     }
+    
     val nsize = symbolTable.size // the new size of the compacted symbol table
+    println("new size = " + nsize)
     val newFreqs = Array.fill(nsize)(0)
     val newLCntxt = Array.tabulate(nsize){_ => new HistoGram}
     val newRCntxt = Array.tabulate(nsize){_ => new HistoGram}
