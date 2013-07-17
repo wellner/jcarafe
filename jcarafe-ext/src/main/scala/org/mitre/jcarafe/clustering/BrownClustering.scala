@@ -228,6 +228,7 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     symbolTable foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
     symbolTable.clear    
     for (i <- 0 until l1) {
+      println("freq " + i + " => " + freqs(i))
       if (freqs(i) >= minFreq) {
         val str = tmpRevTbl(i)
         symbolTable update str        
