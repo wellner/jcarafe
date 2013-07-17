@@ -25,11 +25,12 @@ class HistoGram(val hist: HashMap[Int,Int]) {
   def get(v: Int) = hist.get(v)
 }  
 
-final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val debug: Int = 4, val verbose: Boolean = false) {
+final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val debug: Int = 4, val verbose: Boolean = false, val minFreq: Int = 1) {
 
   var clusterData: Option[ClusterData] = None
 
   val symbolTable = new Alphabet[String]
+  val tmpSymbolTable = new Alphabet[String]
 
   val revTable = new collection.mutable.HashMap[Int, String]
 
@@ -215,6 +216,37 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     if (verbose) println("..read in file: " + f + " ( in " + ((System.nanoTime - t) / 1E9) +
       " seconds, symbol table increased by " + (symbolTable.size - ss) + " to " + symbolTable.size)
   }
+  
+  private def newHistogram(origHist: HistoGram, newHist: HistoGram, indexMapping: collection.mutable.HashMap[Int,Int]) = {
+    origHist.hist foreach {case (k,v) => 
+      indexMapping.get(k) foreach {ni => newHist.update(v)}
+      }
+  }
+  
+  private def filterTablesBasedOnFrequency(freqs: ArrayBuffer[Int], lCntxt: ArrayBuffer[HistoGram], rCntxt: ArrayBuffer[HistoGram]) = {
+    val tmpRevTbl = new collection.mutable.HashMap[Int,String]    
+    val tableMapping = new collection.mutable.HashMap[Int,Int] // map of old ids to new ones
+    symbolTable foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
+    symbolTable.clear
+    val l1 = freqs.length
+    for (i <- 0 until l1) {
+      if (freqs(i) >= minFreq) {
+        val str = tmpRevTbl(i)
+        symbolTable update str
+        symbolTable.get(str) map {newIndex => tableMapping += (i -> newIndex)}         
+      }
+    }
+    val nsize = symbolTable.size // the new size of the compacted symbol table
+    val newFreqs = Array.fill(nsize)(0)
+    val newLCntxt = Array.tabulate(nsize){_ => new HistoGram}
+    val newRCntxt = Array.tabulate(nsize){_ => new HistoGram}
+    tableMapping foreach {case (oi, ni) => 
+        newFreqs(ni) = freqs(oi)
+        newHistogram(lCntxt(oi),newLCntxt(ni),tableMapping) // remap the context tables
+        newHistogram(rCntxt(oi),newRCntxt(ni),tableMapping)              
+      }
+    (newFreqs, newLCntxt, newRCntxt)
+  }
 
   private def getClusterData(d: java.io.File, dir: Boolean): Unit = {
     val freqs = new ArrayBuffer[Int]()
@@ -222,10 +254,10 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     val rCntxt = new ArrayBuffer[HistoGram]()
     if (dir) d.listFiles foreach { d => updateTables(d, freqs, lCntxt, rCntxt) } else updateTables(d, freqs, lCntxt, rCntxt)
     println("\n... Finished reading in and setting up frequency tables ...")
-    val frArray = freqs.toArray
+    // if the minimum frequency is greater than 1, filter and reconstruct tables
+    val (frArray,lctxt,rctxt) = if (minFreq > 1) filterTablesBasedOnFrequency(freqs, lCntxt, rCntxt) else (freqs.toArray,lCntxt.toArray,rCntxt.toArray)
     val orderedFreqs = getFreqOrderedTerms(frArray)
-    val lctxt = lCntxt.toArray
-    val rctxt = rCntxt.toArray
+    println("\n... Final size of symbol table: " + frArray.size)
     clusterData = Some(new ClusterData(frArray, orderedFreqs, rctxt, lctxt))
     symbolTable foreach { case (k, v) => revTable += (v -> k) } // build reverse mapping
   }
@@ -315,47 +347,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
       }
       i += 1
     }
-  }
-
-  private def getFreqs(text: Array[Array[Int]]): Array[Int] = {
-    val tl = text.length
-    val fs = symbolTable.size
-    val freqs = Array.fill(fs)(0)
-    var i = 0
-    while (i < tl) {
-      var j = 0
-      val sl = text(i).length
-      val seg = text(i)
-      while (j < sl) {
-        val t = seg(j)
-        freqs(t) += 1
-        j += 1
-      }
-      i += 1
-    }
-    freqs
-  }
-
-  private def getContextPhrases(text: Array[Array[Int]], offset: Int) = {
-    val fs = symbolTable.size
-    val context = Array.tabulate(fs) { _ => new ArrayBuffer[Int] }
-    var j = 0
-    val tl = text.length
-    val ioff = if (offset < 0) -offset else 0
-    while (j < tl) {
-      var i = ioff
-      val sl = math.min(text(j).length, (text(j).length - offset))
-      val seg = text(j)
-      while (i < sl) {
-        val ct = seg(i + offset)
-        val t = seg(i)
-        context(t) append ct
-        i += 1
-      }
-      j += 1
-    }
-    val oContext = Array.tabulate(fs) { i => context(i).toList }
-    oContext
   }
 
   private def updateContextPhrases(context: ArrayBuffer[HistoGram], text: Array[Array[Int]], offset: Int) = {
@@ -624,7 +615,7 @@ object BrownClustering {
 
   def main(args: Array[String]) = {
     val opts = new ClusteringOptions(args)
-    val bc = new BrownClustering(opts.nc, opts.txt, verbose = opts.verbose)
+    val bc = new BrownClustering(opts.nc, opts.txt, verbose = opts.verbose, minFreq = opts.minCnt)
     opts.idir match {
       case Some(d) => bc.getClusterData(new java.io.File(d), true)
       case None =>
@@ -633,7 +624,6 @@ object BrownClustering {
           case None => throw new RuntimeException("\nInput File or Directory must be provided\n")
         }
     }
-    if (!opts.ingestOnly) {
       println("\n..finished reading data")
       bc.createInitialClusters()
       println("..finished creating initial clusters")
@@ -641,8 +631,7 @@ object BrownClustering {
       val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(new java.io.File(opts.ofile))), "UTF-8")
       bc.outputClusters(os, opts.prop)
       os.flush
-      os.close
-    }
+      os.close    
   }
 }
 
@@ -659,7 +648,7 @@ class ClusteringOptionHandler(params: Array[String]) extends CommandLineHandler 
   "--property-format" flag "Print output in word property format"
   "--text-input" flag "Process plain text (rather than parsing tags)"
   "--verbose" flag "Provide verbose output"
-  "--ingest-only" flag "For memory profiling, only read-in data, do not cluster"
+  "--min-cnt" desc "Minimum frequency/count to include terms in vocabulary"
 }
 
 class ClusteringOptions(val argv: Array[String], val optHandler: ClusteringOptionHandler) {
@@ -674,7 +663,7 @@ class ClusteringOptions(val argv: Array[String], val optHandler: ClusteringOptio
   val prop = optHandler.check("--property-format")
   val txt = optHandler.check("--text-input")
   val verbose = optHandler.check("--verbose")
-  val ingestOnly = optHandler.check("--ingest-only")
+  val minCnt = (optHandler.get("--min-cnt") map {_.toInt}).getOrElse(1)
 
 }
 

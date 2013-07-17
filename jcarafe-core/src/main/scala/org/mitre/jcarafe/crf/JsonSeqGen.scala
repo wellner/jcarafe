@@ -228,9 +228,10 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         if (addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
-          if (pt.typ equals "tok_posterior_dist") 
-            createDistributionalSource((info.toList.filter{case (l,s) => fpRegex.findFirstIn(s).isDefined}.map {case (l,s) => (SLabel(l),s.toDouble)}),"",true,Map())
-          else createSource(pt.typ, obs, pt.beg, info)
+          if (pt.typ equals "tok_posterior_dist") {
+            val dist = info.toList.filter{case (l,s) => fpRegex.findFirstIn(s).isDefined}.map {case (l,s) => (SLabel(l),s.toDouble)}
+            createDistributionalSource(dist,"",true,Map())            
+          } else createSource(pt.typ, obs, pt.beg, info)
         }
       }
     }
