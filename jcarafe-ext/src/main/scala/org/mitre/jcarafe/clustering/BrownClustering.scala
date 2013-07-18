@@ -25,7 +25,8 @@ class HistoGram(val hist: HashMap[Int,Int]) {
   def get(v: Int) = hist.get(v)
 }  
 
-final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val debug: Int = 4, val verbose: Boolean = false, val minFreq: Int = 1) {
+final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val debug: Int = 4, val verbose: Boolean = false, 
+    val minFreq: Int = 1) {
 
   var clusterData: Option[ClusterData] = None
 
@@ -196,7 +197,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
             case (b, cnt) =>
               val t = cluster2cell(b)
               val d = setP2Q2(i, t, cnt)
-              //println("setP2Q2(" + i + "," + t + "," + cnt + ") => " + d)			  
               cur_mi += d
           }
         }
@@ -211,8 +211,8 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     updateFreqs(freqs, fileTxt)
     updateContextPhrases(lCntxt, fileTxt, -1)
     updateContextPhrases(rCntxt, fileTxt, 1)
-    if (verbose) println("..read in file: " + f + " ( in " + ((System.nanoTime - t) / 1E9) +
-      " seconds, symbol table increased by " + (symbolTable.size - ss) + " to " + symbolTable.size)
+    if (verbose) println("... Read in file: " + f + " [ in " + ((System.nanoTime - t) / 1E9) +
+      " seconds ]. Symbol table increased to: " + symbolTable.size)
   }
   
   private def newHistogram(origHist: HistoGram, newHist: HistoGram, indexMapping: collection.mutable.HashMap[Int,Int]) = {
@@ -228,7 +228,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     symbolTable foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
     symbolTable.clear    
     for (i <- 0 until l1) {
-      println("freq " + i + " => " + freqs(i))
       if (freqs(i) >= minFreq) {
         val str = tmpRevTbl(i)
         symbolTable update str        
@@ -237,7 +236,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     }
     
     val nsize = symbolTable.size // the new size of the compacted symbol table
-    println("new size = " + nsize)
     val newFreqs = Array.fill(nsize)(0)
     val newLCntxt = Array.tabulate(nsize){_ => new HistoGram}
     val newRCntxt = Array.tabulate(nsize){_ => new HistoGram}
@@ -254,11 +252,14 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     val lCntxt = new ArrayBuffer[HistoGram]()
     val rCntxt = new ArrayBuffer[HistoGram]()
     if (dir) d.listFiles foreach { d => updateTables(d, freqs, lCntxt, rCntxt) } else updateTables(d, freqs, lCntxt, rCntxt)
-    println("\n... Finished reading in and setting up frequency tables ...")
+    val origSize = symbolTable.size
+    println("\n... Finished reading in data and setting up frequency tables ")
+    println("... Number of unique lexical items: " + origSize)
     // if the minimum frequency is greater than 1, filter and reconstruct tables
     val (frArray,lctxt,rctxt) = if (minFreq > 1) filterTablesBasedOnFrequency(freqs, lCntxt, rCntxt) else (freqs.toArray,lCntxt.toArray,rCntxt.toArray)
     val orderedFreqs = getFreqOrderedTerms(frArray)
-    println("\n... Final size of symbol table: " + frArray.size)
+    print("... Number of unique lexical items to cluster: " + frArray.size)
+    if (minFreq <= 1) println else println(" [ after removing " + (origSize - symbolTable.size) + " terms with frequency < " + minFreq + " ]")
     clusterData = Some(new ClusterData(frArray, orderedFreqs, rctxt, lctxt))
     symbolTable foreach { case (k, v) => revTable += (v -> k) } // build reverse mapping
   }
@@ -299,7 +300,8 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     val tbs = new ArrayBuffer[Array[Int]]()
     var tb: ArrayBuffer[Int] = new ArrayBuffer[Int]()
     val sr = new java.io.FileInputStream(f)
-    val parser = new WhiteSpaceToker2(sr)
+    val reader = new java.io.InputStreamReader(sr, "UTF-8")
+    val parser = new WhiteSpaceToker2(reader)
     var c = true
     while (c) {
       val t: Token = parser.getNextToken()
@@ -322,15 +324,6 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     tbs.toArray
   }
 
-  private def readData(z: java.io.File): Array[Array[Int]] = {
-    var cnt = 0
-    val tb = new ListBuffer[Array[Int]]
-    z.listFiles foreach { f: java.io.File => readDataFile(f) foreach { tb append _ } }
-    val seqs = tb.toArray
-    println("\n...Read in " + seqs.length + " text units..\n")
-    seqs
-  }
-
   private def updateFreqs(freqs: ArrayBuffer[Int], text: Array[Array[Int]]) = {
     val tl = text.length
     val curSize = freqs.size
@@ -342,7 +335,7 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
       val sl = text(i).length
       val seg = text(i)
       while (j < sl) {
-        val t = seg(j)
+        val t = seg(j)        
         freqs(t) += 1
         j += 1
       }
@@ -553,11 +546,11 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
 
   def executeClustering() = {
     val n = symbolTable.size
-    println("... preparing to cluster " + n + " unique vocabulary items")
     val freqOrdered = clusterData.get.freqOrdered
     computeL2()
     curClusterIdx = n // start indexing clusters after current phrase
     var dd = 0
+    val veryStart = System.nanoTime
     var st = System.nanoTime
     var i = initC; while (i < n) {
       val na = freqOrdered(i)
@@ -566,17 +559,28 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
       if ((dd > 0) && (dd % 500) == 0) {
         val p = st
         st = System.nanoTime
-        println("... 500 lexical items clustered (in " + ((st - p) / 1E9) + " seconds) -- total clustered: " + dd)
+        val tt = (st - p) / 1E9
+        val percent = (dd.toDouble / n) * 100.0
+        if (verbose) println(f"... 500 items clustered [in $tt%5.3f seconds] -- total items clustered: $dd%7d [ $percent%2.2f% ]")
+        else print(".")
       }
       dd += 1
       i += 1
     }
     secondStageId = curClusterIdx
-    println("\nSecond stage clustering...")
+    st = System.nanoTime
+    println("\n... Beginning pair-wise agglomerative clustering")
     i = 0; while (i < (initC - 1)) {
       mergeClusters(findBestClusterPair())
       i += 1
     }
+    val t1 = (System.nanoTime - st) / 1E9
+    println(f"... Agglomerative clustering stage complete in $t1%5.3f seconds")
+    println("\n------------------------")
+    val t2 = (System.nanoTime - veryStart) / 1E9
+    println(f"... Clustering took $t2%6.3f seconds total")
+    println("-------------------------")
+    println("... Finished.")
   }
 
   case class El(vl: Int, pth: String)
@@ -625,9 +629,8 @@ object BrownClustering {
           case None => throw new RuntimeException("\nInput File or Directory must be provided\n")
         }
     }
-      println("\n..finished reading data")
       bc.createInitialClusters()
-      println("..finished creating initial clusters")
+      println("\n... Clustering")
       bc.executeClustering()
       val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(new java.io.File(opts.ofile))), "UTF-8")
       bc.outputClusters(os, opts.prop)
@@ -645,10 +648,9 @@ class ClusteringOptionHandler(params: Array[String]) extends CommandLineHandler 
   "--input-dir" desc "Input directory"
   "--num-clusters" desc "Number of leaf nodes in clustering"
   "--output-file" desc "Output file containing dendrogram"
-  "--quiet" flag "Print minimal output while running"
   "--property-format" flag "Print output in word property format"
-  "--text-input" flag "Process plain text (rather than parsing tags)"
-  "--verbose" flag "Provide verbose output"
+  "--text-input" flag "Process plain text (rather than parsing SGML/XML tags)"
+  "--verbose" flag "Provide more detailed output of clustering progress"
   "--min-cnt" desc "Minimum frequency/count to include terms in vocabulary"
 }
 
