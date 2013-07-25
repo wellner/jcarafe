@@ -6,7 +6,7 @@ libraryDependencies += "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6"
 
 libraryDependencies += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6"
 
-libraryDependencies += "org.scala-tools.sbinary" % "sbinary_2.10" % "0.4.1"
+libraryDependencies += "org.scala-tools.sbinary" % "sbinary_2.9.0" % "0.4.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
