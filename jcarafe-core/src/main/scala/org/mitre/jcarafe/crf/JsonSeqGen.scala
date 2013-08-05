@@ -88,7 +88,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val tokSet = new Tagset(Set(SLabel("lex")))
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
     val existingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
-    val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(SLabel("tok_posterior_dist")))), true, true).sortWith(_ < _)
+    val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(Label("tok_posterior_dist",Map())))), true, true).sortWith(_ < _)
     val zones = getAnnotations(None, asets, zoneSet) match {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
@@ -188,20 +188,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit = {
     Json.writeJson(seqsToDeserialized(d, seqs).json, os, close)
   }
-  val digits = "(\\p{Digit}+)"  
-
-  val fpRegex    =
-            ("[\\x00-\\x20]*"+  // Optional leading "whitespace"
-             "[+-]?(" + // Optional sign character
-             "NaN|" +           // "NaN" string
-             "Infinity|" +      // "Infinity" string
-             "((("+digits+"(\\.)?("+digits+"?))|"+
-             "(\\.("+digits+"))|"+
-       "((" +
-        ")[pP][+-]?" + digits + "))" +
-             "[fFdD]?))" +
-             "[\\x00-\\x20]*").r;
-
+  val digits = "(\\p{Digit}+)"    
 
   def toSources(d: DeserializationT): Seqs = {
     val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
@@ -228,8 +215,9 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         if (addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
-          if (pt.typ equals "tok_posterior_dist") {
-            val dist = info.toList.filter{case (l,s) => fpRegex.findFirstIn(s).isDefined}.map {case (l,s) => (SLabel(l),s.toDouble)}
+          if (opts.empDistTrain) {
+            // select elements from 'info' map that correspond to labels/states as specified with tagset
+            val dist = info.toList.filter{case (l,s) => opts.tagset.labelMatch(l)}.map {case (l,s) => (SLabel(l),s.toDouble)}
             createDistributionalSource(dist,"",true,Map())            
           } else createSource(pt.typ, obs, pt.beg, info)
         }
@@ -331,7 +319,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
 
-          if (!(lstr == "lex")) {
+          if (!(lstr == "lex")) { // case where we output an identified phrase
             if (!opts.posteriors) st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
             var curLab = normLab
             c += 1
@@ -340,7 +328,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
                 curLab = seq(c).label
                 val (s,e) = getStartEnd(rawPairs(c).info)
                 val cp = seq(c)
-                annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)              
+                annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)              
                 c += 1                
               } while ((curLab == normLab) && c < seq.length) 
             }
