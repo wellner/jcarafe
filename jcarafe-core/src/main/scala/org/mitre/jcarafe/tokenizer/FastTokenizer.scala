@@ -236,9 +236,20 @@ object FastTokenizer {
     os.write(s)
     if (at) os.write("</lex>")
   }
-
-  private def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean = false, zoneTags: Option[Tagset] = None, whiteTok: Boolean = false) = {
+  
+  def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : Unit = {
     val json = Json.constructJsonType(ifile)
+    val njson = jsonTokenize(json, parseTags, zoneTags, whiteTok)
+    Json.writeJson(njson, ofile)    
+  }
+  
+  def jsonTokenizeString(istr: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : String = {
+    val json = Json.constructJsonTypeOfString(istr)
+    val njson = jsonTokenize(json, parseTags, zoneTags, whiteTok)
+    Json.writeJsonToString(njson)
+  }
+
+  private def jsonTokenize(json: JsonType, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : JsonType = {    
     val orig_signal = json match {
       case JsObject(o) =>
         o("signal") match { case JsString(s) => s case _ => throw new RuntimeException("Expected signal to be a string") }
@@ -295,7 +306,7 @@ object FastTokenizer {
         JsObject(obj.updated("asets", JsArray(newToks :: a1)))
       case a => a
     }
-    Json.writeJson(newJsonObj, ofile)
+    newJsonObj
   }
 
   private def rawTokenize(ifile: String, os: java.io.OutputStreamWriter, whiteOnly : Boolean = false) = {
