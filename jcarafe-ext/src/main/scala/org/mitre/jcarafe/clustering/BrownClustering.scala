@@ -561,7 +561,7 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
         st = System.nanoTime
         val tt = (st - p) / 1E9
         val percent = (dd.toDouble / n) * 100.0
-        if (verbose) println(f"... 500 items clustered [in $tt%5.3f seconds] -- total items clustered: $dd%7d [ $percent%2.2f% ]")
+        if (verbose) println(f"... 500 items clustered [in $tt%5.3f seconds] -- total items clustered: $dd%7d [ $percent%2.2f ]")
         else print(".")
       }
       dd += 1
