@@ -1,6 +1,6 @@
 name := "jcarafe"
 
-version in ThisBuild := "0.9.8.6.b-15"
+version in ThisBuild := "0.9.8.6.b-16"
 
 scalaVersion in ThisBuild := "2.10.2"
 
