@@ -169,6 +169,7 @@ object FastTokenizer {
       t.kind match {
         case WhiteSpaceTokerConstants.EOF => c = false
         case WhiteSpaceTokerConstants.TOK => tbuf append Tok(t.image)
+        case WhiteSpaceTokerConstants.WHITE | WhiteSpaceTokerConstants.WHITEEND => tbuf append Ws(t.image)
         case _ => tbuf append Tok(t.image)
       }
     }
@@ -351,10 +352,10 @@ object FastTokenizer {
         case ABBREV =>
           if (withinPreExistingLex) preExistingBuilder append t.image
           else { ntoks += 1; printTok(true, t.image, os) }
-        case WHITE =>
+        case WHITE | WhiteSpaceTokerConstants.WHITE =>
           if (withinPreExistingLex) preExistingBuilder append t.image
           else { printTok(false, t.image, os) }
-        case WHITEEND =>
+        case WHITEEND | WhiteSpaceTokerConstants.WHITEEND =>
           if (withinPreExistingLex) preExistingBuilder append t.image
           else { printTok(false, t.image, os) }
         case URL =>
