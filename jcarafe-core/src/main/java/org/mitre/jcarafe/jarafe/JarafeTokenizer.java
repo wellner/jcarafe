@@ -6,8 +6,12 @@ package org.mitre.jcarafe.jarafe;
  */
 public class JarafeTokenizer {
 
-	public String tokenizeJsonString(String istr, boolean white) {
-		return org.mitre.jcarafe.tokenizer.FastTokenizer.jsonTokenizeString(istr, white);
+	public String whiteSpaceTokenizeJsonString(String istr) {
+		return org.mitre.jcarafe.tokenizer.FastTokenizer.jsonTokenizeString(istr, true);
 	}
-	
+
+	public String standardTokenizeJsonString(String istr) {
+		return org.mitre.jcarafe.tokenizer.FastTokenizer.jsonTokenizeString(istr, false);
+	}
+
 }
