@@ -238,16 +238,14 @@ object FastTokenizer {
     if (at) os.write("</lex>")
   }
   
-  def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : Unit = {
-    val json = Json.constructJsonType(ifile)
-    val njson = jsonTokenize(json, parseTags, zoneTags, whiteTok)
-    Json.writeJson(njson, ofile)    
-  }
-  
   def jsonTokenizeString(istr: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : String = {
     val json = Json.constructJsonTypeOfString(istr)
     val njson = jsonTokenize(json, parseTags, zoneTags, whiteTok)
     Json.writeJsonToString(njson)
+  }
+  
+  def jsonTokenizeString(istr: String, whiteTok) : String = {
+    jsonTokenizeString(istr, false, None, whiteTok)
   }
 
   private def jsonTokenize(json: JsonType, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : JsonType = {    
@@ -308,6 +306,12 @@ object FastTokenizer {
       case a => a
     }
     newJsonObj
+  }
+  
+  def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : Unit = {
+    val json = Json.constructJsonType(ifile)
+    val njson : JsonType = jsonTokenize(json, parseTags, zoneTags, whiteTok)
+    Json.writeJson(njson, ofile)    
   }
 
   private def rawTokenize(ifile: String, os: java.io.OutputStreamWriter, whiteOnly : Boolean = false) = {
