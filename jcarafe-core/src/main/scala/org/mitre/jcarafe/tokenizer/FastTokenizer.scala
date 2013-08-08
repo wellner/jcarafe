@@ -244,7 +244,7 @@ object FastTokenizer {
     Json.writeJsonToString(njson)
   }
   
-  def jsonTokenizeString(istr: String, whiteTok) : String = {
+  def jsonTokenizeString(istr: String, whiteTok: Boolean) : String = {
     jsonTokenizeString(istr, false, None, whiteTok)
   }
 
