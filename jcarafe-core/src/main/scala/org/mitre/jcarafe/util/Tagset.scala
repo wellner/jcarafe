@@ -14,6 +14,12 @@ class Tagset(val set: Set[AbstractLabel]) {
   def isWithin(s: String, atts: Map[String,String]) : Boolean =
     getTag(s,atts) match {case Some(_) => true case None => false}
   
+  def isWithin(l: AbstractLabel) : Boolean = l match {
+    case Label(lb,a) => isWithin(lb,a)
+    case SLabel(l) => isWithin(l)
+    case _ => false
+  }
+  
   def print() = set foreach {ab => println(ab.labelString)}
   
   override def toString() = {
