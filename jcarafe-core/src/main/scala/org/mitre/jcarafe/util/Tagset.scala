@@ -30,7 +30,7 @@ class Tagset(val set: Set[AbstractLabel]) {
   	case SLabel(l) => l == s
   	case Label(l,_) => l == s
   	case _ => false
-  }	
+  }
 
   def isEmpty = set.isEmpty
 

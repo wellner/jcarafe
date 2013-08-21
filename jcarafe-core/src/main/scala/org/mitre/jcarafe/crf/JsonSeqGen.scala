@@ -189,6 +189,16 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     Json.writeJson(seqsToDeserialized(d, seqs).json, os, close)
   }
   val digits = "(\\p{Digit}+)"    
+  
+  def parseEncodedAbstractLabel(s: String) : AbstractLabel = {
+    val Lab = """([A-z]+)\(([A-z]+),([A-z]+)\)""".r
+    val Simple = """([A-z]+)""".r
+    s match {
+      case Lab(n,a,v) => Label(n,Map(a -> v))
+      case Simple(s) => SLabel(s)
+      case _ => throw new RuntimeException("Unparsable serialized label: " + s)
+    }
+  }
 
   def toSources(d: DeserializationT): Seqs = {
     val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
@@ -217,7 +227,9 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         } else {
           if (opts.empDistTrain) {
             // select elements from 'info' map that correspond to labels/states as specified with tagset
-            val dist = info.toList.filter{case (l,s) => opts.tagset.labelMatch(l)}.map {case (l,s) => (SLabel(l),s.toDouble)}
+            val dist = info.toList.filter{case (l,s) =>
+              val abLab = parseEncodedAbstractLabel(l)              
+              opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}
             createDistributionalSource(dist,"",true,Map())            
           } else createSource(pt.typ, obs, pt.beg, info)
         }
