@@ -330,19 +330,21 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             val cp = seq(c)
             annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
-
           if (!(lstr == "lex")) { // case where we output an identified phrase
-            if (!opts.posteriors) st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => (-1) }
-            var curLab = normLab
+            st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => st } // start of annotation
             c += 1
-            if (c < seq.length) { // advance counter to the end of the phrase              
-              do {
-                curLab = seq(c).label
+            var curLab = seq(c).label
+            val (s,e) = getStartEnd(rawPairs(c).info)
+            val cp = seq(c)
+            if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)
+            if (c < seq.length) { // advance counter to the end of the phrase
+              curLab = seq(c).label
+              while (curLab == normLab && c < seq.length) {
+                c += 1
                 val (s,e) = getStartEnd(rawPairs(c).info)
                 val cp = seq(c)
-                annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)              
-                c += 1                
-              } while ((curLab == normLab) && c < seq.length) 
+                if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)
+              }
             }
             en = rawPairs(c - 1).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val annot = new Annotation(st, en, false, nlabState, None)
