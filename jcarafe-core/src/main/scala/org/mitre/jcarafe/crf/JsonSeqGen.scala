@@ -310,7 +310,8 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           val ilab = seq(c).label
           val lab = invLa(ilab)
           val nlabState = lab match { case BeginState(l) => l case a => a }
-          val normLab = lAlphabet.update(nlabState)
+          val normLab_c = lAlphabet.update(nlabState)
+          val normLab = if (normLab_c < 0) ilab else normLab_c   
           val lstr = lab.labelString
           var st = -1
           var en = -1
@@ -332,20 +333,17 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           }
           if (!(lstr == "lex")) { // case where we output an identified phrase
             st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => st } // start of annotation
-            c += 1
-            var curLab = seq(c).label
-            val (s,e) = getStartEnd(rawPairs(c).info)
-            val cp = seq(c)
-            if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)
-            if (c < seq.length) { // advance counter to the end of the phrase
-              curLab = seq(c).label
-              while (curLab == normLab && c < seq.length) {
-                c += 1
+            var curLab = normLab
+            do {
+              c += 1
+              if (c < seq.length) {
+                curLab = seq(c).label
                 val (s,e) = getStartEnd(rawPairs(c).info)
                 val cp = seq(c)
-                if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)
+                if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
               }
-            }
+            } while ((curLab == normLab) && (c < seq.length))            
+             // advance counter to the end of the phrase              
             en = rawPairs(c - 1).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val annot = new Annotation(st, en, false, nlabState, None)
             val stateIndex = nlabState match {
