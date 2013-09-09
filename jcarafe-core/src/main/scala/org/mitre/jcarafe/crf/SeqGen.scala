@@ -326,8 +326,9 @@ abstract class SeqGen[Obs](val opts: Options) {
       val sbuf = new collection.mutable.ListBuffer[InstanceSequence]
       var nread = 1
       val seqs = gatherFiles foreach { f => 
-        val src = io.Source.fromFile(f)("UTF-8")              
-        val iseq = src.getLines map {l =>
+        val src = io.Source.fromFile(f)("UTF-8")  
+        val lines = src.getLines.toList
+        lines foreach {l =>
           // extracting features immediately here will trigger disk-caching of source sequences as lines are read in, saving memory
           val instSeqs = extractFeatures(toSources(deserializeFromString(l)))
           nread += 1
