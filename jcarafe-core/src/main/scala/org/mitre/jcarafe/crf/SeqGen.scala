@@ -276,10 +276,13 @@ abstract class SeqGen[Obs](val opts: Options) {
   def toSources(file: File): Seqs = {
     if (opts.multiLine) {
       val src = io.Source.fromFile(file)("UTF-8")
+      var nread = 1
       val sbuf = new collection.mutable.ListBuffer[SourceSequence[Obs]]
       src.getLines foreach {l =>
         val ss = toSources(deserializeFromString(l))
         sbuf ++= ss.seq
+        nread += 1
+        if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")
         }
       sbuf.toSeq
     } else toSources(deserializeFromFile(file))  
