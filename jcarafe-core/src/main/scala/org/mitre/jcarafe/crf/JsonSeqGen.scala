@@ -93,6 +93,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
     }
+
     val preExistingTokens = if (tokenLabelDistributions.length > 1) tokenLabelDistributions else existingTokens
     val t_toks = if (opts.preProc || preProc) getTokensViaSignal(signal, zones) else sentenceSegmentTokenAnnotations(signal, preExistingTokens)
     val s_toks = t_toks.sortWith(_ < _) // sort ascending
@@ -222,6 +223,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
         val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }
+
         if (addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
@@ -230,6 +232,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             val dist = info.toList.filter{case (l,s) =>
               val abLab = parseEncodedAbstractLabel(l)              
               opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}
+
             createDistributionalSource(dist,"",true,Map())            
           } else createSource(pt.typ, obs, pt.beg, info)
         }

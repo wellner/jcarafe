@@ -24,7 +24,7 @@ object JsonAnnotationHandler {
   /*
    * This gathers annotations over the MAT-JSON defined schema.
    */
-  def getAnnotations(signal: Option[String], js: JsonType, tagset: Tagset, asPreProc: Boolean = false, justLabel: Boolean = false, toks: Boolean = false): List[Annotation] =
+  def getAnnotations(signal: Option[String], js: JsonType, tagset: Tagset, asPreProc: Boolean = false, justLabel: Boolean = false, toks: Boolean = false): List[Annotation] = 
     js match {
       case JsArray(arr) =>
         val asetsOfTargetType =

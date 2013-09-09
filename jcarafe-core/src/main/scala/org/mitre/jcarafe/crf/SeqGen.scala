@@ -272,8 +272,18 @@ abstract class SeqGen[Obs](val opts: Options) {
    * @return        A sequence of sequences of <code>ObsSource</code> objects that represent observations
    *                and auxiliary information.
    */
-  def toSources(file: String): Seqs = toSources(deserializeFromFile(file))
-  def toSources(file: File): Seqs = toSources(deserializeFromFile(file))
+  def toSources(file: String): Seqs = toSources(new java.io.File(file))
+  def toSources(file: File): Seqs = {
+    if (opts.multiLine) {
+      val src = io.Source.fromFile(file)("UTF-8")
+      val sbuf = new collection.mutable.ListBuffer[SourceSequence[Obs]]
+      src.getLines foreach {l =>
+        val ss = toSources(deserializeFromString(l))
+        sbuf ++= ss.seq
+        }
+      sbuf.toSeq
+    } else toSources(deserializeFromFile(file))  
+  }
   /**
    * Computes a sequence of sequences of <code>ObsSource</code> objects from a given deserialized object
    * @param deserialization   An input representation. For example an Xml DOM structure or a JSON structure
