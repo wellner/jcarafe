@@ -273,7 +273,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   val logVal2 = math.log(2.0)
   def log2(x: Double) = math.log(x) / logVal2
 
-  private def getEntropy(map: collection.mutable.Map[Int, Double]) = {
+  private def getEntropy(map: Map[Int, Double]) = {
     var e = 0.0
     map foreach { case (i, v) => e -= log2(v) * v }
     e
@@ -323,7 +323,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           en = e
           if (opts.confidences) {
             //var entropy = 0.0
-            val tokEntropy = getEntropy(seq(c).condProbTbl)
+            val tokEntropy = getEntropy(seq(c).getCondProbTable)
             val tokConfidence = new Annotation(st, en, false,
               Label("tok_confidence",
                 Map("posterior" -> seq(c).conditionalProb(ilab).toString,

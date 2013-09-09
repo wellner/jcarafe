@@ -140,7 +140,7 @@ trait SeqGenScorer[Obs] extends SeqGen[Obs] {
   
   private def l2(x: Double) = math.log(x) / math.log(2.0)
   
-  private def getEntropy(map: collection.mutable.Map[Int,Double]) = {
+  private def getEntropy(map: Map[Int,Double]) = {
     var e = 0.0
     map foreach {case (i,v) => e -= l2(v) * v}
     e
@@ -181,7 +181,7 @@ trait SeqGenScorer[Obs] extends SeqGen[Obs] {
           startGoldIndex = i
           curGoldType = newGoldType
         }
-        totalTokenEntropy += getEntropy(inst.condProbTbl)
+        totalTokenEntropy += getEntropy(inst.getCondProbTable)
       }
       if(s.length>0) {
         updateSets(systemSets,curSysType,startSysIndex,s.length-1,globalIndex)

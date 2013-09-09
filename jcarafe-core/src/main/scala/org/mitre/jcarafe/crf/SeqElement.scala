@@ -17,6 +17,7 @@ abstract class SeqElement(var label: Int) {
   def getRange: Int
   def conditionalProb(i: Int): Double
   def setConditionalProb(i: Int, v: Double): Unit
+  def getCondProbTable : Map[Int,Double]
 }
 
 /*
@@ -32,7 +33,7 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
 
   var userFeatures: Set[FType] = Set() // ( we create a lot of these objects )
   var normalized = false
-  val condProbTbl: HashMap[Int, Double] = new HashMap
+  var condProbTbl: Map[Int, Double] = Map()
   def getCompactVec: Array[CompactFeature]
   def getRange = condProbTbl.size // used when # of states/labels isn't stationary over data points
   def conditionalProb(i: Int): Double = {
@@ -43,6 +44,8 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
   def add(ft: FType): Unit = {
     userFeatures += ft
   }
+  
+  def getCondProbTable = condProbTbl
   
   @inline
   private def ensureNormalized = {
@@ -162,7 +165,8 @@ class FastNonFactoredCrfInstance(label: Int, orig: Int) extends NonFactoredCrfIn
  * @param beg - whether this is the beginning of a segment
  * @param info - optional additional information (attribute value pairs) associated with this Source
 */
-class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[Map[String, String]]) extends SeqElement(lab) {
+class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[Map[String, String]], var condTable: Map[Int,Double] = Map()) extends SeqElement(lab) {
+  def this (obs: Obs, beg: Boolean, info: Option[Map[String,String]], ct: Map[Int,Double]) = this(0,obs,beg,info,ct)
   import IncrementalMurmurHash._
   val st = obs.toString
   //val code = if (isNumberString(st)) numSpecialHash else hash(st)
@@ -179,8 +183,10 @@ class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[
   def getRange = -1 // used when # of states/labels isn't stationary over data points
   def start = -1
   def end = -1
-  def conditionalProb(i: Int): Double = 1.0
-  def setConditionalProb(i: Int, v: Double): Unit = {}
+  def conditionalProb(i: Int) : Double = condTable.get(i).getOrElse(1.0)
+  def setConditionalProb(i: Int, v: Double) = condTable += (i -> v)
+  def getCondProbTable = condTable
+
   def addInfo(a: String, v: String) = info match {
     case Some(m) => info = Some(m + (a -> v))
     case None => info = Some(Map(a -> v))
@@ -189,12 +195,6 @@ class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[
   def setLexCodes(l: Option[List[Long]]) = l match { case Some(l) => lexCodes = l case None => }
 }
 
-class DistributionalObsSource[Obs](labDist: List[(Int,Double)], obs: Obs, beg: Boolean, info: Option[Map[String, String]] = None) extends ObsSource(0, obs, beg, info) {
-  var condTable = Map[Int,Double]()
-  labDist foreach {case (l,s) => setConditionalProb(l,s)}
-  override def conditionalProb(i: Int) : Double = condTable.get(i).getOrElse(1.0)
-  override def setConditionalProb(i: Int, v: Double) = condTable += (i -> v)
-}
 
 /*
  * A recoded ObsSource keeps track of where it is situatated in the original ObsSource sequence

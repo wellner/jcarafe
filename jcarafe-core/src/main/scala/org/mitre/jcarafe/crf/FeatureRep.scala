@@ -287,7 +287,7 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
   }
 
   def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
-    val src = new DistributionalObsSource(dist, o, b, i)
+    val src = new ObsSource(o, b, i, dist.toMap)
     setLex(src, o)
     src
   }
@@ -594,7 +594,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   //   Set this up so that if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
     val upTo = (maxSegSize min pos)
-    if (dseq(pos).isInstanceOf[DistributionalObsSource[_]]) { // check for whether we have empirical distributions that factor in to loss
+    if (dseq(pos).getCondProbTable.size > 0) { // check for whether we have empirical distributions that factor in to loss
       // if so, add in all (unsupported+supported) features
       for (d <- 0 to upTo) {
         mgr.fnList foreach { fn =>
@@ -656,7 +656,7 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, None)
 
   def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
-    val src = new DistributionalObsSource(dist, o, b, i)
+    val src = new ObsSource(o, b, i, dist.toMap)
     src
   }
 
