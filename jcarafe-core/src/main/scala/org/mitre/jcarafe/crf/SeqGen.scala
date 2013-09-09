@@ -273,20 +273,8 @@ abstract class SeqGen[Obs](val opts: Options) {
    *                and auxiliary information.
    */
   def toSources(file: String): Seqs = toSources(new java.io.File(file))
-  def toSources(file: File): Seqs = {
-    if (opts.multiLine) {
-      val src = io.Source.fromFile(file)("UTF-8")
-      var nread = 1
-      val sbuf = new collection.mutable.ListBuffer[SourceSequence[Obs]]
-      src.getLines foreach {l =>
-        val ss = toSources(deserializeFromString(l))
-        sbuf ++= ss.seq
-        nread += 1
-        if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")
-        }
-      sbuf.toSeq
-    } else toSources(deserializeFromFile(file))  
-  }
+  def toSources(file: File): Seqs = toSources(deserializeFromFile(file))  
+  
   /**
    * Computes a sequence of sequences of <code>ObsSource</code> objects from a given deserialized object
    * @param deserialization   An input representation. For example an Xml DOM structure or a JSON structure
@@ -333,7 +321,24 @@ abstract class SeqGen[Obs](val opts: Options) {
   }
 
   //def createSeqsFromFiles : Seq[InstanceSequence] = extractFeaturesSeq(createSourcesFromFiles)
-  def createSeqsFromFiles: Seq[InstanceSequence] = createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
+  def createSeqsFromFiles: Seq[InstanceSequence] = {
+    if (opts.multiLine) {
+      val sbuf = new collection.mutable.ListBuffer[InstanceSequence]
+      var nread = 1
+      val seqs = gatherFiles foreach { f => 
+        val src = io.Source.fromFile(f)("UTF-8")              
+        val iseq = src.getLines map {l =>
+          // extracting features immediately here will trigger disk-caching of source sequences as lines are read in, saving memory
+          val instSeqs = extractFeatures(toSources(deserializeFromString(l)))
+          nread += 1
+          if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")
+          sbuf ++= instSeqs
+        }        
+      }
+      sbuf.toSeq
+    }
+    else createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
+  }
 
   def extractFeatures(spSeqs: Seqs): Seq[InstanceSequence]
 
