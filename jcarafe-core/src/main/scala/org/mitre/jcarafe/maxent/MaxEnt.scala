@@ -116,13 +116,14 @@ class MaxEntFeatureType(val fid: Int) extends FeatureType(0L, false, 0)
  */
 trait MaxEntCore {
 
-  private def denseDotProduct(offset: Int, lab: Int, denseVec: Array[Double], sparseFeatures: Seq[CompactFeature]) = {
+  private def denseDotProduct(offset: Int, lab: Int, denseVec: Array[Double], sparseFeatures: Array[CompactFeature]) = {
     var r = 0.0
     var i = 0
     val sl = sparseFeatures.length
     while (i < sl) {
       val sv = sparseFeatures(i)
-      r += sv(lab) * denseVec(sv.fid + offset)
+      //r += sv(lab) * denseVec(sv.fid + offset)
+      r += sv.value * denseVec(sv.fid + offset)
       i += 1
     }
     r
@@ -194,9 +195,11 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
         while (l < nls) {
           val offset = l * predNFS
           val actualIndex = fid + offset
-          val v = inst(l)
+          val v = inst.v
+          //val pr = inst(l) 
+          // above for self-induced features .. need to re-examine this
           val pMass = el.conditionalProb(l)
-          gradient(actualIndex) += (scores(l) - pMass) * v * w
+          gradient(actualIndex) += (scores(l) - pMass) * v * w 
           l += 1
         }
         k += 1
@@ -215,7 +218,8 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
         while (l < nls) {
           val offset = l * predNFS
           val actualIndex = fid + offset
-          val v = inst(l)
+          //val v = inst(l)
+          val v = inst.v          
           if (l == trueLabel) {
             gradient(actualIndex) -= v * w
           }
@@ -289,7 +293,8 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
         val fid = inst.fid
         while (l < nls) {
           val offset = l * predNFS
-          val v = inst(l)
+          //val v = inst(l)
+          val v = inst.v
           val actualIndex = fid + offset
           val gref = gradient.get(actualIndex) match {
             case Some(v) => v
@@ -773,8 +778,9 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
       var i = 0
       while (i < ln) {
         val f = vec(i)
-        val (cnt,msc) = frep.featureStatistics(f.fid)
-        vec(i) = new CompactFeature(f.v / msc, f.fid, f.classLabelWeights)
+        //val (cnt,msc) = frep.featureStatistics(f.fid)
+        
+        vec(i) = new CompactFeature(f.v, f.fid, f.classLabelWeights) // XXX - think about whether features should be auto-normalized
         i += 1
       }
     }
@@ -844,7 +850,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
       println("\n.. Completed writing training instances to file: " + opts.dumpInstances.get)
     } else {
       val accessSeq = new MaxEntMemoryAccessSeq(seqs)
-      val coreModel = me.train(accessSeq, opts.maxIters)
+      val coreModel = me.train(accessSeq, opts.maxIters)      
       val m = new MaxEntModel(sGen.getLAlphabet, coreModel, sGen.frep.fMap, sGen.getInducedFeatureMap)
       writeModel(m, new java.io.File(opts.model.get))
     }
@@ -962,6 +968,7 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     }
     val seq = new MemoryInstanceSequence(tmpBuf.toIndexedSeq)
     decoder.assignBestSequence(seq)
+    val me = decoder.crf
     decodingOpts.evaluate match {
       case Some(_) =>
         sGen.evaluateSequences(Seq(seq))
