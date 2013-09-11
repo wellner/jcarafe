@@ -89,8 +89,6 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
     val existingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
     val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(Label("tok_posterior_dist",Map())))), true, true).sortWith(_ < _)
-    println("There are " + tokenLabelDistributions.length + " tok annotations")
-    println("There are " + existingTokens.length + " existing annotations")
     val zones = getAnnotations(None, asets, zoneSet) match {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
@@ -103,7 +101,6 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case ts =>
         mergeAnnotations(s_toks, ts)
     }
-    println("# toks = " + toks.length)
     val targetAnnots = getAnnotations(None, asets, opts.tagset)
     val stack = new scala.collection.mutable.Stack[Annotation]
     stack pushAll (targetAnnots.sortWith(_ > _))
@@ -335,22 +332,20 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
           } else if (opts.posteriors) {
             val cp = seq(c)
-            println("Adding token dist annotation #1 ... st = " + st + " en = " + en)
             annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
-          if (!(lstr == "lex")) { // case where we output an identified phrase
+          if (!(opts.posteriors) && !(lstr == "lex")) { // case where we output an identified phrase
             st = rawPairs(c).info match { case Some(amap) =>
-              println("amap = " + amap)
               amap("st").toInt case None => st } // start of annotation
             var curLab = normLab
+            
             do {
               c += 1
               if (c < seq.length) {
                 curLab = seq(c).label
-                val (s,e) = getStartEnd(rawPairs(c).info)
-                val cp = seq(c)
-                println("Adding token dist annotation #2 ... st = " + s + " en = " + e)
-                if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
+                //val (s,e) = getStartEnd(rawPairs(c).info)
+                //val cp = seq(c)
+                //if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
               }
             } while ((curLab == normLab) && (c < seq.length))            
              // advance counter to the end of the phrase              
