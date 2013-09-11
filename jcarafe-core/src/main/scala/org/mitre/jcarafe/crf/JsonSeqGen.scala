@@ -89,6 +89,8 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
     val existingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
     val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(Label("tok_posterior_dist",Map())))), true, true).sortWith(_ < _)
+    println("There are " + tokenLabelDistributions.length + " tok annotations")
+    println("There are " + existingTokens.length + " existing annotations")
     val zones = getAnnotations(None, asets, zoneSet) match {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
@@ -98,8 +100,10 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val s_toks = t_toks.sortWith(_ < _) // sort ascending
     val toks = preExistingTokens match {
       case Nil => t_toks
-      case ts => mergeAnnotations(s_toks, ts)
+      case ts =>
+        mergeAnnotations(s_toks, ts)
     }
+    println("# toks = " + toks.length)
     val targetAnnots = getAnnotations(None, asets, opts.tagset)
     val stack = new scala.collection.mutable.Stack[Annotation]
     stack pushAll (targetAnnots.sortWith(_ > _))
@@ -191,9 +195,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   val digits = "(\\p{Digit}+)"    
   
   def parseEncodedAbstractLabel(s: String) : AbstractLabel = {
+    val BegLab = """B:([A-z]+)\(([A-z]+),([A-z]+)\)""".r
     val Lab = """([A-z]+)\(([A-z]+),([A-z]+)\)""".r
     val Simple = """([A-z]+)""".r
     s match {
+      case BegLab(n,a,v) => Label(n,Map(a -> v))
       case Lab(n,a,v) => Label(n,Map(a -> v))
       case Simple(s) => SLabel(s)
       case _ => throw new RuntimeException("Unparsable serialized label: " + s)
@@ -201,7 +207,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   }
 
   def toSources(d: DeserializationT): Seqs = {
-    val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
+    val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)  
     def seqOfTokArr(tarr: Array[Annotation]) = {
       forIndex(tarr.length) { i =>
         val curTok = tarr(i)
@@ -222,7 +228,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
         val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }
-        if (addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
+        if (!(opts.empDistTrain) && addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
           if (opts.empDistTrain) {
@@ -329,10 +335,13 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
           } else if (opts.posteriors) {
             val cp = seq(c)
+            println("Adding token dist annotation #1 ... st = " + st + " en = " + en)
             annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
           }
           if (!(lstr == "lex")) { // case where we output an identified phrase
-            st = rawPairs(c).info match { case Some(amap) => amap("st").toInt case None => st } // start of annotation
+            st = rawPairs(c).info match { case Some(amap) =>
+              println("amap = " + amap)
+              amap("st").toInt case None => st } // start of annotation
             var curLab = normLab
             do {
               c += 1
@@ -340,6 +349,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
                 curLab = seq(c).label
                 val (s,e) = getStartEnd(rawPairs(c).info)
                 val cp = seq(c)
+                println("Adding token dist annotation #2 ... st = " + s + " en = " + e)
                 if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
               }
             } while ((curLab == normLab) && (c < seq.length))            
