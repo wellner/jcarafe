@@ -34,6 +34,13 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
    * that output types should be used as attributes
    */
   val asPreProc = false
+  
+  /*
+   * Check for whether all state are begin states.  If so, we should emit one 'phrase' for each state/position
+   */
+  lazy val allStatesBeginStates = {
+    lAlphabet forall { case(l,i) => l match {case BeginState(_) => true case _ => false }}
+  }
 
   def makeStackCurrent(st: Stack[Annotation], a: Annotation) = {
     var cur = false
@@ -196,7 +203,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val Lab = """([A-z]+)\(([A-z]+),([A-z]+)\)""".r
     val Simple = """([A-z]+)""".r
     s match {
-      case BegLab(n,a,v) => Label(n,Map(a -> v))
+      case BegLab(n,a,v) => BeginState(Label(n,Map(a -> v)))
       case Lab(n,a,v) => Label(n,Map(a -> v))
       case Simple(s) => SLabel(s)
       case _ => throw new RuntimeException("Unparsable serialized label: " + s)
@@ -221,7 +228,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         }
       }
       Vector.tabulate(tarr.length) { (i: Int) =>
-        val pt: Annotation = tarr(i)
+        val pt: Annotation = tarr(i)        
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
         val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }        
@@ -314,7 +321,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           val lab = invLa(ilab)
           val nlabState = lab match { case BeginState(l) => l case a => a }
           val normLab_c = lAlphabet.update(nlabState)
-          val normLab = if (normLab_c < 0) ilab else normLab_c   
+          val normLab = if (normLab_c < 0) ilab else normLab_c
           val lstr = lab.labelString
           var st = -1
           var en = -1
@@ -338,7 +345,6 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             st = rawPairs(c).info match { case Some(amap) =>
               amap("st").toInt case None => st } // start of annotation
             var curLab = normLab
-            
             do {
               c += 1
               if (c < seq.length) {
@@ -347,8 +353,12 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
                 //val cp = seq(c)
                 //if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
               }
-            } while ((curLab == normLab) && (c < seq.length))            
+            } while ((normLab_c >= 0) && (curLab == normLab) && (c < seq.length))            
              // advance counter to the end of the phrase              
+             // LOGIC: don't loop this is a begin state that doesn't have an associated insider state
+             // that correspond to phrases
+             // If the current label matches the previous label (without the begin state), then we consider it
+             // and "inside" state and continue constructing the phrase.
             en = rawPairs(c - 1).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val annot = new Annotation(st, en, false, nlabState, None)
             val stateIndex = nlabState match {

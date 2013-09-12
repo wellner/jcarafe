@@ -301,7 +301,7 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
     }
   }
 
-  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
+  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {    
     val src = new ObsSource(o, b, i, dist.toMap)
     setLex(src, o)
     src

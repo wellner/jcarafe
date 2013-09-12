@@ -467,7 +467,7 @@ abstract class FeatureManager[Obs](val iString: String) {
    * @param  pos      Current position within the sequence
    * @return    A <code>FeatureReturn</code> with the observation feature as a hashcode
    */
-  def _wdFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = { new FeatureReturn(sarr(pos).code) }
+  def _wdFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = new FeatureReturn(sarr(pos).code) 
 
     /**
    * Computes a feature as the hashed conjunction of ALL labels produced from pre-models

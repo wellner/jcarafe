@@ -330,7 +330,6 @@ abstract class SeqGen[Obs](val opts: Options) {
         val lines = src.getLines.toList
         lines foreach {l =>
           // extracting features immediately here will trigger disk-caching of source sequences as lines are read in, saving memory
-          
           val instSeqs = extractFeatures(toSources(deserializeFromString(l)))
           nread += 1
           if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")

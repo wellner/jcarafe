@@ -71,7 +71,7 @@ case object ErrRoundingError extends OptimizerStatus
 case object ErrMinimumstep extends OptimizerStatus
 case object ErrMaximumstep extends OptimizerStatus
 case object ErrMaximumlinesearch extends OptimizerStatus
-case object ErrMaximumIteration extends OptimizerStatus
+case object MaximumIteration extends OptimizerStatus
 case object ErrWidthtoosmall extends OptimizerStatus
 case object ErrInvalidparameters extends OptimizerStatus
 case object ErrIncreasegradient extends OptimizerStatus
@@ -254,7 +254,7 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
       pf(k % params.past) = ffx
       
       if (continue && params.maxIters != 0 && params.maxIters < (k + 1)) {
-        ret.status = ErrMaximumIteration
+        ret.status = MaximumIteration
         continue = false
       }
       
