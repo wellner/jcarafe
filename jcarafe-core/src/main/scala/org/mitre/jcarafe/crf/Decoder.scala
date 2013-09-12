@@ -33,6 +33,8 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     val dobj = sGen.deserializeFromString(s)
     val seqs = sGen.createSeqsWithInput(dobj)
     val viterbiInstance = Viterbi(dynamic, ss, model.crf, opts.posteriors)
+    println("decode to annots")
+
     seqs foreach viterbiInstance.assignBestSequence
     sGen.seqsToString(dobj, seqs)
   }
@@ -174,6 +176,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
       case Some(_) =>
         sGen.evaluateSequences(seqs)
       case None =>
+        println("")
         outFile match { case Some(outFile) => sGen.seqsToFile(dobj, seqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
     }
   }

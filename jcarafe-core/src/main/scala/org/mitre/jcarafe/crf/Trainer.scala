@@ -31,7 +31,7 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
    * XX - use default parameters here
    */
   def train(): Unit = {
-    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles // this has to happen before generating CRF
+    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles // this has to happen before generating CRF  
     trainingRoutine(seqs)
   }
 
@@ -125,15 +125,6 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     
   }
   
-  private def detectedEmpDistribution(seqs: Seq[InstanceSequence]) = {
-    if (seqs.seq.length > 0) {
-      val s1 = seqs.seq(0)
-      if (s1.iseq.length > 0) {
-        s1.iseq(0).condProbTbl.size > 0 // if this table is greater than zero, we're using empiricial distributions to train
-      } else false
-    } else false
-  }
-
   def trainingRoutine(seqs: Seq[InstanceSequence]) = {    
     val dCrf: Crf = getCrf(opts.empDistTrain)
     if (adjust) dCrf.adjustible_=(true)
@@ -169,6 +160,7 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
   def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs, opts.seed)
     val coreModel = dCrf.train(accessSeq, opts.maxIters, modelIterFn)
+    val decoder = Viterbi(false,1,coreModel,true)
     if (opts.randomFeatures || opts.randomSupportedFeatures) {
       val m = getRandModel((sGen.getMaxSegmentSize + 1), coreModel)
       writeModel(m, new java.io.File(opts.model.get))

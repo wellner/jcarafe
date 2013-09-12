@@ -224,7 +224,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         val pt: Annotation = tarr(i)
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
-        val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }
+        val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }        
         if (!(opts.empDistTrain) && addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {

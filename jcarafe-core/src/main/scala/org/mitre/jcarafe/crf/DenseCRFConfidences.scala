@@ -32,8 +32,9 @@ abstract class DenseCRFConfidences(model: CoreModel, val testLL: Boolean = false
       }
       val unNormScores : IndexedSeq[Double] = for (l <- 0 until curNls) yield newA(l)*beta(i)(l)
       val total = unNormScores.foldLeft(0.0){ _ + _ }
-      for (l <- 0 until curNls)
-    	  abstEl.setConditionalProb(l,unNormScores(l) / total)
+      for (l <- 0 until curNls) {
+    	abstEl.setConditionalProb(l,unNormScores(l) / total)
+      }
       Array.copy(newA,0,curA,0,curNls)
       assign(curA,(_ / scale(i)))
       i += 1
@@ -52,8 +53,8 @@ abstract class DenseCRFConfidences(model: CoreModel, val testLL: Boolean = false
     for (k <- 0 until iseq.length) sll -= math.log(scale(k))
     var i = 0
     while (i < nfs) {
-      //println("constraint: " + gradient(i) + " and expectation: " + (featureExpectations(i) / zx))
-      gradient(i) += featureExpectations(i) / zx; i += 1
+      gradient(i) += featureExpectations(i) / zx
+      i += 1
     }
     sll
   }

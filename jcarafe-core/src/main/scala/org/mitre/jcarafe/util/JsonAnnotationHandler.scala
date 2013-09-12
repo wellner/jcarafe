@@ -19,7 +19,7 @@ object JsonAnnotationHandler {
         case _ =>
       }
     }
-    atts
+    atts.reverse // ORDER -MUST- BE PRESERVED HERE
   }
   /*
    * This gathers annotations over the MAT-JSON defined schema.

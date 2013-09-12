@@ -194,6 +194,8 @@ class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePos
     posteriorCrf match {
       case Some(pCrf) =>
         if (iseq.length > 0) {
+          // note that pCrf will modify the condition probabilities for each sequence element in place
+          // resulting in position marginal posterior distributions available for output
 	      math.exp(pCrf.gradOfSeq(iseq))
         } else 0.0
       case None => 0.0}
