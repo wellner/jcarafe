@@ -101,7 +101,6 @@ object JsonAnnotationHandler {
                                 attC match {
                                   case Some(k) =>
                                     if (justLabel) {
-                                      println("Adding ANNOT " + (new Annotation(st, en, false, SLabel(s), vl, Some(Map(k -> valC)))))
                                       annotBuf += new Annotation(st, en, false, SLabel(s), vl, Some(Map(k -> valC)))
                                     }
                                     else

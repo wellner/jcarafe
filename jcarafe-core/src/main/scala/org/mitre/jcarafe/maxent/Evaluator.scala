@@ -53,11 +53,9 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
   def trainAndEvaluate(training: Seq[AbstractInstance], testing: Seq[AbstractInstance]): (Array[Array[Int]], Double) = {
     val trainer = new RuntimeMaxEntTrainer(opts) { override val sGen = seqGen }
     val trainInsts = InstSeq(training)
-    println("Training fold: " + trainInsts.iseq.length + " instances")
     val m = trainer.batchTrainToModel(seqGen, trainInsts, getMe)
     val decoder = RuntimeMaxEntDecoder(m)    
     val testInsts = InstSeq(testing)
-    println("Test fold: " + testInsts.iseq.length + " instances")
     var klDiv = 0.0
     val pairs = testing map { inst =>
       val dist = decoder.decodeInstanceAsDistribution(inst)

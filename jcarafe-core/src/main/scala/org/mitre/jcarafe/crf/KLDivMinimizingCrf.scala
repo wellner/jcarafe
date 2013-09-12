@@ -80,7 +80,6 @@ abstract class KLDivMinimizingStochasticCrf(
         }
         if (inst.prv < 0) {
           val empiricalMarginal = abstractInst.conditionalProb(inst.cur)
-          println("Empirical marginal = " + empiricalMarginal)
           gref.g_=(gref.g + inst.value * empiricalMarginal)
           seqLogLi += lambdas(inst.fid) * inst.value * empiricalMarginal
           gref.e_=((gref.e + newA(inst.cur) * beta(i)(inst.cur)) * inst.value)
