@@ -57,7 +57,6 @@ object JsonAnnotationHandler {
               val s = o("type") match { case JsString(s) => s case a => throw new RuntimeException("No valid type value: " + a) }
               val s_attsKeys = o("attrs") match { case JsArray(ar_p) => getAttributeLabels(ar_p) case _ => Nil }
               val s_attsKey = s_attsKeys match { case s :: _ => Some(s) case Nil => None }
-              println("o = " + o)
               o("annots") match {
                 case JsArray(arr) =>
                   val annotBuf = new scala.collection.mutable.ListBuffer[Annotation]
@@ -72,8 +71,7 @@ object JsonAnnotationHandler {
                         var attC: Option[String] = None
                         var valC: String = ""
                         val vl = signal match { case Some(sig) => Some(sig.substring(st, en)) case None => None }
-                        if (asPreProc) {
-                          //println("Adding annotation " + (new Annotation(st, en, false, SLabel(s), vl, Some(attVlMap))))
+                        if (asPreProc) {                          
                           annotBuf += new Annotation(st, en, false, SLabel(s), vl, Some(attVlMap))
                         } else {
                           tagset.set.foreach { al: AbstractLabel =>

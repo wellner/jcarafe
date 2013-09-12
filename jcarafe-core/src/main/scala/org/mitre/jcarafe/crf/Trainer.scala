@@ -173,8 +173,8 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
       val m = getRandModel((sGen.getMaxSegmentSize + 1), coreModel)
       writeModel(m, new java.io.File(opts.model.get))
     } else {
-    val m = getStdModel((sGen.getMaxSegmentSize + 1), coreModel)
-    writeModel(m, new java.io.File(opts.model.get))
+      val m = getStdModel((sGen.getMaxSegmentSize + 1), coreModel)    
+      writeModel(m, new java.io.File(opts.model.get))
     }
   }
 }

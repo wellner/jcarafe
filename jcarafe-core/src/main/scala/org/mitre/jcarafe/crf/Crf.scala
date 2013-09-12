@@ -353,7 +353,8 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
     for (k <- 0 until iseq.length) sll -= math.log(scale(k))
     var i = 0
     while (i < nfs) {
-      gradient(i) += featureExpectations(i) / zx; i += 1
+      gradient(i) += featureExpectations(i) / zx  
+      i += 1
     }
     sll
   }

@@ -219,7 +219,7 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
     var k = 0
     var end = 0
     if (xnorm < 1.0) xnorm = 1.0
-    if ((gnorm / xnorm) <= params.epsilon) return Result(AlreadyMinimized, gnorm = gnorm)
+    if ((gnorm / xnorm) <= params.epsilon) return Result(AlreadyMinimized, gnorm = gnorm, objective = fx.get)
     step set vec2normInv(d)
     
     var continue = true

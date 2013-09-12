@@ -14,6 +14,7 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
       val abstractInst = iseq(i)
       val instFeatures = abstractInst.getCompVec
       val label = abstractInst.label
+      
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
       Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
@@ -25,7 +26,7 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
         val inst = instFeatures0(k)
         if (inst.prv < 0) {
           val empiricalMarginal = abstractInst.conditionalProb(inst.cur)
-          gradient(inst.fid) -= inst.value * empiricalMarginal          
+          gradient(inst.fid) -= inst.value * empiricalMarginal   
           seqLogLi += lambdas(inst.fid) * inst.value * empiricalMarginal          
           featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value          
         } else if (i > 0) {
@@ -79,6 +80,7 @@ abstract class KLDivMinimizingStochasticCrf(
         }
         if (inst.prv < 0) {
           val empiricalMarginal = abstractInst.conditionalProb(inst.cur)
+          println("Empirical marginal = " + empiricalMarginal)
           gref.g_=(gref.g + inst.value * empiricalMarginal)
           seqLogLi += lambdas(inst.fid) * inst.value * empiricalMarginal
           gref.e_=((gref.e + newA(inst.cur) * beta(i)(inst.cur)) * inst.value)
@@ -97,6 +99,5 @@ abstract class KLDivMinimizingStochasticCrf(
     }
     seqLogLi
   }
-
   
 }

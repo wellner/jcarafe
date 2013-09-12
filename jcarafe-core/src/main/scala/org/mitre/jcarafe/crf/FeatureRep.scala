@@ -14,12 +14,15 @@ import cern.colt.map.OpenLongObjectHashMap;
 abstract class FeatureCore {
   def getName: String
   def value: Double
+  def getId: Long
+    
 }
 
 class CompactFeature(val v: Double, val fid: Int, val classLabelWeights: Option[Array[Double]] = None) extends FeatureCore {
   def apply(i: Int) = classLabelWeights match { case Some(vec) => vec(i) case None => v }
   def value = v
   def getName = ""
+  def getId = fid.toLong
 }
 
 /*
@@ -44,6 +47,7 @@ class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) exte
   }
   override def hashCode: Int = if (nfid >= 0) mix(mix(fid.toLong, nfid.toLong), cur.toLong).toInt else mix(fid.toLong, cur.toLong).toInt
   override def toString = "feature = " + prv + "," + cur + "," + fid + "," + nfid
+  def getId = fid.toLong
 }
 
 class NBinFeature(override val value: Double, prv: Int, cur: Int, fid: Int, nfid: Int = -1) extends Feature(prv, cur, fid, nfid)
@@ -182,6 +186,7 @@ class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fca
 
   def fdetail = fdetailSet
   def getName = fname.toString
+  def getId = fname
   def value = if (fdetailSet.isEmpty) 1.0 else fdetailSet.head.value
   override def toString = getName
 
@@ -190,7 +195,7 @@ class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fca
       case that: FeatureType => fname == that.fname && segsize == that.segsize && edgep == that.edgep
       case _ => false
     }
-  override def hashCode: Int = 41 * (41 * (41 + fname.hashCode) + segsize) + edgep.hashCode
+  override def hashCode: Int = 41 * (41 * (41 + fname.toInt) + segsize) + edgep.hashCode
 }
 
 abstract class AbstractValuedFeatureType(val value: Double) extends FeatureCore {
@@ -200,16 +205,26 @@ abstract class AbstractValuedFeatureType(val value: Double) extends FeatureCore 
 
 class ValuedFeatureType(value: Double, val ft: FeatureType) extends AbstractValuedFeatureType(value) {
   def getName = ft.getName
+  def getId = ft.getId
   def getFeatures: Iterable[Feature] =
     if (value == 1.0) ft.fdetail
     else ft.fdetail map { f => new NBinFeature(value, f.prv, f.cur, f.fid, f.nfid) }
   def segsize = ft.segsize
   def getFName = ft.fname
+  
+  override def equals(other: Any): Boolean = 
+    other match {
+      case that: ValuedFeatureType => ft equals that.ft
+      case _ => false
+   }
+  
+  override def hashCode = ft.hashCode
 }
 
 class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val edgep: Boolean, val faMap: LongAlphabet) extends AbstractValuedFeatureType(value) {
   def segsize = ss
   def getName = fname.toString
+  def getId = fname
   // this will let us "lazily" compute features
   override def getFeatures: Iterable[Feature] = {
     val nl = CrfInstance.numLabels
@@ -222,7 +237,7 @@ class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val e
         new NBinFeature(value, -1, i, faMap.update(i, fname), -1)
       }
     }
-  }
+  }  
 }
 
 case class PreFeature(val prv: Int, val cur: Int, val name: Long)
@@ -536,6 +551,34 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       if (!supporting) inst add new ValuedFeatureType(vl, ft)
     }
   }
+  
+  protected def addFeatureRange(ss: Int, inst: CrfInstance, edgeP: Boolean, ypEnd: Int, fname: Long, vl: Double, fcat: FeatureCat) : Unit = {
+    if (opts.randomFeatures) throw new RuntimeException("Random features do not support adding feature bundles yet..")
+    else {
+      val ft =
+        fsetMap.get(fname) match {
+          case v: FeatureType => v
+          case _ =>
+            val n = new FeatureType(fname, edgeP, ss, fcat)
+            fsetMap.put(fname, n)
+            n
+        }
+      if (edgeP) {
+        for (i <- 0 until ypEnd; j <- 0 until ypEnd) {
+          val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(j, i, fname) }
+          val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(i, fname) }
+          ft add new Feature(j, i, fid, nfid)
+          }
+      } else {
+        for (i <- 0 until ypEnd) {
+          val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(-1, i, fname) }
+          val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(i, fname) }
+          ft add new Feature(-1, i, fid, nfid)
+          }  
+      }
+      inst add new ValuedFeatureType(vl, ft)
+    }    
+  }
 
   private def getEffectiveSize(yp: Int, cp: Int, dseq: SourceSequence[Obs]): Int = {
     val sz =
@@ -601,12 +644,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
           val fresult: FeatureReturn = fn(d, dseq, pos)
           if (!fresult.edgeP || (pos > 0)) {
             fresult.features foreach { f =>
-              if (fresult.edgeP) {
-                for (i <- 0 until CrfInstance.numLabels; j <- 0 until CrfInstance.numLabels) // explicitly add full cross-product here 
-                  addFeature(d, inst, j, i, f, false, fresult.fcat)
-              } else
-                for (i <- 0 until CrfInstance.numLabels) 
-                  addFeature(d,inst, -2, i, f, false, fresult.fcat)                  
+              addFeatureRange(d, inst, fresult.edgeP, CrfInstance.numLabels, f.get, f.value, fresult.fcat)
             }
           }
         }
@@ -615,9 +653,10 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       val yp = dseq(pos).label
       for (d <- 0 to upTo) {
         val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
-        addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)
+        addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)        
         mgr.fnList foreach { fn =>
           val fresult: FeatureReturn = fn(d, dseq, pos)
+          fresult.features foreach {bf => print(" " + bf.get)}
           if (!fresult.edgeP || (pos > 0)) {
             fresult.features foreach { f =>
               if (static) addFeatureStatic(d, inst, f)

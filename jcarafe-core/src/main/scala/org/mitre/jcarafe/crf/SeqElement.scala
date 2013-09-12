@@ -100,7 +100,9 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
       super.add(ft) // semi-CRF case and/or for training
     }
   
-  def add(f: Feature) = seg1Features += f // directly add a feature
+  def add(f: Feature) = {
+    seg1Features += f // directly add a feature
+  }
 
   private def expandVector: Array[Array[Feature]] = {
     val fs = Array.tabulate(CrfInstance.maxSegSize + 1) { _ => new ArrayBuffer[Feature] }
