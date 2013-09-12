@@ -656,7 +656,6 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
         addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)        
         mgr.fnList foreach { fn =>
           val fresult: FeatureReturn = fn(d, dseq, pos)
-          fresult.features foreach {bf => print(" " + bf.get)}
           if (!fresult.edgeP || (pos > 0)) {
             fresult.features foreach { f =>
               if (static) addFeatureStatic(d, inst, f)
