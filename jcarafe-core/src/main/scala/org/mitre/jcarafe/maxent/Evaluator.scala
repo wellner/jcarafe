@@ -61,8 +61,10 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
       val dist = decoder.decodeInstanceAsDistribution(inst)
       dist foreach {
         case (s, i) =>
-          val empiricalProb = inst.conditionalProb(i)
-          klDiv += empiricalProb * (math.log(empiricalProb) - math.log(s))
+          val empiricalProb_a = inst.conditionalProb(i)
+          val empiricalProb = if (empiricalProb_a < 1E-200) 1E-200 else empiricalProb_a 
+          val loss = empiricalProb * (math.log(empiricalProb) - math.log(s))
+          klDiv += loss
       }
       decoder.decodeInstance(inst)
       decodedOutputStream foreach {s =>
@@ -153,7 +155,8 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
       val klScores = confMatsAndDivergence map { _._2 }
       var i = 0
       klScores foreach { s =>
-        os.write("KL-Divergence -- fold: " + i + " => " + s)
+        i += 1
+        os.write("KL-Divergence -- fold: " + i + " => " + s)        
         os.write('\n')
       }
       os.write("KL Average: " + (klScores.foldLeft(0.0) { _ + _ } / klScores.length))
