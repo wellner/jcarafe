@@ -25,7 +25,7 @@ public class JarafeXValidator {
    * @param file - output file for generated x-validation report
    */
   public void generateReport(int numFolds, java.io.File file) {
-    evaluator.produceReport(numFolds, file);
+    evaluator.xValidateAndGenerateReport(numFolds, file);
   }
   
 }

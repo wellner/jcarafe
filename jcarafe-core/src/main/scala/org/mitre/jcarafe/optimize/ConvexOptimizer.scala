@@ -213,7 +213,7 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
     fx.set(evaluator.evaluate(x, g, n, 0.0))
     pf(0) = fx.get
     vecCopyNegate(d, g)
-    
+    println("*****\nInitial function value = " + fx.get)
     var xnorm = vec2norm(x)
     var gnorm = vec2norm(g)
     var k = 0

@@ -4,6 +4,7 @@
 
 package org.mitre.jcarafe.maxent
 
+import org.mitre.jcarafe.crf.DecodingAlgorithm
 import scala.math._
 import scala.util.Random
 import org.mitre.jcarafe.crf.ObsSource
@@ -15,6 +16,7 @@ import org.mitre.jcarafe.util.SLabel
 import org.mitre.jcarafe.crf.IncrementalMurmurHash
 
 class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
+  def this(opts: MEOptions) = this(opts, new MaxEntTrainingSeqGen(new Options()))
   def this() = this(new MEOptions(), new MaxEntTrainingSeqGen(new Options()))
 
   import scala.collection.JavaConversions._
@@ -56,15 +58,20 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     val m = trainer.batchTrainToModel(seqGen, trainInsts, getMe)
     val decoder = RuntimeMaxEntDecoder(m)    
     val testInsts = InstSeq(testing)
-    var klDiv = 0.0
+    evaluate(decoder, Seq(testInsts))
+  }
+    
+  def evaluate(decoder: RuntimeMaxEntDecoder, testInsts: Seq[InstanceSequence]) : (Array[Array[Int]], Double) = {
+    val testing = testInsts.map{_.iseq}.foldLeft(Seq():Seq[AbstractInstance]){_ ++ _}
+    var crossEnt = 0.0
     val pairs = testing map { inst =>
       val dist = decoder.decodeInstanceAsDistribution(inst)
       dist foreach {
         case (s, i) =>
           val empiricalProb_a = inst.conditionalProb(i)
           val empiricalProb = if (empiricalProb_a < 1E-200) 1E-200 else empiricalProb_a 
-          val loss = empiricalProb * (math.log(empiricalProb) - math.log(s))
-          klDiv += loss
+          val loss = empiricalProb * math.log(s)
+          crossEnt -= loss
       }
       decoder.decodeInstance(inst)
       decodedOutputStream foreach {s =>
@@ -73,8 +80,13 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
         }
       (inst.label, inst.orig)
     }
-    val ns: Int = seqGen.getNumberOfStates
-    (getConfusionMatrix(ns, pairs), klDiv)
+    val mat : Array[Array[Int]] = 
+      if (opts.binomial) Array(Array())
+      else {
+        val ns: Int = seqGen.getNumberOfStates
+        getConfusionMatrix(ns, pairs)
+      }
+    (mat, crossEnt)
   }
 
   def xValidate(n: Int): IndexedSeq[(Array[Array[Int]], Double)] = {
@@ -145,21 +157,26 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
       for (j <- 0 until m2.size)
         m1(i)(j) += m2(i)(j)
   }
-
-  def produceReport(nfolds: Int, f: java.io.File) = {
+  
+  def xValidateAndGenerateReport(nfolds: Int, f: java.io.File) = {
     val confMatsAndDivergence = xValidate(nfolds)
+    produceReport(confMatsAndDivergence, nfolds, f)
+  }
+
+  def produceReport(confMatsAndDivergence: IndexedSeq[(Array[Array[Int]], Double)], nfolds: Int, f: java.io.File) = {
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(f)), "UTF-8")
     val lSize = seqGen.getNumberOfStates
-    os.write("Cross Validation Report\n\n")
+    if (nfolds > 1) os.write("Cross Validation Report\n\n") else os.write("Evaluation Report\n\n")        
     if (opts.binomial) {
       val klScores = confMatsAndDivergence map { _._2 }
       var i = 0
       klScores foreach { s =>
         i += 1
-        os.write("KL-Divergence -- fold: " + i + " => " + s)        
+        println("Cross-entropy score: " + s)
+        os.write("Cross-entropy -- fold: " + i + " => " + s)        
         os.write('\n')
       }
-      os.write("KL Average: " + (klScores.foldLeft(0.0) { _ + _ } / klScores.length))
+      os.write("Cross-entropy Average: " + (klScores.foldLeft(0.0) { _ + _ } / klScores.length))
       os.write('\n')
     } else {
       os.write("Label categories: ")

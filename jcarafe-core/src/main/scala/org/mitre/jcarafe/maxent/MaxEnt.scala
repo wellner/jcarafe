@@ -748,7 +748,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     } else None
   }
 
-  protected def toInstances(inReader: DeserializationT): InstanceSequence = {
+  def toInstances(inReader: DeserializationT): InstanceSequence = {
     val instr = inReader.is
     var l = instr.readLine()
     val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
@@ -885,7 +885,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
     val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
     val evaluator = new Evaluator(opts, sGen)
     evaluator.addInstances(seqs(0))
-    evaluator.produceReport(opts.xValFolds.get.toInt, new java.io.File(opts.report.get))
+    evaluator.xValidateAndGenerateReport(opts.xValFolds.get.toInt, new java.io.File(opts.report.get))
   }
 }
 
@@ -942,45 +942,7 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
         os.close
     }
   }
-
-  override def runDecoder(deser: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
-    val instr = deser.is
-    var l = instr.readLine()
-    val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
-    while (l != null) {
-      if (l.length > 2) {
-        l.split(" ").toList match {
-          case lab :: fs =>
-            val src = sGen.createSource(SLabel(lab), (fs map { el =>
-              el.split(":").toList match {
-                case a :: b :: Nil => (FeatureId(a), b.toDouble)
-                case a :: _ => (FeatureId(a), 1.0)
-                case Nil => throw new RuntimeException("Feature vector parse failed")
-              }
-            }), false)
-            val inst = sGen.frep.createMEInstance(src.label, src.label)
-            sGen.addInFeatures(inst, src)
-            tmpBuf += inst
-          case _ =>
-        }
-      }
-      l = instr.readLine()
-    }
-    val seq = new MemoryInstanceSequence(tmpBuf.toIndexedSeq)
-    decoder.assignBestSequence(seq)
-    val me = decoder.crf
-    decodingOpts.evaluate match {
-      case Some(_) =>
-        sGen.evaluateSequences(Seq(seq))
-      case None =>
-        outFile match {
-          case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
-          case None => throw new RuntimeException("Expected output directory")
-        }
-    }
-
-  }
-
+  
   override def decodeToAnnotations(s: String): Array[Annotation] = throw new RuntimeException("Unavailable method")
 
   override def decode() = {
@@ -989,7 +951,15 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
   }
 
   def decodeStd() = {
-    val decoder = new MaxEntDecodingAlgorithm(model.crf)
+    val decoder = new MaxEntDecodingAlgorithm(model.crf)   
+    
+    if (decodingOpts.evaluate.isDefined) {
+      val seqs = sGen.createSeqsFromFiles
+      val evaluator = new Evaluator(decodingOpts)
+      val rtDecoder = new RuntimeMaxEntDecoder(model)
+      evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)),1,new java.io.File(decodingOpts.evaluate.get))   
+    } else {
+   
     decodingOpts.inputDir match {
       case Some(dirStr) =>
         val pat = decodingOpts.inputFilter match {
@@ -1006,15 +976,26 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
         fs foreach { f =>
           val ofile = decodingOpts.outputDir match { case Some(d) => Some(d + "/" + f.getName + osuffix) case None => None }
           val deser = sGen.deserializeFromFile(f)
-          runDecoder(deser, decoder, ofile)
+          val seq = sGen.toInstances(deser)
+          decoder.assignBestSequence(seq)
+          ofile match {
+            case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
+            case None => throw new RuntimeException("Expected output directory")
+          }          
         }
       case None =>
         decodingOpts.inputFile match {
           case Some(f) =>
             val deser = sGen.deserializeFromFile(f)
-            runDecoder(deser, decoder, decodingOpts.outputFile)
+            val seq = sGen.toInstances(deser)
+            decoder.assignBestSequence(seq)
+            decodingOpts.outputFile match {
+              case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
+              case None => throw new RuntimeException("Expected output directory")
+            }
           case None => throw new RuntimeException("Expecting input file or input directory")
         }
+      }
     }
   }
 
@@ -1091,8 +1072,8 @@ class MaxEntClassifier(val opts: MEOptions, val imap: Option[InducedFeatureMap] 
       val decoder = MaxEntDecoder(opts)
       decoder.sGen.frep.inducedFeatureMap_=(decoder.model.inducedMap)
       decoder.decode()
-      val eval = opts.evaluate match { case Some(_) => true case None => false }
-      if (eval) decoder.sGen.getAccuracy
+      //val eval = opts.evaluate match { case Some(_) => true case None => false }
+      //if (eval) decoder.sGen.getAccuracy
       ()
     }
   }
