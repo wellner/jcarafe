@@ -703,7 +703,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     } else None
   }
 
-  private val LabRe = """([A-z]+)=([0-9\.]+)""".r
+  private val LabRe = """([A-z]+)=([0-9][0-9\.E-]+)""".r
 
   private def getLabelDistribution(lst: Array[String]) = {
     val buf = new collection.mutable.ListBuffer[(String, Double)]
