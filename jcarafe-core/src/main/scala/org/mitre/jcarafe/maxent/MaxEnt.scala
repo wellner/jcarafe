@@ -565,6 +565,7 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
       val str = e.toString()
       if (str.length > 1) {
         os.write('\t')
+        os.write("#")
         os.write(str)
       }      
       os.write("\n")
@@ -698,7 +699,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstance(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      val (line,comment) = l.split("#").toList match {case ln :: comment :: Nil => (ln, Some(comment)) case _ => (l,None)}
+      val (line,comment) = l.split("#").toList match {case ln :: Nil => (ln,None) case ln :: comment => (ln, Some(comment.mkString("#")))}
       line.split(" ").toList match {
         case first :: second :: rest =>
           val (weight, label, features) =
@@ -738,7 +739,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstanceUsingPosteriors(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      val (line,comment) = l.split("#").toList match {case ln :: comment :: Nil => (ln, Some(comment)) case _ => (l,None)}
+      val (line,comment) = l.split("#").toList match {case ln :: Nil => (ln,None) case ln :: comment => (ln, Some(comment.mkString("#")))}
       val lineElements = line.split(" ")
       val labDist = getLabelDistribution(lineElements)
       if (labDist.length > 1) {
@@ -757,7 +758,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
           i += 1
         }
         val src = createSource(SLabel(firstLab._1), fbuf.toList)
-        val inst = frep.createMEInstance(src.label, src.label)
+        val inst = frep.createMEInstance(src.label, src.label, comment)
         labDist foreach { case (l, v) => inst.setConditionalProb(getIndex(SLabel(l)), v) }
         addInFeatures(inst, src)
         Some(inst)
