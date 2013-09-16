@@ -78,6 +78,13 @@ class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactF
   }
 
   def getNamedFeatureVec: Array[Array[(Long, Feature)]] = throw new RuntimeException("Unsupported method")
+  
+  /*
+   * Return the source info when asked to convert this to a string
+   */
+  override def toString() = {
+    srcInfo match {case Some(s) => s case None => label.toString}
+  }
 }
 
 class SelfInducableMaxEntInstance(label: Int, orig: Int, maxentVec: Option[Array[CompactFeature]] = None)
@@ -494,7 +501,9 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
   def createMEInstance(l: Int, o: Int, w: Double): MaxEntInstance = new MaxEntInstance(l, o, weight = w)
+  def createMEInstance(l: Int, o: Int, w: Double, s: Option[String]): MaxEntInstance = new MaxEntInstance(l, o, weight = w, srcInfo = s)
   def createMEInstance(l: Int, o: Int, src: String) = new MaxEntInstance(l, o, srcInfo = Some(src))
+  def createMEInstance(l: Int, o: Int, srcO: Option[String]) = new MaxEntInstance(l, o, srcInfo = srcO)
 
 }
 
@@ -545,6 +554,7 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
   def seqsToFile(d: DeserializationT, seqs: Seq[InstanceSequence], f: java.io.File): Unit = {
     val ostr = new java.io.FileOutputStream(f)
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
+    var di = 0
     seqs(0).iseq foreach { e =>
       var i = 0
       while (i < getNumberOfStates) {
@@ -552,6 +562,11 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
         os.write(invLa(i) + ":" + e.conditionalProb(i));
         i += 1
       }
+      val str = e.toString()
+      if (str.length > 1) {
+        os.write('\t')
+        os.write(str)
+      }      
       os.write("\n")
     }
     os.close()
@@ -683,7 +698,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstance(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      l.split(" ").toList match {
+      val (line,comment) = l.split("#").toList match {case ln :: comment :: Nil => (ln, Some(comment)) case _ => (l,None)}
+      line.split(" ").toList match {
         case first :: second :: rest =>
           val (weight, label, features) =
             if (numReg.findFirstIn(first).isDefined) (first.toDouble, second, rest)
@@ -695,7 +711,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
               case Nil => throw new RuntimeException("Feature vector parse failed")
             }
           }), false)
-          val inst = frep.createMEInstance(src.label, src.label, weight)
+          val inst = frep.createMEInstance(src.label, src.label, weight, comment)
           addInFeatures(inst, src)
           Some(inst)
         case _ => None
@@ -722,7 +738,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstanceUsingPosteriors(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      val lineElements = l.split(" ")
+      val (line,comment) = l.split("#").toList match {case ln :: comment :: Nil => (ln, Some(comment)) case _ => (l,None)}
+      val lineElements = line.split(" ")
       val labDist = getLabelDistribution(lineElements)
       if (labDist.length > 1) {
         var i = labDist.length
