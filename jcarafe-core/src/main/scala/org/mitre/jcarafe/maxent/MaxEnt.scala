@@ -78,12 +78,12 @@ class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactF
   }
 
   def getNamedFeatureVec: Array[Array[(Long, Feature)]] = throw new RuntimeException("Unsupported method")
-  
+
   /*
    * Return the source info when asked to convert this to a string
    */
   override def toString() = {
-    srcInfo match {case Some(s) => s case None => label.toString}
+    srcInfo match { case Some(s) => s case None => label.toString }
   }
 }
 
@@ -206,7 +206,7 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
           //val pr = inst(l) 
           // above for self-induced features .. need to re-examine this
           val pMass = el.conditionalProb(l)
-          gradient(actualIndex) += (scores(l) - pMass) * v * w 
+          gradient(actualIndex) += (scores(l) - pMass) * v * w
           l += 1
         }
         k += 1
@@ -226,7 +226,7 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
           val offset = l * predNFS
           val actualIndex = fid + offset
           //val v = inst(l)
-          val v = inst.v          
+          val v = inst.v
           if (l == trueLabel) {
             gradient(actualIndex) -= v * w
           }
@@ -460,12 +460,12 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
   def createSource(l: Int, o: Obs, b: Boolean) = new ObsSource(l, o, b, None)
   def createInstance(l: Int, o: Int, sId: Int) = new MaxEntInstance(l, o)
   def createInstance(l: Int, o: Int) = new MaxEntInstance(l, o)
-  def createInstance(src: ObsSource[Obs],sid: Int = (-1)) : AbstractInstance = {
-    val ci = new MaxEntInstance(src.label,src.label)
+  def createInstance(src: ObsSource[Obs], sid: Int = (-1)): AbstractInstance = {
+    val ci = new MaxEntInstance(src.label, src.label)
     for (i <- 0 until CrfInstance.numLabels) ci.setConditionalProb(i, src.conditionalProb(i))
     ci
   }
-  def createDistributionalSource(dist: List[(Int,Double)],o:Obs,b:Boolean,i:Option[Map[String,String]]) = new ObsSource(o,b,i,dist.toMap)
+  def createDistributionalSource(dist: List[(Int, Double)], o: Obs, b: Boolean, i: Option[Map[String, String]]) = new ObsSource(o, b, i, dist.toMap)
   def getFeatureSetName: String = ""
   def getLexicon: Option[BloomLexicon] = None
   def getWordProps: Option[WordProperties] = None
@@ -481,20 +481,20 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
     case None => new Alphabet[Long]()
   }
   val unkCode = hash("$=BIAS=$", 0)
-  
-  var featureStatistics : Map[Int,(Int,Double)] = Map()
-  
+
+  var featureStatistics: Map[Int, (Int, Double)] = Map()
+
   def updateStatistics(fid: Int, v: Double) = {
-    val (curCnt,curMax) = featureStatistics.get(fid).getOrElse((1,0.0))
+    val (curCnt, curMax) = featureStatistics.get(fid).getOrElse((1, 0.0))
     val nCnt = curCnt + 1
-    val nMax = math.max(curMax,v)
-    featureStatistics += ((fid,(nCnt,nMax)))
+    val nMax = math.max(curMax, v)
+    featureStatistics += ((fid, (nCnt, nMax)))
   }
 
   def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None): Unit = {
     val fid = fMap.update(fname)
     if (fid >= 0) {
-      updateStatistics(fid,vl)
+      updateStatistics(fid, vl)
       inst add (new CompactFeature(vl, fid, clWts))
     }
   }
@@ -567,7 +567,7 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
         os.write('\t')
         os.write("#")
         os.write(str)
-      }      
+      }
       os.write("\n")
     }
     os.close()
@@ -699,7 +699,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstance(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      val (line,comment) = l.split("#").toList match {case ln :: Nil => (ln,None) case ln :: comment => (ln, Some(comment.mkString("#")))}
+      val (line, comment) = l.split("#").toList match { case ln :: Nil => (ln, None) case ln :: comment => (ln, Some(comment.mkString("#"))) }
       line.split(" ").toList match {
         case first :: second :: rest =>
           val (weight, label, features) =
@@ -739,7 +739,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
   protected def buildInstanceUsingPosteriors(l: String): Option[MaxEntInstance] = {
     if (l.length > 2) { // just skip short/empty lines
-      val (line,comment) = l.split("#").toList match {case ln :: Nil => (ln,None) case ln :: comment => (ln, Some(comment.mkString("#")))}
+      val (line, comment) = l.split("#").toList match { case ln :: Nil => (ln, None) case ln :: comment => (ln, Some(comment.mkString("#"))) }
       val lineElements = line.split(" ")
       val labDist = getLabelDistribution(lineElements)
       if (labDist.length > 1) {
@@ -788,16 +788,16 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     filterAndNormalizeFeatures(insts)
     InstSeq(insts)
   }
-  
+
   protected def filterAndNormalizeFeatures(insts: Seq[MaxEntInstance]) = {
-    insts foreach {inst =>
+    insts foreach { inst =>
       val vec = inst.getCompactVec
       val ln = vec.length
       var i = 0
       while (i < ln) {
         val f = vec(i)
         //val (cnt,msc) = frep.featureStatistics(f.fid)
-        
+
         vec(i) = new CompactFeature(f.v, f.fid, f.classLabelWeights) // XXX - think about whether features should be auto-normalized
         i += 1
       }
@@ -868,7 +868,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
       println("\n.. Completed writing training instances to file: " + opts.dumpInstances.get)
     } else {
       val accessSeq = new MaxEntMemoryAccessSeq(seqs)
-      val coreModel = me.train(accessSeq, opts.maxIters)      
+      val coreModel = me.train(accessSeq, opts.maxIters)
       val m = new MaxEntModel(sGen.getLAlphabet, coreModel, sGen.frep.fMap, sGen.getInducedFeatureMap)
       writeModel(m, new java.io.File(opts.model.get))
     }
@@ -934,33 +934,40 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
 
   def decodeFileBased() = {
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
-    val seq = sGen.createSeqsFromFiles
-    decodingOpts.outputFile match {
-      case None =>
-        seq foreach { s => decoder.assignBestSequence(s) }
-        sGen.evaluateSequences(seq)
-      case Some(ofile) =>
-        val o = new java.io.File(ofile)
-        val os = new java.io.PrintWriter(o)
-        val invLa = sGen.invLa
-        seq foreach { s =>
-          decoder.assignBestSequence(s)
-          s.iseq foreach { ai =>
-            ai match {
-              case meI: MaxEntInstance =>
-                os.write(meI.srcInfo.get)
-                for (i <- 0 until sGen.getNumberOfStates) {
-                  os.write("\t" + invLa(i) + ":" + meI.conditionalProb(i))
-                }
-                os.write('\n')
-              case _ =>
+    if (decodingOpts.evaluate.isDefined) {
+      val seqs = sGen.createSeqsFromFiles
+      val evaluator = new Evaluator(decodingOpts)
+      val rtDecoder = new RuntimeMaxEntDecoder(model)
+      evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)), 1, new java.io.File(decodingOpts.evaluate.get))
+    } else {
+      val seq = sGen.createSeqsFromFiles
+      decodingOpts.outputFile match {
+        case None =>
+          seq foreach { s => decoder.assignBestSequence(s) }
+          sGen.evaluateSequences(seq)
+        case Some(ofile) =>
+          val o = new java.io.File(ofile)
+          val os = new java.io.PrintWriter(o)
+          val invLa = sGen.invLa
+          seq foreach { s =>
+            decoder.assignBestSequence(s)
+            s.iseq foreach { ai =>
+              ai match {
+                case meI: MaxEntInstance =>
+                  os.write(meI.srcInfo.get)
+                  for (i <- 0 until sGen.getNumberOfStates) {
+                    os.write("\t" + invLa(i) + ":" + meI.conditionalProb(i))
+                  }
+                  os.write('\n')
+                case _ =>
+              }
             }
           }
-        }
-        os.close
+          os.close
+      }
     }
   }
-  
+
   override def decodeToAnnotations(s: String): Array[Annotation] = throw new RuntimeException("Unavailable method")
 
   override def decode() = {
@@ -969,50 +976,50 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
   }
 
   def decodeStd() = {
-    val decoder = new MaxEntDecodingAlgorithm(model.crf)   
-    
+    val decoder = new MaxEntDecodingAlgorithm(model.crf)
+
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
       val evaluator = new Evaluator(decodingOpts)
       val rtDecoder = new RuntimeMaxEntDecoder(model)
-      evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)),1,new java.io.File(decodingOpts.evaluate.get))   
+      evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)), 1, new java.io.File(decodingOpts.evaluate.get))
     } else {
-   
-    decodingOpts.inputDir match {
-      case Some(dirStr) =>
-        val pat = decodingOpts.inputFilter match {
-          case Some(r) =>
-            new scala.util.matching.Regex(r)
-          case None => new scala.util.matching.Regex(".*")
-        }
-        val dir = new java.io.File(dirStr)
-        val odir = decodingOpts.outputDir
-        val fs =
-          dir.listFiles filter
-            { f: java.io.File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } }
-        val osuffix = decodingOpts.outSuffix match { case Some(o) => o case None => "" }
-        fs foreach { f =>
-          val ofile = decodingOpts.outputDir match { case Some(d) => Some(d + "/" + f.getName + osuffix) case None => None }
-          val deser = sGen.deserializeFromFile(f)
-          val seq = sGen.toInstances(deser)
-          decoder.assignBestSequence(seq)
-          ofile match {
-            case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
-            case None => throw new RuntimeException("Expected output directory")
-          }          
-        }
-      case None =>
-        decodingOpts.inputFile match {
-          case Some(f) =>
+
+      decodingOpts.inputDir match {
+        case Some(dirStr) =>
+          val pat = decodingOpts.inputFilter match {
+            case Some(r) =>
+              new scala.util.matching.Regex(r)
+            case None => new scala.util.matching.Regex(".*")
+          }
+          val dir = new java.io.File(dirStr)
+          val odir = decodingOpts.outputDir
+          val fs =
+            dir.listFiles filter
+              { f: java.io.File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } }
+          val osuffix = decodingOpts.outSuffix match { case Some(o) => o case None => "" }
+          fs foreach { f =>
+            val ofile = decodingOpts.outputDir match { case Some(d) => Some(d + "/" + f.getName + osuffix) case None => None }
             val deser = sGen.deserializeFromFile(f)
             val seq = sGen.toInstances(deser)
             decoder.assignBestSequence(seq)
-            decodingOpts.outputFile match {
+            ofile match {
               case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
               case None => throw new RuntimeException("Expected output directory")
             }
-          case None => throw new RuntimeException("Expecting input file or input directory")
-        }
+          }
+        case None =>
+          decodingOpts.inputFile match {
+            case Some(f) =>
+              val deser = sGen.deserializeFromFile(f)
+              val seq = sGen.toInstances(deser)
+              decoder.assignBestSequence(seq)
+              decodingOpts.outputFile match {
+                case Some(outFile) => sGen.seqsToFile(deser, Seq(seq), new java.io.File(outFile))
+                case None => throw new RuntimeException("Expected output directory")
+              }
+            case None => throw new RuntimeException("Expecting input file or input directory")
+          }
       }
     }
   }
@@ -1030,8 +1037,8 @@ class MEOptions(override val argv: Array[String], override val optHandler: MaxEn
   def this() = this(Array(), new MaxEntOptionHandler(Array()))
   val fileBased: Boolean = optHandler.check("--file-processing")
   val dumpInstances = optHandler.get("--dump-instances")
-  val minCnt : Int = optHandler.get("--min-cnt").getOrElse("1").toInt
-  val binomial : Boolean = optHandler.check("--binomial-report")
+  val minCnt: Int = optHandler.get("--min-cnt").getOrElse("1").toInt
+  val binomial: Boolean = optHandler.check("--binomial-report")
 
   override def copy(): MEOptions = {
     val no = new MEOptions(argv, optHandler, false)
@@ -1198,8 +1205,8 @@ class RuntimeMaxEntDecoder(m: MaxEntModel) extends MaxEntDecoder(m) {
 
   def decodeValuedInstanceAsDistribution(fs: java.util.List[(String, java.lang.Double)]): java.util.List[(String, java.lang.Double)] =
     decodeInstanceAsDistribution(fs.asScala.toList.map { case (s, v) => (s, v.asInstanceOf[Double]) })
-    
-  def decodeInstanceAsDistribution(i: AbstractInstance) : List[(Double,Int)] = meDecoder.getInstanceDistribution(i)
+
+  def decodeInstanceAsDistribution(i: AbstractInstance): List[(Double, Int)] = meDecoder.getInstanceDistribution(i)
 
   def decodeInstance(fs: java.util.List[String]): String = decodeInstance(fs.asScala.toList.map { f => (FeatureId(f), 1.0) })
 
