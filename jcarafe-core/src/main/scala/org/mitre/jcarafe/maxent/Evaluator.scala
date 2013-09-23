@@ -15,10 +15,11 @@ import org.mitre.jcarafe.util._
 import org.mitre.jcarafe.util.SLabel
 import org.mitre.jcarafe.crf.IncrementalMurmurHash
 
-class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
-  def this(opts: MEOptions) = this(opts, new MaxEntTrainingSeqGen(new Options()))
+class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decodingSeqGen: Option[MaxEntSeqGenAttVal] = None) {
+  def this(opts: MEOptions, sg: MaxEntSeqGenAttVal) = this(opts, new MaxEntTrainingSeqGen(new Options()), Some(sg))
+  def this(opts: MEOptions) = this(opts, new MaxEntTrainingSeqGen(new Options()))  
   def this() = this(new MEOptions(), new MaxEntTrainingSeqGen(new Options()))
-
+  
   import scala.collection.JavaConversions._
 
   import IncrementalMurmurHash._
@@ -83,7 +84,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     val mat : Array[Array[Int]] = 
       if (opts.binomial) Array(Array())
       else {
-        val ns: Int = seqGen.getNumberOfStates
+        val ns: Int = decoder.sGen.getNumberOfStates
         getConfusionMatrix(ns, pairs)
       }
     (mat, crossEnt)
@@ -128,13 +129,13 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     diag.toDouble / tot.toDouble
   }
 
-  def reportOnMatrix(fname: String, os: java.io.Writer, mat: Array[Array[Int]]) = {
+  def reportOnMatrix(xval: Boolean, fname: String, os: java.io.Writer, mat: Array[Array[Int]]) = {
     os.write("\n\n================================================================================================================\n")
-    os.write("fold: %s\n".format(fname))
+    if (xval) os.write("fold: %s\n".format(fname))
     os.write("Accuracy: %f\n".format(accuracy(mat)))
     os.write("================================================================================================================\n")
     os.write("\t\thyp\\ref")
-    val im = seqGen.invLa
+    val im = decodingSeqGen match {case Some(ds) => ds.invLa case None => seqGen.invLa}
     for (i <- 0 until mat.size) os.write("\t%15s".format(getLabel(i, im)))
     for (i <- 0 until mat.size) {
       os.write("\n\t%15s".format(getLabel(i, im)))
@@ -181,13 +182,15 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen) {
     } else {
       os.write("Label categories: ")
       seqGen.getLAlphabet foreach { case (SLabel(l), _) => os.write(l + " ") case _ => }
-      os.write("\n\n\nThere are " + nfolds.toString + " folds\n\n")
+      if (nfolds > 1) os.write("\n\n\nThere are " + nfolds.toString + " folds\n\n")
       val totalMat = Array.fill(lSize, lSize)(0)
       val confMats = confMatsAndDivergence map { _._1 }
 
-      confMats.zipWithIndex foreach { case (mat, i) => reportOnMatrix(i.toString, os, mat); addTo(totalMat, mat) }
-      os.write("\n\n Aggregate results over all folds:\n")
-      reportOnMatrix("Aggregate", os, totalMat)
+      confMats.zipWithIndex foreach { case (mat, i) => reportOnMatrix((nfolds > 1), i.toString, os, mat); addTo(totalMat, mat) }
+      if (nfolds > 1) {
+        os.write("\n\n Aggregate results over all folds:\n")
+        reportOnMatrix(true, "Aggregate", os, totalMat)
+      }
     }
     os.close
   }

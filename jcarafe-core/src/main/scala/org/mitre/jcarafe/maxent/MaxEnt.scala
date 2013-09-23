@@ -525,6 +525,7 @@ class FileBasedMaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends Decodin
   def createInstancesOnDisk: Unit = {}
 
   val frep = new MEFRep[List[(FeatureId, Double)]](m)
+  
 
 }
 
@@ -915,6 +916,8 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     if (decodingOpts.fileBased)
       new FileBasedMaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
     else new MaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
+  
+  
   setDecoder(true)
 
   protected def gatherFeatures(seqs: Seq[InstanceSequence]): Set[String] =
@@ -936,7 +939,8 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
-      val evaluator = new Evaluator(decodingOpts)
+      println("Set sGen and sgen la = " + sGen.invLa)
+      val evaluator = new Evaluator(decodingOpts, sGen)
       val rtDecoder = new RuntimeMaxEntDecoder(model)
       evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)), 1, new java.io.File(decodingOpts.evaluate.get))
     } else {
@@ -980,7 +984,7 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
 
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
-      val evaluator = new Evaluator(decodingOpts)
+      val evaluator = new Evaluator(decodingOpts, sGen)
       val rtDecoder = new RuntimeMaxEntDecoder(model)
       evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)), 1, new java.io.File(decodingOpts.evaluate.get))
     } else {
