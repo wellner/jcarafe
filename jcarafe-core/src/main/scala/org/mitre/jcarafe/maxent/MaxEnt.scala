@@ -939,7 +939,6 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
-      println("Set sGen and sgen la = " + sGen.invLa)
       val evaluator = new Evaluator(decodingOpts, sGen)
       val rtDecoder = new RuntimeMaxEntDecoder(model)
       evaluator.produceReport(IndexedSeq(evaluator.evaluate(rtDecoder, seqs)), 1, new java.io.File(decodingOpts.evaluate.get))
