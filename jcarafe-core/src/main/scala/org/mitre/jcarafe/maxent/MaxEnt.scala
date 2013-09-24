@@ -902,7 +902,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
 
   override def xValidate = {
     val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
-    val evaluator = new Evaluator(opts, sGen)
+    val evaluator = new Evaluator(opts, sGen, None)
     evaluator.addInstances(seqs(0))
     evaluator.xValidateAndGenerateReport(opts.xValFolds.get.toInt, new java.io.File(opts.report.get))
   }
