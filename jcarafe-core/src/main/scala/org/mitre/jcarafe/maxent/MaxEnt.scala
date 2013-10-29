@@ -766,8 +766,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
       } else buildInstance(l)
     } else None
   }
-
-  def toInstances(inReader: DeserializationT): InstanceSequence = {
+  
+  def toAbstractInstanceSeq(inReader: DeserializationT, quiet: Boolean = false) : Seq[AbstractInstance] = {
     val instr = inReader.is
     var l = instr.readLine()
     val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
@@ -777,8 +777,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
         case Some(inst) =>
           tmpBuf += inst
           counter += 1
-          if ((counter % 1000) == 0) print(".")
-          if ((counter % 5000) == 0) println(" " + counter + " instances read in")
+          if (!quiet && (counter % 1000) == 0) print(".")
+          if (!quiet && (counter % 5000) == 0) println(" " + counter + " instances read in")
         case None =>
       }
       l = instr.readLine()
@@ -787,8 +787,10 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     inReader.close()
     val insts = tmpBuf.toIndexedSeq
     filterAndNormalizeFeatures(insts)
-    InstSeq(insts)
+    insts
   }
+
+  def toInstances(inReader: DeserializationT): InstanceSequence = InstSeq(toAbstractInstanceSeq(inReader))
 
   protected def filterAndNormalizeFeatures(insts: Seq[MaxEntInstance]) = {
     insts foreach { inst =>
