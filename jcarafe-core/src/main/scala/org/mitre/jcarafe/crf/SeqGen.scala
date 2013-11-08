@@ -34,34 +34,9 @@ abstract class DiskInstanceSequence(val fp: java.io.File, st: Int, en: Int, val 
   def length: Int = len
 }
 
-class CrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
-  import InstanceSerializations._
-  def iseq: Seq[AbstractInstance] = {
-    val ss = sbinary.Operations.fromFile[Seq[CrfInstance]](fp)
-    ss
-  }
-}
 
-class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
-  import InstanceSerializations._
-  def iseq: Seq[AbstractInstance] = {
-    val ss = sbinary.Operations.fromFile[Seq[NonFactoredCrfInstance]](fp)
-    ss
-  }
-}
-
-class FactoredCachedSourceSequence[T](val sGen: TrainingSeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st,en) {
+class FactoredCachedSourceSequence[T](val sGen: TrainingSeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
   def iseq: Seq[AbstractInstance] = sGen.extractFeaturesDirect(src)
-  override lazy val length = iseq.length
-}
-
-class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
-  // serialize just the plain 
-  import InstanceSerializations._
-  def iseq: Seq[AbstractInstance] = {
-    val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
-    sGen.extractFeaturesDirect(src)
-  }
   override lazy val length = iseq.length
 }
 
@@ -73,8 +48,52 @@ class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSeq
 
 object InstSeq {
   import InstanceSerializations._
+  import com.twitter.chill.{ AllScalaRegistrar, EmptyScalaKryoInstantiator }
+  import com.esotericsoftware.kryo.io.{ Output, Input }
   var icnt = 0
 
+  val instantiator = new EmptyScalaKryoInstantiator
+  val kryo = instantiator.newKryo
+  kryo.register(classOf[CrfInstance])
+  kryo.register(classOf[SourceSequence[String]])
+  kryo.register(classOf[NonFactoredCrfInstance])
+  
+  class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
+    val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))
+    def iseq: Seq[AbstractInstance] = {
+      kryo.readObject(kInput, classOf[Seq[NonFactoredCrfInstance]])
+    }
+  }
+
+  class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
+    // serialize just the plain 
+    val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))
+    def iseq: Seq[AbstractInstance] = {
+      //val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
+      val src = kryo.readObject(kInput, classOf[SourceSequence[String]])
+      sGen.extractFeaturesDirect(src)
+    }
+    override lazy val length = iseq.length
+  }
+
+  class CrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
+    val kInput = new Input(is)
+
+    def iseq: Seq[AbstractInstance] = {
+      //val ss = sbinary.Operations.fromFile[Seq[CrfInstance]](fp)
+      val ss = kryo.readObject(kInput, classOf[Seq[CrfInstance]])
+      ss
+
+    }
+  }
+
+  def serializeSourceSeqToFile(ss: SourceSequence[String], f: java.io.File): Unit = {
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val kOutput = new Output(os)
+    kryo.writeObject(kOutput, ss)
+    kOutput.close
+  }
   /*
    * This method creates a new InstanceSequence, RawInstanceSequenceStringObs that lazily re-computes the feature vector for the instance.
    * WARNING: This method only works for observation sequences parameterized with type java.lang.String since it 
@@ -88,10 +107,11 @@ object InstSeq {
         if (m.toString equals "java.lang.String") { // should be a better way to set this up...
           val ssA = ss.asInstanceOf[SourceSequence[String]]
           val sgA = sg.asInstanceOf[TrainingSeqGen[String]]
-          sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
+          //sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
+          serializeSourceSeqToFile(ssA, ofile)
           new RawInstanceSequenceStringObs(sgA, ofile, st, en, ss.length)
         } else throw new RuntimeException("Disk caching only allowed with SourceSequence[T] where T = String")
-      case None => new FactoredCachedSourceSequence(sg,ss,st,en)
+      case None => new FactoredCachedSourceSequence(sg, ss, st, en)
     }
   }
   def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
@@ -273,8 +293,8 @@ abstract class SeqGen[Obs](val opts: Options) {
    *                and auxiliary information.
    */
   def toSources(file: String): Seqs = toSources(new java.io.File(file))
-  def toSources(file: File): Seqs = toSources(deserializeFromFile(file))  
-  
+  def toSources(file: File): Seqs = toSources(deserializeFromFile(file))
+
   /**
    * Computes a sequence of sequences of <code>ObsSource</code> objects from a given deserialized object
    * @param deserialization   An input representation. For example an Xml DOM structure or a JSON structure
@@ -325,20 +345,19 @@ abstract class SeqGen[Obs](val opts: Options) {
     if (opts.multiLine) {
       val sbuf = new collection.mutable.ListBuffer[InstanceSequence]
       var nread = 1
-      val seqs = gatherFiles foreach { f => 
-        val src = io.Source.fromFile(f)("UTF-8")  
+      val seqs = gatherFiles foreach { f =>
+        val src = io.Source.fromFile(f)("UTF-8")
         val lines = src.getLines.toList
-        lines foreach {l =>
+        lines foreach { l =>
           // extracting features immediately here will trigger disk-caching of source sequences as lines are read in, saving memory
           val instSeqs = extractFeatures(toSources(deserializeFromString(l)))
           nread += 1
           if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")
           sbuf ++= instSeqs
-        }        
+        }
       }
       sbuf.toSeq
-    }
-    else createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
+    } else createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
   }
 
   def extractFeatures(spSeqs: Seqs): Seq[InstanceSequence]
@@ -364,9 +383,9 @@ abstract class SeqGen[Obs](val opts: Options) {
   def createSource(l: AbstractLabel, o: Obs, beg: Boolean, i: Map[String, String]) = createSourceI(getIndex(l), o, beg, Some(i))
   def createSource(l: AbstractLabel, o: Obs, i: Map[String, String]) = createSourceI(getIndex(l), o, false, Some(i))
   def createSource(o: Obs, i: Map[String, String]) = createSourceI(-1, o, false, Some(i)) // label of -1 means that the label is missing/unknown
-  
-  def createDistributionalSource(dist: List[(AbstractLabel,Double)], obs: Obs, beg: Boolean, i: Map[String,String]) : ObsSource[Obs] = 
-    frep.createDistributionalSource(dist map {case (al,s) => (getIndex(al),s)},obs,beg,Some(i))
+
+  def createDistributionalSource(dist: List[(AbstractLabel, Double)], obs: Obs, beg: Boolean, i: Map[String, String]): ObsSource[Obs] =
+    frep.createDistributionalSource(dist map { case (al, s) => (getIndex(al), s) }, obs, beg, Some(i))
 
   // ---- Stuff for handling scoring/evaluation - possibly useful for Training time as well, so put this here rather than in DecodingSeqGen
   var totalTokCnt = 0
@@ -470,7 +489,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       }
       InstSeq(this.asInstanceOf[TrainingSeqGen[String]], dseq.asInstanceOf[SourceSequence[String]], dseq.st, dseq.en)
     } else {
-      InstSeq(extractFeaturesDirect(dseq),dseq.st,dseq.en)
+      InstSeq(extractFeaturesDirect(dseq), dseq.st, dseq.en)
     }
   }
 
