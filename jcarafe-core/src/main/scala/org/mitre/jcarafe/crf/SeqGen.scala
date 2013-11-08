@@ -94,6 +94,14 @@ object InstSeq {
     kryo.writeObject(kOutput, ss)
     kOutput.close
   }
+  
+  def serializeNonFactoredToFile(ss: Seq[NonFactoredCrfInstance], f: java.io.File) = {
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val kOutput = new Output(os)
+    kryo.writeObject(kOutput, ss)
+    kOutput.close
+  }
+  
   /*
    * This method creates a new InstanceSequence, RawInstanceSequenceStringObs that lazily re-computes the feature vector for the instance.
    * WARNING: This method only works for observation sequences parameterized with type java.lang.String since it 
@@ -121,7 +129,7 @@ object InstSeq {
         icnt += 1
         s match {
           case s: Seq[NonFactoredCrfInstance] =>
-            sbinary.Operations.toFile[Seq[NonFactoredCrfInstance]](s)(ofile)
+            serializeNonFactoredToFile(s, ofile)
             new NonFactoredCrfDiskInstanceSequence(ofile, st, en, s.length)
         }
       case None => new MemoryInstanceSequence(s, st, en)
