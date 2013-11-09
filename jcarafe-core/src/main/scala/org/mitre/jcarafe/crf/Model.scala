@@ -262,10 +262,16 @@ abstract class CoreModelSerializer extends DefaultProtocol {
 }
 
 object MaxEntSerializer extends CoreModelSerializer {
-  import sbinary.Input._
+  import sbinary.Input._  
   import sbinary.Output._
-
   import InducedFeatureMapProtocol._
+  
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  import com.twitter.chill.EmptyScalaKryoInstantiator
+
+  val instantiator = new EmptyScalaKryoInstantiator
+  val kryo = instantiator.newKryo
+  kryo.register(classOf[CrfInstance])
 
   implicit def fsetMap: Format[Alphabet[Long]] =
     wrap[Alphabet[Long], List[(Long, Int)]](_.toList, { (s: List[(Long, Int)]) =>
@@ -280,7 +286,11 @@ object MaxEntSerializer extends CoreModelSerializer {
   def writeModel(m: MaxEntModel, f: java.io.File) = {
     checkModel(m)
     val am = Model.compactMEModel(m)
-    Operations.toFile[MaxEntModel](am)(f)
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val output = new KOutput(os)
+    kryo.writeObject(output, am)
+    output.close
+    //Operations.toFile[MaxEntModel](am)(f)
   }
 
   def serializeAsBytes(m: MaxEntModel) = Operations.toByteArray[MaxEntModel](m)

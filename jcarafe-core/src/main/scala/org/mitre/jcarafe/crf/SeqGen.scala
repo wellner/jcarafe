@@ -93,6 +93,7 @@ object InstSeq {
     val kOutput = new Output(os)
     kryo.writeObject(kOutput, ss)
     kOutput.close
+    os.close
   }
   
   def serializeNonFactoredToFile(ss: Seq[NonFactoredCrfInstance], f: java.io.File) = {
@@ -100,6 +101,7 @@ object InstSeq {
     val kOutput = new Output(os)
     kryo.writeObject(kOutput, ss)
     kOutput.close
+    os.close
   }
   
   /*
