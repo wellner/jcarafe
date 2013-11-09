@@ -12,11 +12,7 @@ libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
 libraryDependencies += "com.twitter" % "chill_2.10" % "0.3.4"
 
-seq(assemblySettings: _*)
-
 mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger")
-
-publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo"))
 
 // seq(ProguardPlugin.proguardSettings :_*)
 
