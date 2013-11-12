@@ -57,36 +57,45 @@ object InstSeq {
   kryo.register(classOf[CrfInstance])
   kryo.register(classOf[SourceSequence[String]])
   kryo.register(classOf[NonFactoredCrfInstance])
+  kryo.register(classOf[Seq[NonFactoredCrfInstance]])
+  kryo.register(classOf[Seq[CrfInstance]])
   
   class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
-    val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))
+    
     def iseq: Seq[AbstractInstance] = {
-      kryo.readObject(kInput, classOf[Seq[NonFactoredCrfInstance]])
+      val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
+      val kInput = new Input(is)
+      val o = kryo.readObject(kInput, classOf[Seq[NonFactoredCrfInstance]])
+      is.close()
+      kInput.close()
+      o
     }
   }
 
   class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     // serialize just the plain 
-    val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))
     def iseq: Seq[AbstractInstance] = {
       //val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
+      val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))    
       val src = kryo.readObject(kInput, classOf[SourceSequence[String]])
+      kInput.close
       sGen.extractFeaturesDirect(src)
     }
     override lazy val length = iseq.length
   }
 
   class CrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
-    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
-    val kInput = new Input(is)
-
+    
     def iseq: Seq[AbstractInstance] = {
+      val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
       //val ss = sbinary.Operations.fromFile[Seq[CrfInstance]](fp)
+      val kInput = new Input(is)
       val ss = kryo.readObject(kInput, classOf[Seq[CrfInstance]])
+      kInput.close()
       ss
-
     }
   }
+    
 
   def serializeSourceSeqToFile(ss: SourceSequence[String], f: java.io.File): Unit = {
     val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
@@ -103,7 +112,15 @@ object InstSeq {
     kOutput.close
     os.close
   }
-  
+
+  def serializeCrfInstanceToFile(ss: Seq[CrfInstance], f: java.io.File) = {
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val kOutput = new Output(os)
+    kryo.writeObject(kOutput, ss)
+    kOutput.close
+    os.close
+  }
+
   /*
    * This method creates a new InstanceSequence, RawInstanceSequenceStringObs that lazily re-computes the feature vector for the instance.
    * WARNING: This method only works for observation sequences parameterized with type java.lang.String since it 
@@ -130,9 +147,15 @@ object InstSeq {
         val ofile = new java.io.File(filePath + "/" + icnt)
         icnt += 1
         s match {
+          case s: Seq[CrfInstance] =>
+            serializeCrfInstanceToFile(s, ofile)
+            new CrfDiskInstanceSequence(ofile, st, en, s.length)
+            /*
           case s: Seq[NonFactoredCrfInstance] =>
             serializeNonFactoredToFile(s, ofile)
             new NonFactoredCrfDiskInstanceSequence(ofile, st, en, s.length)
+            * 
+            */
         }
       case None => new MemoryInstanceSequence(s, st, en)
     }
