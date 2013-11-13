@@ -7,26 +7,57 @@ import AssemblyKeys._
 object JCarafeBuild extends Build {
 
   lazy val root = Project(id = "jcarafe",
-                            base = file(".")) aggregate(jcarafeCore, jcarafeExt)
+                            base = file(".")).settings(rootSettings:_*) aggregate(jcarafeCore, jcarafeExt)
 
-  lazy val jcarafeCore = Project(id = "jcarafe-core",
+  lazy val jcarafeCore = Project(id = "jcarafe-core", 
 				 base = file("jcarafe-core")).
-                         settings(sharedSettings: _*).
-                         settings(assemblySettings: _*).
-                         settings(projSettings: _*)                         
+                         settings(coreSettings: _*).
+                         settings(projAssemblySettings: _*)                         
 
-  lazy val jcarafeExt = Project(id = "jcarafe-ext",
-				 base = file("jcarafe-ext")).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(jcarafeCore)
+  lazy val jcarafeExt = Project(id = "jcarafe-ext", 
+				 base = file("jcarafe-ext")).
+                         settings(extSettings: _*).
+                         settings(projAssemblySettings: _*).
+                         settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(jcarafeCore)
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
-    name := "jcarafe",
     organization := "org.mitre",
-    version := "0.9.8.6.b-21-jvm-1.6",
+    version := "0.9.8.6.b-22",
     scalaVersion := "2.10.2",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
     publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")),
-    javacOptions ++= Seq("-source","1.6","-target","1.6")
+    javacOptions ++= Seq("-source","1.7","-target","1.7")
+  )
+
+  def rootSettings =  sharedSettings ++ Seq(
+    name := "jcarafe"
+  )
+
+  def coreSettings = sharedSettings ++ Seq(
+    name := "jcarafe-core",
+    mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger"),
+    javaCCFiles in Compile <<= javaCCFilesTask,
+    runJavaCC in Compile <<= srcGeneratorTask,
+    libraryDependencies ++= Seq(
+      "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
+      "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      "org.scala-tools.sbinary" % "sbinary_2.10" % "0.4.1",
+      "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
+      "com.twitter" % "chill_2.10" % "0.3.5"
+    )
+  )
+
+  def extSettings = sharedSettings ++ Seq(
+    name := "jcarafe-ext",
+    mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger"),
+    libraryDependencies ++= Seq(
+      "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
+      "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      "org.scala-tools.sbinary" % "sbinary_2.10" % "0.4.1",
+      "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
+      "com.twitter" % "chill_2.10" % "0.3.5"
+    )
   )
 
   val outDirTargetFiles = Set(
@@ -64,9 +95,7 @@ object JCarafeBuild extends Build {
     outDirTargets.toSeq
    }
 
-  def projSettings = Seq(
-    javaCCFiles in Compile <<= javaCCFilesTask,
-    runJavaCC in Compile <<= srcGeneratorTask,
+  def projAssemblySettings = assemblySettings ++ Seq(
     test in assembly := {},
     mergeStrategy in assembly := conflictRobustMergeStrategy
   )
