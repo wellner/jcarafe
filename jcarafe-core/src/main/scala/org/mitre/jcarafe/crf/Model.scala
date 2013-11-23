@@ -147,7 +147,8 @@ class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[
 class RandomNonFactoredModel(fspec: String, lex: Option[BloomLexicon], wp: Option[WordProperties], ss: Int, crf: CoreModel, faMap: RandomLongAlphabet, numStates: Int)
   extends NonFactoredModel(fspec, lex, wp, ss, crf, faMap, numStates)
 
-abstract class CoreModelSerializer extends DefaultProtocol {
+
+abstract class CoreModelSerializer {
   import scala.collection.mutable.HashMap
   import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
   import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
@@ -173,15 +174,48 @@ abstract class CoreModelSerializer extends DefaultProtocol {
   }
 }
 
-object MaxEntSerializer extends CoreModelSerializer {
+object InducedFeatureMapProtocol {
   import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
   import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
+  import collection.mutable.HashMap
 
   val instantiator = new EmptyScalaKryoInstantiator
   val kryo = instantiator.newKryo
-  kryo.register(classOf[CrfInstance])
+  
+  def readFMap(kInput: KInput) : HashMap[Long,Array[Double]] = {
+    val m = kryo.readObject(kInput, classOf[HashMap[Long,Array[Double]]])
+    kInput.close()
+    m
+  }
+  
+  def readFMap(f: java.io.File): HashMap[Long,Array[Double]] = {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+    val m = readFMap(is)
+    is.close()
+    m
+  }
 
+  def readFMap(is: java.io.InputStream): HashMap[Long,Array[Double]] = {
+    val kInput = new KInput(is)
+    readFMap(kInput)
+  }
+  
+  def readFMap(ba: Array[Byte]): HashMap[Long,Array[Double]] = readFMap(new KInput(ba))
+  def readFMap(s: String): HashMap[Long,Array[Double]] = readFMap(new java.io.File(s))
+  
+  def writeFMap(m: HashMap[Long,Array[Double]], f: java.io.File) = {
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val output = new KOutput(os)
+    kryo.writeObject(output, m)
+    os.close()
+    output.close
+  }
+  
+}
 
+object MaxEntSerializer extends CoreModelSerializer {
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  
   def writeModel(m: MaxEntModel, f: java.io.File) = {
     checkModel(m)
     val am = Model.compactMEModel(m)
@@ -191,6 +225,13 @@ object MaxEntSerializer extends CoreModelSerializer {
     os.close()
     output.close
   }
+  
+  def serializeAsBytes(m: MaxEntModel) : Array[Byte] = {
+    val out = new KOutput
+    kryo.writeObject(out, m)
+    out.toBytes()    
+  }
+
 
   def readModel(kInput: KInput) : MaxEntModel = {
     val m = kryo.readObject(kInput, classOf[MaxEntModel])
@@ -216,7 +257,6 @@ object MaxEntSerializer extends CoreModelSerializer {
 
 object NonFactoredSerializer extends CoreModelSerializer {
   import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
-  import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
 
   class GetLongAlpha(val lb: collection.mutable.ListBuffer[(Long, Int)]) extends cern.colt.function.LongIntProcedure {
     def apply(fn: Long, i: Int) = {
@@ -253,6 +293,12 @@ object NonFactoredSerializer extends CoreModelSerializer {
     kryo.writeObject(output, m)
     os.close()
     output.close
+  }
+  
+  def serializeAsBytes(m: NonFactoredModel) : Array[Byte] = {
+    val out = new KOutput
+    kryo.writeObject(out, m)
+    out.toBytes()    
   }
 
   //def serializeAsBytes(m: NonFactoredModel) = Operations.toByteArray[NonFactoredModel](m)

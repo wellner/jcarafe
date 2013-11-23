@@ -32,7 +32,6 @@ abstract class PosteriorDecoder(opts: Options, m: String) extends StdDecoder(opt
   }
 
   def normalizeExpectations() = {
-    import InducedFeatureMapProtocol._
     val fsetmap = model.fsetMap
     println("\nnumber of self induced features: " + crf.faWeightMap.size)
     crf.faWeightMap foreach {
@@ -42,7 +41,7 @@ abstract class PosteriorDecoder(opts: Options, m: String) extends StdDecoder(opt
     }
     opts.weightedFeatureMap match {
       case Some(mapFile) =>
-        Operations.toFile(crf.faWeightMap)(new java.io.File(mapFile))
+        InducedFeatureMapProtocol.writeFMap(crf.faWeightMap,new java.io.File(mapFile))
       case None => throw new RuntimeException("Expected map file to store induced feature/label weights")
     }
   }

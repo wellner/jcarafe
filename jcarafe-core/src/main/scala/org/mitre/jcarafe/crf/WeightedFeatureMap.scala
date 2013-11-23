@@ -12,9 +12,8 @@ class InducedFeatureMap(mfile: Option[java.io.File] = None) {
 
   var vecSize = 0
 
-  mfile map {map =>
-    import InducedFeatureMapProtocol._
-    val mp = sbinary.Operations.fromFile[HashMap[Long,Array[Double]]](map)
+  mfile map {mfile => 
+    val mp = InducedFeatureMapProtocol.readFMap(mfile)
     vecSize = mp.head._2.length	     
     hmap = Some(mp)
   }
