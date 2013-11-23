@@ -147,106 +147,18 @@ class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[
 class RandomNonFactoredModel(fspec: String, lex: Option[BloomLexicon], wp: Option[WordProperties], ss: Int, crf: CoreModel, faMap: RandomLongAlphabet, numStates: Int)
   extends NonFactoredModel(fspec, lex, wp, ss, crf, faMap, numStates)
 
-object InducedFeatureMapProtocol extends DefaultProtocol {
-
-  implicit def fMap: Format[HashMap[Long, Array[Double]]] =
-    wrap[HashMap[Long, Array[Double]], List[(Long, Array[Double])]](_.toList, { s: List[(Long, Array[Double])] =>
-      val mh = new HashMap[Long, Array[Double]]
-      s foreach { case (f, varr) => mh.update(f, varr) }
-      mh
-    })
-
-  implicit def fmap2: Format[InducedFeatureMap] =
-    wrap[InducedFeatureMap, HashMap[Long, Array[Double]]]((_.hmap.getOrElse(new HashMap[Long, Array[Double]])), { hm: HashMap[Long, Array[Double]] =>
-      InducedFeatureMap(hm)
-    })
-}
-
 abstract class CoreModelSerializer extends DefaultProtocol {
   import scala.collection.mutable.HashMap
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
 
-  implicit def coreModelMap: Format[CoreModel] =
-    asProduct3((a: Array[Double], b: Int, c: Int) => new CoreModel(a, b, c))((a: CoreModel) => (a.params, a.nfs, a.nls))
+  val instantiator = new EmptyScalaKryoInstantiator
+  val kryo = instantiator.newKryo
+  new AllScalaRegistrar()(kryo)
+  kryo.register(classOf[CrfInstance])
+  kryo.register(classOf[Alphabet[Long]])
+  kryo.register(classOf[MaxEntModel])  
 
-  implicit def mutableHashMap: Format[HashMap[String, FeatureType]] =
-    wrap[HashMap[String, FeatureType], List[(String, FeatureType)]](_.toList, { (s: List[(String, FeatureType)]) =>
-      val h = new HashMap[String, FeatureType]
-      s foreach { case (k, v) => h += (k -> v) }
-      h
-    })
-  implicit def featureTypeMap: Format[FeatureType] =
-    asProduct5({ (a: Long, b: Boolean, c: Int, d: FeatureCat, e: Set[Feature]) =>
-      val ft = new FeatureType(a, b, c, d)
-      ft.set(e)
-      ft
-    })((ft: FeatureType) => (ft.fname, ft.edgep, ft.segsize, ft.fcat, ft.fdetail))
-
-  implicit def featureMap: Format[Feature] =
-    asProduct4((a: Int, b: Int, c: Int, d: Int) => new Feature(a, b, c, d))((f: Feature) => (f.prv, f.cur, f.fid, f.nfid))
-
-  implicit def alphabetMap: Format[Alphabet[String]] =
-    wrap[Alphabet[String], List[(String, Int)]](_.toList, { (s: List[(String, Int)]) =>
-      val h = new Alphabet[String]
-      s foreach { case (k, v) => h.update(k, v) }
-      h
-    })
-
-  implicit def wordPropMap: Format[WordProperties] =
-    wrap[WordProperties, List[(Long, List[String])]](_.toList, { (s: List[(Long, List[String])]) =>
-      val h = new WordProperties
-      s foreach { case (k, v) => h.update(k, v) }
-      h
-    })
-
-  implicit def wordScoresMap: Format[WordScores] =
-    wrap[WordScores, List[(Long, Double)]](_.toList, { (s: List[(Long, Double)]) =>
-      val h = new WordScores
-      s foreach { case (k, v) => h.update(k, v) }
-      h
-    })
-
-  implicit def lexiconMap: Format[BloomLexicon] =
-    wrap[BloomLexicon, List[(Long, BloomFilter)]]({ bl => bl.bloomTable.toList }, { (s: List[(Long, BloomFilter)]) =>
-      val h = new BloomLexicon
-      s foreach { case (k, v) => h.bloomTable += (k -> v) }
-      h
-    })
-
-  implicit def bloomFilter: Format[BloomFilter] =
-    asProduct3({ (k: Int, m: Int, filter: collection.mutable.BitSet) =>
-      new BloomFilter(k, m, filter)
-    })((bf: BloomFilter) => (bf.size, bf.width, bf.filter))
-
-  implicit def bitsetMap: Format[collection.mutable.BitSet] =
-    wrap[collection.mutable.BitSet, Array[Int]](_.toArray, { (ar: Array[Int]) =>
-      val bs = new collection.mutable.BitSet(50000000)
-      ar foreach { el => bs += el }
-      bs
-    })
-
-  implicit def fcatMap: Format[FeatureCat] = asUnion[FeatureCat](NNFeature, MultiFeature, StdFeature)
-  implicit def slabelMap: Format[SLabel] = wrap(_.v, SLabel)
-  implicit def labelMap: Format[Label] = asProduct2(Label)(Label.unapply(_).get)
-  implicit def beginMap: Format[BeginState] = wrap(_.s, BeginState)
-  implicit def uncMap: Format[UncertainLabel] = wrap(_.labelString, { _: String => new UncertainLabel })
-
-  implicit def abstractLabelMap: Format[AbstractLabel] = lazyFormat(asUnion[AbstractLabel](slabelMap, beginMap, labelMap, uncMap))
-
-  implicit def abstractLabelAlphabetMap: Format[Alphabet[AbstractLabel]] =
-    wrap[Alphabet[AbstractLabel], List[(AbstractLabel, Int)]](_.toList, { (s: List[(AbstractLabel, Int)]) =>
-      val h = new Alphabet[AbstractLabel]
-      s foreach { case (k, v) => h += (k -> v) }
-      h
-    })
-    
-  implicit def randomLongAlphabetMap: Format[RandomLongAlphabet] = {
-    wrap[RandomLongAlphabet, Int](
-      { rla: RandomLongAlphabet =>
-        rla.size
-      }, { s: Int =>
-        new RandomLongAlphabet(s)
-      })
-  }
 
   protected def checkModel(m: Model) = {
     import FastLoops._
@@ -262,26 +174,13 @@ abstract class CoreModelSerializer extends DefaultProtocol {
 }
 
 object MaxEntSerializer extends CoreModelSerializer {
-  import sbinary.Input._  
-  import sbinary.Output._
-  import InducedFeatureMapProtocol._
-  
   import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
-  import com.twitter.chill.EmptyScalaKryoInstantiator
+  import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
 
   val instantiator = new EmptyScalaKryoInstantiator
   val kryo = instantiator.newKryo
   kryo.register(classOf[CrfInstance])
 
-  implicit def fsetMap: Format[Alphabet[Long]] =
-    wrap[Alphabet[Long], List[(Long, Int)]](_.toList, { (s: List[(Long, Int)]) =>
-      val h = new Alphabet[Long]
-      s foreach { case (k, v) => h += (k -> v) }
-      h
-    })
-
-  implicit def maxentModelMap: Format[MaxEntModel] =
-    asProduct4((la: Alphabet[AbstractLabel], cm: CoreModel, fm: Alphabet[Long], indMap: Option[InducedFeatureMap]) => new MaxEntModel(la, cm, fm, indMap))((fm: MaxEntModel) => (fm.labelAlphabet, fm.crf, fm.fsetMap, fm.inducedMap))
 
   def writeModel(m: MaxEntModel, f: java.io.File) = {
     checkModel(m)
@@ -289,21 +188,35 @@ object MaxEntSerializer extends CoreModelSerializer {
     val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
     val output = new KOutput(os)
     kryo.writeObject(output, am)
+    os.close()
     output.close
-    //Operations.toFile[MaxEntModel](am)(f)
   }
 
-  def serializeAsBytes(m: MaxEntModel) = Operations.toByteArray[MaxEntModel](m)
-  def readModel(f: java.io.File): MaxEntModel = Operations.fromFile[MaxEntModel](f)
-  def readModel(r: java.io.InputStream): MaxEntModel = Operations.read[MaxEntModel](r)
-  def readModel(ba: Array[Byte]): MaxEntModel = Operations.fromByteArray[MaxEntModel](ba)
+  def readModel(kInput: KInput) : MaxEntModel = {
+    val m = kryo.readObject(kInput, classOf[MaxEntModel])
+    kInput.close()
+    m
+  }
+  def readModel(f: java.io.File): MaxEntModel = {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+    val m = readModel(is)
+    is.close()
+    m
+  }
+  
+  def readModel(is: java.io.InputStream): MaxEntModel = {
+    val kInput = new KInput(is)
+    readModel(kInput)
+  }
+  
+  def readModel(ba: Array[Byte]): MaxEntModel = readModel(new KInput(ba))
   def readModel(s: String): MaxEntModel = readModel(new java.io.File(s))
 
 }
 
 object NonFactoredSerializer extends CoreModelSerializer {
-  import sbinary.Input._
-  import sbinary.Output._
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
 
   class GetLongAlpha(val lb: collection.mutable.ListBuffer[(Long, Int)]) extends cern.colt.function.LongIntProcedure {
     def apply(fn: Long, i: Int) = {
@@ -311,75 +224,74 @@ object NonFactoredSerializer extends CoreModelSerializer {
       true
     }
   }
-
-  implicit def longAlphabetMap: Format[LongAlphabet] = {
-    wrap[LongAlphabet, List[(Long, Int)]](
-      {
-        case la: RandomLongAlphabet => List((0L, la.size))
-        case la: LongAlphabet =>
-          val olhmp = la.getUnderlyingMap
-          val lb = new collection.mutable.ListBuffer[(Long, Int)]
-          olhmp.forEachPair(new GetLongAlpha(lb))
-          lb.toList
-      }, { s: List[(Long, Int)] =>
-        s match {
-          case Nil =>
-            new RandomLongAlphabet(115911564)
-          case (_, sz) :: Nil => new RandomLongAlphabet(sz)
-          case a =>
-            val a = new LongAlphabet
-            s foreach { case (l, i) => a.add(l, i) }
-            a
-        }
-      })
+  
+  def readModel(kInput: KInput) : NonFactoredModel = {
+    val m = kryo.readObject(kInput, classOf[NonFactoredModel])
+    kInput.close()
+    m
   }
-
-  implicit def nonfactoredModelMap: Format[NonFactoredModel] =
-    asProduct7((fs: String, l: Option[BloomLexicon], wp: Option[WordProperties], s: Int, c: CoreModel, fm: LongAlphabet, ns: Int) =>
-      new NonFactoredModel(fs, l, wp, s, c, fm, ns)) { (m: NonFactoredModel) =>
-      (m.fspec, m.lex, m.wp, m.segSize, m.crf, m.faMap, m.numStates)
-    }
-
-  def writeModel(m: NonFactoredModel, f: java.io.File) = Operations.toFile[NonFactoredModel](m)(f)
-  def serializeAsBytes(m: NonFactoredModel) = Operations.toByteArray[NonFactoredModel](m)
-  def readModel(f: java.io.File): NonFactoredModel = Operations.fromFile[NonFactoredModel](f)
-  def readModel(r: java.io.InputStream): NonFactoredModel = Operations.read[NonFactoredModel](r)
-  def readModel(ba: Array[Byte]): NonFactoredModel = Operations.fromByteArray[NonFactoredModel](ba)
-  def readModelString(s: String): NonFactoredModel = readModel(s.getBytes)
+  def readModel(f: java.io.File): NonFactoredModel = {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+    val m = readModel(is)
+    is.close()
+    m
+  }
+  
+  def readModel(is: java.io.InputStream): NonFactoredModel = {
+    val kInput = new KInput(is)
+    readModel(kInput)
+  }
+  
+  def readModel(ba: Array[Byte]): NonFactoredModel = readModel(new KInput(ba))
   def readModel(s: String): NonFactoredModel = readModel(new java.io.File(s))
-  def readModel(o: Option[String]): NonFactoredModel = o match {
-    case Some(s) => readModel(s)
-    case None => throw new RuntimeException("Model Not specified")
+
+  def writeModel(m: NonFactoredModel, f: java.io.File) = {
+    checkModel(m)
+    //val am = Model.compactMEModel(m)
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val output = new KOutput(os)
+    kryo.writeObject(output, m)
+    os.close()
+    output.close
   }
 
-  implicit def nonfactoredModelMapRand: Format[RandomNonFactoredModel] =
-    asProduct7((fs: String, l: Option[BloomLexicon], wp: Option[WordProperties], s: Int, c: CoreModel, fm: RandomLongAlphabet, ns: Int) =>
-      new RandomNonFactoredModel(fs, l, wp, s, c, fm, ns)) { (m: RandomNonFactoredModel) =>
-      val r: RandomLongAlphabet = m.faMap match { case m: RandomLongAlphabet => m case _ => new RandomLongAlphabet(1) }
-      (m.fspec, m.lex, m.wp, m.segSize, m.crf, r, m.numStates)
-    }
+  //def serializeAsBytes(m: NonFactoredModel) = Operations.toByteArray[NonFactoredModel](m)
 
-  def writeRModel(m: RandomNonFactoredModel, f: java.io.File) = Operations.toFile[RandomNonFactoredModel](m)(f)
-  def serializeAsBytes(m: RandomNonFactoredModel) = Operations.toByteArray[RandomNonFactoredModel](m)
-  def readRModel(f: java.io.File): RandomNonFactoredModel = Operations.fromFile[RandomNonFactoredModel](f)
-  def readRModel(r: java.io.InputStream): RandomNonFactoredModel = Operations.read[RandomNonFactoredModel](r)
-  def readRModel(ba: Array[Byte]): RandomNonFactoredModel = Operations.fromByteArray[RandomNonFactoredModel](ba)
-  def readRModelString(s: String): RandomNonFactoredModel = readRModel(s.getBytes)
+  def readRModel(kInput: KInput) : RandomNonFactoredModel = {
+    val m = kryo.readObject(kInput, classOf[RandomNonFactoredModel])
+    kInput.close()
+    m
+  }
+  def readRModel(f: java.io.File): RandomNonFactoredModel = {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+    val m = readRModel(is)
+    is.close()
+    m
+  }
+  
+  def readRModel(is: java.io.InputStream): RandomNonFactoredModel = {
+    val kInput = new KInput(is)
+    readRModel(kInput)
+  }
+  
+  def readRModel(ba: Array[Byte]): RandomNonFactoredModel = readRModel(new KInput(ba))
   def readRModel(s: String): RandomNonFactoredModel = readRModel(new java.io.File(s))
-  def readRModel(o: Option[String]): RandomNonFactoredModel = o match {
-    case Some(s) => readRModel(s)
-    case None => throw new RuntimeException("Model Not specified")
-  }
 
+  def writeModel(m: RandomNonFactoredModel, f: java.io.File) = {
+    checkModel(m)
+    //val am = Model.compactMEModel(m)
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val output = new KOutput(os)
+    kryo.writeObject(output, m)
+    os.close()
+    output.close
+  }
+    
 }
 
 object StandardSerializer extends CoreModelSerializer {
-  import sbinary.Input._
-  import sbinary.Output._
-  import scala.collection.mutable.HashMap
-
-  import InducedFeatureMapProtocol._
-
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  
   class FTypeBuilder(val lbuf: collection.mutable.ListBuffer[(Long, FeatureType)]) extends cern.colt.function.LongObjectProcedure {
     def apply(k: Long, v: java.lang.Object) = {
       v match {
@@ -390,45 +302,20 @@ object StandardSerializer extends CoreModelSerializer {
     }
   }
 
-  implicit def fsetMap: Format[OpenLongObjectHashMap] =
-    wrap[OpenLongObjectHashMap, List[(Long, FeatureType)]]({ (fm: OpenLongObjectHashMap) =>
-      val lbuf = new collection.mutable.ListBuffer[(Long, FeatureType)]
-      fm.forEachPair(new FTypeBuilder(lbuf))
-      lbuf.toList
-    },
-      { (s: List[(Long, FeatureType)]) =>
-        val ht = new OpenLongObjectHashMap(s.length * 2, 0, 0.5)
-        s foreach { case (i, ft) => ht.put(i, ft) }
-        ht
-      })
-
-  implicit def auxMap: Format[ModelAuxiliaries] = asProduct4(ModelAuxiliaries)(ModelAuxiliaries.unapply(_).get)
-
-  implicit def modelMap: Format[StdModel] =
-    asProduct7((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: OpenLongObjectHashMap) =>
-      new StdModel(a, b, c, f, g, h, i))((a: StdModel) => (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.fsetMap))
-
-  implicit def randomModelMap: Format[RandomStdModel] =
-    asProduct7((a: String, b: Boolean, c: ModelAuxiliaries, f: Int, g: Alphabet[AbstractLabel], h: CoreModel, i: RandomLongAlphabet) =>
-      new RandomStdModel(a, b, c, f, g, h, i))((a: RandomStdModel) => 
-        (a.fspec, a.beg, a.aux, a.segSize, a.labelAlphabet, a.crf, a.faMap))
 
   def writeModel(m: StdModel, f: java.io.File): Unit = {
+    def writeToStream[M](os: java.io.OutputStream, hs: String, m: M) = {
+      val headerBytes = hs.getBytes()
+      os.write(headerBytes)
+      val kout = new KOutput(os)
+      kryo.writeObject(kout,m)
+      kout.close()
+      os.close()
+    }
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
     m match {
-      case model: RandomStdModel =>
-        val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
-        val headerBytes = "RAND\n".getBytes()
-        os.write(headerBytes)
-        val bytes = Operations.toByteArray[RandomStdModel](model) // Operations.toByteArray[RandomStdModel](m)
-        os.write(bytes)
-        os.close()
-      case model: StdModel =>
-        val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
-        val headerBytes = "STAN\n".getBytes()
-        os.write(headerBytes)
-        val bytes = Operations.toByteArray[StdModel](model) // Operations.toByteArray[RandomStdModel](m)
-        os.write(bytes)
-        os.close()
+      case model: RandomStdModel => writeToStream(os, "RAND\n", model)
+      case model: StdModel => writeToStream(os, "STAN\n", model) 
     }
   }
 
@@ -444,6 +331,20 @@ object StandardSerializer extends CoreModelSerializer {
     bis.read() // this should be a newline
     bBuf.toArray
   }
+  
+  def readStdFromByteArray(b: Array[Byte]) : StdModel = {
+    val kInput = new KInput(b)
+    val r = kryo.readObject(kInput, classOf[StdModel])
+    kInput.close()
+    r
+  }
+
+  def readRandomFromByteArray(b: Array[Byte]) : RandomStdModel = {
+    val kInput = new KInput(b)
+    val r = kryo.readObject(kInput, classOf[RandomStdModel])
+    kInput.close()
+    r
+  }
 
   def readModel(in: java.io.InputStream): StdModel = {
     val is = new java.io.BufferedInputStream(in)
@@ -458,11 +359,8 @@ object StandardSerializer extends CoreModelSerializer {
       if (nRead >= 0) arBuf append nRead.toByte
     }
     val byteArray = arBuf.toArray
-    if (firstLine equals "RAND") {
-      Operations.fromByteArray[RandomStdModel](byteArray)
-    } else {
-      Operations.fromByteArray[StdModel](byteArray)
-    }
+    if (firstLine equals "RAND") readRandomFromByteArray(byteArray)
+    else readStdFromByteArray(byteArray)
   }
 
   //def serializeAsBytes(m: StdModel) = Operations.toByteArray[StdModel](m)
