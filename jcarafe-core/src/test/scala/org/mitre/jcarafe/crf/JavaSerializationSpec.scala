@@ -1,11 +1,10 @@
 package org.mitre.jcarafe.crf
 
-import org.scalatest.Spec
+import org.scalatest.{FlatSpec}
 
-class JavaSerializationSpec extends Spec {
+class JavaSerializationSpec extends FlatSpec {
   
-  describe("Basic java serialization test") {
-    it("Should serialize and deserialize String") {
+  "Basic java serialization test" should "serialize and deserialize String" in {
       val fs = new java.io.FileOutputStream("ss")
       val objOut = new java.io.ObjectOutputStream(fs)
       objOut.writeObject("this is a string")
@@ -16,7 +15,6 @@ class JavaSerializationSpec extends Spec {
         val obj = objIn.readObject().asInstanceOf[String]
         println("got object back: " + obj)
       } catch { case e: Throwable => e.printStackTrace()}
-    }
   }
 
 }
