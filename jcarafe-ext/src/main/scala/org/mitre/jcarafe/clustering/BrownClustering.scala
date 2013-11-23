@@ -225,8 +225,8 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     val tmpRevTbl = new collection.mutable.HashMap[Int,String]    
     val tableMapping = new collection.mutable.HashMap[Int,Int] // map of old ids to new ones
     val l1 = symbolTable.size
-    symbolTable foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
-    symbolTable.clear    
+    symbolTable.mp foreach { case (k, v) => tmpRevTbl += (v -> k) } // build reverse mapping
+    symbolTable.mp.clear    
     for (i <- 0 until l1) {
       if (freqs(i) >= minFreq) {
         val str = tmpRevTbl(i)
@@ -261,7 +261,7 @@ final class BrownClustering(val initC: Int, val txtInput: Boolean = false, val d
     print("... Number of unique lexical items to cluster: " + frArray.size)
     if (minFreq <= 1) println else println(" [ after removing " + (origSize - symbolTable.size) + " terms with frequency < " + minFreq + " ]")
     clusterData = Some(new ClusterData(frArray, orderedFreqs, rctxt, lctxt))
-    symbolTable foreach { case (k, v) => revTable += (v -> k) } // build reverse mapping
+    symbolTable.mp foreach { case (k, v) => revTable += (v -> k) } // build reverse mapping
   }
 
   private def readDataFile(f: java.io.File): Array[Array[Int]] =
