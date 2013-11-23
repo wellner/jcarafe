@@ -53,25 +53,35 @@ class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) exte
 class NBinFeature(override val value: Double, prv: Int, cur: Int, fid: Int, nfid: Int = -1) extends Feature(prv, cur, fid, nfid)
 
 /*
- * maps labels to integers
+ * maps labels to integers; this needs to be wrapped rather than extended to faciliate serialization via Kryo 
  * @param - fixed whether the alphabet is fixed or not
  * @author Ben Wellner
  */
-class Alphabet[A](var fixed: Boolean) extends HashMap[A, Int] {
+class Alphabet[A](var fixed: Boolean) {
+  
+  val mp = new HashMap[A, Int]
+  
+  def size = mp.size
 
   def this() = this(false)
-  def update(e: A): Int = get(e) match {
+  def apply(e: A):Int = mp(e)
+  def get(e: A) : Option[Int] = mp.get(e)
+  
+  def update(e: A): Int = mp.get(e) match {
     case Some(v) => v
-    case None => if (fixed) -1 else { update(e, size); size - 1 }
+    case None => if (fixed) -1 else { mp.update(e, mp.size); mp.size - 1 }
   }
+  
+  def update(e: A, v: Int) = mp.update(e, v)
 
   /*
    * @return - a map that takes integers and returns the corresponding label
   */
   def getInvMap = {
     val h = HashMap[Int, A]()
-    (h /: this) { case (ha, (k, v)) => ha += (v -> k); ha }
+    (h /: mp) { case (ha, (k, v)) => ha += (v -> k); ha }
   }
+  def contains(e: A) = mp.contains(e)
 }
 
 class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) extends Alphabet[A](fixed) {

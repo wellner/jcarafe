@@ -98,7 +98,7 @@ trait XmlSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConve
    * This means the whole DOM traversal will be done once
    */
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[Seq[SeqElement]]) : DeserializationT = {
-    val lexInd = lAlphabet.get(SLabel("lex")) match {case Some(v) => v case None => -1}
+    val lexInd = lAlphabet.get(SLabel("lex")) match {case Some(v) => v case None => -1}    
     var pos = 0
     var seqIndex = 0
     def addAnnotations(deserializedSeq: List[Node], seq: Seq[SeqElement]) : List[Node] = {

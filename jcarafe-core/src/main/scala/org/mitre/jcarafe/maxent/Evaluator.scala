@@ -181,7 +181,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
       os.write('\n')
     } else {
       os.write("Label categories: ")
-      seqGen.getLAlphabet foreach { case (SLabel(l), _) => os.write(l + " ") case _ => }
+      seqGen.getLAlphabet.mp foreach { case (SLabel(l), _) => os.write(l + " ") case _ => }
       if (nfolds > 1) os.write("\n\n\nThere are " + nfolds.toString + " folds\n\n")
       val totalMat = Array.fill(lSize, lSize)(0)
       val confMats = confMatsAndDivergence map { _._1 }

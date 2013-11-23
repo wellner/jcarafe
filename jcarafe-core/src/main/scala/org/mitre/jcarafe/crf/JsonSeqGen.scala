@@ -39,7 +39,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
    * Check for whether all state are begin states.  If so, we should emit one 'phrase' for each state/position
    */
   lazy val allStatesBeginStates = {
-    lAlphabet forall { case(l,i) => l match {case BeginState(_) => true case _ => false }}
+    lAlphabet.mp forall { case(l,i) => l match {case BeginState(_) => true case _ => false }}
   }
 
   def makeStackCurrent(st: Stack[Annotation], a: Annotation) = {
@@ -276,7 +276,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   val seqConfidenceAnnotationType = Label("seq_confidence", Map("posterior" -> ""))
   val tokConfidenceAnnotationType = Label("tok_confidence", Map("posterior" -> "", "entropy" -> ""))
-  lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.foldLeft(Map[String, String]()) { case (ac, (l, i)) => ac + (l.labelString -> "") })
+  lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.mp.foldLeft(Map[String, String]()) { case (ac, (l, i)) => ac + (l.labelString -> "") })
   val logVal2 = math.log(2.0)
   def log2(x: Double) = math.log(x) / logVal2
 
@@ -288,7 +288,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   private def addTokenDistAnnotation(atbl: Map[AbstractLabel, ListBuffer[Annotation]], cp: AbstractInstance, st: Int, en: Int) = {
     var annotTbl = atbl
-    val tokPosteriorMap = lAlphabet.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
+    val tokPosteriorMap = lAlphabet.mp.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
     val tokPosteriors = new Annotation(st, en, false, Label("tok_posterior_dist", tokPosteriorMap), None)
     if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
     annotTbl(tokPosteriorAnnotationType) += tokPosteriors

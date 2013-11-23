@@ -457,7 +457,7 @@ trait FactoredSeqGen[Obs] extends SeqGen[Obs] {
         case None =>
           synchronized {
             val c = new scala.collection.mutable.HashSet[Int]
-            lAlphabet.foreach { case (k, v) => k match { case BeginState(_) => c += v case _ => } }
+            lAlphabet.mp.foreach { case (k, v) => k match { case BeginState(_) => c += v case _ => } }
             beginStateCache = Some(c)
           }
       }

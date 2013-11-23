@@ -90,7 +90,7 @@ class StdModel(
     f_out.write(fspec)
     f_out.write("\n")
     f_out.write("State alphabet\n-------------\n")
-    labelAlphabet foreach { case (x, _) => f_out.write(x.toString); f_out.write("\n") }
+    labelAlphabet.mp foreach { case (x, _) => f_out.write(x.toString); f_out.write("\n") }
     f_out.write("-------------\n")
     f_out.flush
     f_out.close
@@ -135,7 +135,7 @@ class NonFactoredModel(fspec: String, lex: Option[BloomLexicon], val wp: Option[
     f_out.write(fspec)
     f_out.write("\n")
     f_out.write("State alphabet\n")
-    labelAlphabet foreach { case (x, _) => f_out.write(x.toString); f_out.write("\n") }
+    labelAlphabet.mp foreach { case (x, _) => f_out.write(x.toString); f_out.write("\n") }
     f_out.write("params:")
     faMap.getUnderlyingMap.forEachPair(new PrintFaMap)
     //faMap foreach {case (fn,ft) => f_out.write("'" + fn + "' [" + ft + "] => " + crf.params(ft) + "\n")}
@@ -496,7 +496,7 @@ object Model {
         narr(anid) = v
     }
     val nfsetMap = new Alphabet[Long]()
-    model.fsetMap foreach {
+    model.fsetMap.mp foreach {
       case (fid, f) =>
         idMap.get((f, 0)) match {
           case Some((nf, v)) => nfsetMap.update(fid, nf)
