@@ -1,5 +1,6 @@
 package org.mitre.jcarafe.crf
 
+import org.mitre.jcarafe.maxent.{SparseMaxEntStateless, MEOptions, MaxEntTrainingSeqGen}
 import org.scalatest.{FlatSpec}
 
 class JavaSerializationSpec extends FlatSpec {
@@ -7,7 +8,9 @@ class JavaSerializationSpec extends FlatSpec {
   def serialize[T](obj: T) = {
     val fs = new java.io.FileOutputStream("ss")
     val objOut = new java.io.ObjectOutputStream(fs)
-    objOut.writeObject(obj)
+    try {
+      objOut.writeObject(obj)
+    } catch {case e: Throwable => fail("Serialization failed...\n" + e.getStackTrace())}
   }
   
   def deserialize[T] : T = {
@@ -25,8 +28,17 @@ class JavaSerializationSpec extends FlatSpec {
       } catch { case e: Throwable => e.printStackTrace()}
   }
   
+  class MaxEntStatelessTest(nls: Int, nfs: Int, opts: MEOptions) extends SparseMaxEntStateless(nls, nfs, opts)
+  with PsaLearner[AbstractInstance]
+  
   "MaxEnt classifier serialization test" should "serialize and deserialize MaxEnt trainer object" in {
-    
+    val opts = new MEOptions
+    val sgen = new MaxEntTrainingSeqGen(opts)
+    val meStateless = new MaxEntStatelessTest(sgen.getNumberOfStates, sgen.getNumberOfFeatures, opts)
+    serialize(meStateless)
+    try {
+      val obj = deserialize[MaxEntStatelessTest]
+    } catch {case e: Throwable => fail("Deserialization failed.. \n" + e.getStackTrace())}
   }
 
 }
