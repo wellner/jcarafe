@@ -10,7 +10,12 @@ class JavaSerializationSpec extends FlatSpec {
     val objOut = new java.io.ObjectOutputStream(fs)
     try {
       objOut.writeObject(obj)
-    } catch {case e: Throwable => fail("Serialization failed...\n"); e.printStackTrace()}
+    } catch {case e: Throwable =>
+      val swrite = new java.io.StringWriter
+      swrite.write("Serialization failed ...\n")
+      e.printStackTrace(new java.io.PrintWriter(swrite))
+      fail(swrite.toString())}
+
   }
   
   def deserialize[T] : T = {
@@ -34,11 +39,16 @@ class JavaSerializationSpec extends FlatSpec {
   "MaxEnt classifier serialization test" should "serialize and deserialize MaxEnt trainer object" in {
     val opts = new MEOptions
     //val sgen = new MaxEntTrainingSeqGen(opts)
+    
     val meStateless = new MaxEntStatelessTest(2, 10, opts)
     serialize(meStateless)
     try {
       val obj = deserialize[MaxEntStatelessTest]
-    } catch {case e: Throwable => fail("Deserialization failed.. \n"); e.printStackTrace()}
+    } catch {case e: Throwable =>
+      val swrite = new java.io.StringWriter
+      swrite.write("Deserialization failed ...\n")
+      e.printStackTrace(new java.io.PrintWriter(swrite))
+      fail(swrite.toString())}
   }
 
 }
