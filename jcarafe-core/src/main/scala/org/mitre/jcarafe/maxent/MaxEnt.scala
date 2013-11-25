@@ -252,7 +252,7 @@ class MaxEnt(nls: Int, nfs: Int, gPrior: Double) extends DenseCrf(nls, nfs, 1, g
   }
 }
 
-abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends StochasticCrf(nls, nfs, 1, opts) with MaxEntCore {
+abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends StochasticCrf(nls, nfs, 1, opts) with MaxEntCore with Serializable {
 
   val predNFS = nfs / nls
 

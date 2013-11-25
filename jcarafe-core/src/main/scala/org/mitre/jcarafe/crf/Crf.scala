@@ -129,7 +129,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
 abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
-  extends Trainable[AbstractInstance] {
+  extends Trainable[AbstractInstance] with Serializable {
 
   val numParams = nfs
 
@@ -391,7 +391,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
   nNfs: Int,
   nGates: Int)
   extends Crf(lambdas, nls, nfs, segSize, opts.gaussian, nNfs, nGates)
-  with SparseTrainable[AbstractInstance] {
+  with SparseTrainable[AbstractInstance] with Serializable {
   def this(nls: Int, nfs: Int, segSize: Int, opts: Options, nNfs: Int = 0, nGates: Int = 0) = this(Array.fill(nfs)(0.0), nls, nfs, segSize, opts, nNfs, nGates)
 
   val quiet = false
