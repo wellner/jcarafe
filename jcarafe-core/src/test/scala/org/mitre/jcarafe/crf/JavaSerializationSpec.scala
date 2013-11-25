@@ -33,8 +33,8 @@ class JavaSerializationSpec extends FlatSpec {
   
   "MaxEnt classifier serialization test" should "serialize and deserialize MaxEnt trainer object" in {
     val opts = new MEOptions
-    val sgen = new MaxEntTrainingSeqGen(opts)
-    val meStateless = new MaxEntStatelessTest(sgen.getNumberOfStates, sgen.getNumberOfFeatures, opts)
+    //val sgen = new MaxEntTrainingSeqGen(opts)
+    val meStateless = new MaxEntStatelessTest(2, 10, opts)
     serialize(meStateless)
     try {
       val obj = deserialize[MaxEntStatelessTest]
