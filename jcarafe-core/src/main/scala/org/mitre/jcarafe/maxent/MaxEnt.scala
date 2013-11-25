@@ -54,7 +54,7 @@ class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
 
 class MaxEntInstance(label: Int, orig: Int, var maxentVec: Option[Array[CompactFeature]] = None,
   val srcInfo: Option[String] = None, weight: Double = 1.0)
-  extends AbstractInstance(label, orig, -1) {
+  extends AbstractInstance(label, orig, -1) with Serializable {
   def this(l: Int, o: Int, meVec: Array[CompactFeature]) = this(l, o, Some(meVec))
   type FType = CompactFeature
   val maxentBuffer = new ArrayBuffer[CompactFeature]
@@ -387,7 +387,7 @@ class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) wit
   }
 }
 
-class MaxEntTrainingSeqGen(opts: Options) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal {
+class MaxEntTrainingSeqGen(opts: Options) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal with Serializable {
 
   val frep = new MEFRep[List[(FeatureId, Double)]]
   val boundaries = opts.boundaries
@@ -454,7 +454,7 @@ class DiskBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(
   }
 }
 
-class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](false) {
+class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](false) with Serializable {
   var inducedFeatureMap: Option[InducedFeatureMap] = None
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]) = new ObsSource(l, o, b, None)
   def createSource(l: Int, o: Obs, b: Boolean) = new ObsSource(l, o, b, None)
@@ -590,8 +590,6 @@ trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
 trait MaxEntSeqGen[Obs] extends MaxEntSeqGenCore[Obs] {
 
   type FRepT = MEFRep[Obs]
-
-  val codec = scala.io.Codec("utf-8")
 
   val unkCode = hash("$=BIAS=$", 0)
   val selfCode = hash("$=SELF=$", 0)
@@ -1038,7 +1036,7 @@ object MaxEntDecoder {
   def apply(decodingOpts: MEOptions) = new MaxEntDecoder(decodingOpts, readModel(new java.io.File(decodingOpts.model.get)))
 }
 
-class MEOptions(override val argv: Array[String], override val optHandler: MaxEntOptionHandler, proc: Boolean = true) extends Options(argv, optHandler, proc) {
+class MEOptions(override val argv: Array[String], override val optHandler: MaxEntOptionHandler, proc: Boolean = true) extends Options(argv, optHandler, proc) with Serializable {
   def this() = this(Array(), new MaxEntOptionHandler(Array()))
   val fileBased: Boolean = optHandler.check("--file-processing")
   val dumpInstances = optHandler.get("--dump-instances")

@@ -67,6 +67,7 @@ class PosteriorMaxEntDecoder(decodingOpts: MEOptions, model: MaxEntModel) extend
     runPosteriorDecoder(deser, decoder)
 
   def normalizeExpectations() = {
+    import org.mitre.jcarafe.crf.InducedFeatureMapProtocol._
     val fsetmap = model.fsetMap
     faWeightMap foreach {
       case (fname, farray) =>
