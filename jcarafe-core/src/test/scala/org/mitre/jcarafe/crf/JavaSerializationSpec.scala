@@ -10,7 +10,7 @@ class JavaSerializationSpec extends FlatSpec {
     val objOut = new java.io.ObjectOutputStream(fs)
     try {
       objOut.writeObject(obj)
-    } catch {case e: Throwable => fail("Serialization failed...\n" + e.getStackTrace())}
+    } catch {case e: Throwable => fail("Serialization failed...\n"); e.printStackTrace()}
   }
   
   def deserialize[T] : T = {
@@ -38,7 +38,7 @@ class JavaSerializationSpec extends FlatSpec {
     serialize(meStateless)
     try {
       val obj = deserialize[MaxEntStatelessTest]
-    } catch {case e: Throwable => fail("Deserialization failed.. \n" + e.getStackTrace())}
+    } catch {case e: Throwable => fail("Deserialization failed.. \n"); e.printStackTrace()}
   }
 
 }
