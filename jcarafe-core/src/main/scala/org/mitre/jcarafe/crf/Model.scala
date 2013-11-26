@@ -6,7 +6,6 @@ package org.mitre.jcarafe.crf
 import scala.collection.mutable.HashMap
 import scala.collection.immutable.IntMap
 import cern.colt.map.OpenLongObjectHashMap;
-import sbinary._
 import org.mitre.jcarafe.util._
 
 case class ModelMetaData(val ver: String, val date: String, val user: String)

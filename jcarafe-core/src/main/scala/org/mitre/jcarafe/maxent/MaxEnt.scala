@@ -404,11 +404,10 @@ class FileBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(
 
 class DiskBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(opts) {
 
-  import MESerializations._
-
+  
   def writeInstance(odir: String, inst: MaxEntInstance) = {
     val ofile = new java.io.File(odir + "/" + cnt.toString)
-    sbinary.Operations.toFile(inst)(ofile)
+    MESerializations.writeInstance(inst,ofile)
   }
 
   protected def toDiskInstances(inReader: DeserializationT): Unit = {

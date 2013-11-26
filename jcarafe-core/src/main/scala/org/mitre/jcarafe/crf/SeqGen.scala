@@ -7,7 +7,6 @@ package org.mitre.jcarafe.crf
 import scala.collection.mutable.ListBuffer
 import java.io.File
 import org.mitre.jcarafe.util._
-import sbinary._
 
 abstract class InstanceSequence(val st: Int, val en: Int) {
   var seqPosteriorProbability = 0.0
@@ -76,7 +75,6 @@ object InstSeq {
   class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     // serialize just the plain 
     def iseq: Seq[AbstractInstance] = {
-      //val src = sbinary.Operations.fromFile[SourceSequence[String]](fp)
       val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))    
       val src = kryo.readObject(kInput, classOf[SourceSequence[String]])
       kInput.close
@@ -89,7 +87,6 @@ object InstSeq {
     
     def iseq: Seq[AbstractInstance] = {
       val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
-      //val ss = sbinary.Operations.fromFile[Seq[CrfInstance]](fp)
       val kInput = new Input(is)
       val ss = kryo.readObject(kInput, classOf[Seq[CrfInstance]])
       kInput.close()
@@ -135,7 +132,6 @@ object InstSeq {
         if (m.toString equals "java.lang.String") { // should be a better way to set this up...
           val ssA = ss.asInstanceOf[SourceSequence[String]]
           val sgA = sg.asInstanceOf[TrainingSeqGen[String]]
-          //sbinary.Operations.toFile[SourceSequence[String]](ssA)(ofile)
           serializeSourceSeqToFile(ssA, ofile)
           new RawInstanceSequenceStringObs(sgA, ofile, st, en, ss.length)
         } else throw new RuntimeException("Disk caching only allowed with SourceSequence[T] where T = String")

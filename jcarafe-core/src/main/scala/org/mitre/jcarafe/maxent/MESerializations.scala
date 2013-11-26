@@ -6,16 +6,41 @@ package org.mitre.jcarafe.maxent
 
 import org.mitre.jcarafe.crf.CompactFeature
 
-import sbinary._
+object MESerializations {
+  import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
+  import com.twitter.chill.{EmptyScalaKryoInstantiator, AllScalaRegistrar}
 
-object MESerializations extends DefaultProtocol {
+  val instantiator = new EmptyScalaKryoInstantiator
+  val kryo = instantiator.newKryo
+  new AllScalaRegistrar()(kryo)
+  kryo.register(classOf[MaxEntInstance])
   
-  implicit def meInstMap : Format[MaxEntInstance] = {
-    asProduct3((l: Int, o:Int, farr: Array[CompactFeature]) => new MaxEntInstance(l,o,farr))((me: MaxEntInstance) => (me.label, me.orig, me.getCompactVec))
+  def writeInstance(i: MaxEntInstance, f: java.io.File) = {
+    val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
+    val output = new KOutput(os)
+    kryo.writeObject(output, i)
+    os.close()
+    output.close
+  }
+  
+  def readInstance(kInput: KInput) : MaxEntInstance = {
+    val m = kryo.readObject(kInput, classOf[MaxEntInstance])
+    kInput.close()
+    m
+  }
+  
+  def readInstance(f: java.io.File): MaxEntInstance = {
+    val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
+    val m = readInstance(is)
+    is.close()
+    m
   }
 
-  implicit def compactFeatureMap : Format[CompactFeature] = {
-    asProduct2((v: Double, f: Int) => new CompactFeature(v,f))((c: CompactFeature) => (c.v, c.fid))
+  def readInstance(is: java.io.InputStream): MaxEntInstance = {
+    val kInput = new KInput(is)
+    readInstance(kInput)
   }
-
+  
+  def readInstance(ba: Array[Byte]): MaxEntInstance = readInstance(new KInput(ba))
+  
 }
