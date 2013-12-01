@@ -232,16 +232,22 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
         val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }        
-        if (!(opts.empDistTrain) && addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
+        if (!(opts.empDistTrain) && !(opts.partialLabels) && addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
-          if (opts.empDistTrain) {
+          if (opts.partialLabels || opts.empDistTrain) {
             // select elements from 'info' map that correspond to labels/states as specified with tagset
             val dist = info.toList.filter{case (l,s) =>
               val abLab = parseEncodedAbstractLabel(l)              
-              opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}
-            createDistributionalSource(dist,obs,true,Map())            
-          } else createSource(pt.typ, obs, pt.beg, info)
+              opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}            
+            if (opts.partialLabels) {
+              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty              
+              val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
+              createSource(mxVal._1, obs, pt.beg, Map())
+            }
+            else createDistributionalSource(dist,obs,true,Map())
+          }
+          else createSource(pt.typ, obs, pt.beg, info)
         }
       }
     }
