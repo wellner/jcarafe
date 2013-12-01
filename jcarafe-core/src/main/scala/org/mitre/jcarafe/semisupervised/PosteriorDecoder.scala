@@ -7,7 +7,6 @@ import collection.mutable.HashMap
 import org.mitre.jcarafe.crf.{ StdDecoder, DecodingAlgorithm, DenseCrf, AccessSeq, AbstractInstance, Crf, FeatureType, InducedFeatureMapProtocol, CoreModel }
 import org.mitre.jcarafe.util.Options
 import org.mitre.jcarafe.util.FastLoops._
-import sbinary._
 
 /*
  */
