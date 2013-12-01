@@ -4,14 +4,14 @@
 
 package org.mitre.jcarafe.crf
 
-import collection.mutable.BitSet
+import collection.immutable.BitSet
 import collection.mutable.HashMap
 import org.mitre.jcarafe.util.FastLoops._
 
 /*
  * 
  */
-class BloomLexicon(val dir: Option[java.io.File]) extends Lexicon {
+class BloomLexicon(val dir: Option[java.io.File]) {
   def this(d: String) = this(Some(new java.io.File(d)))
   def this(d: java.io.File) = this(Some(d))
   def this() = this(None)
@@ -82,9 +82,9 @@ object BloomFilter {
 
 }
 
-class BloomFilter(val size: Int, val width: Int, val filter: BitSet) {
+class BloomFilter(val size: Int, val width: Int, var filter: BitSet) {
   
-  def this(sz: Int, w: Int) = this(sz, w, new BitSet(w)) 
+  def this(sz: Int, w: Int) = this(sz, w, BitSet()) 
 
   import org.mitre.jcarafe.crf.IncrementalMurmurHash.mix
 

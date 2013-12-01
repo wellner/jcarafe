@@ -157,8 +157,11 @@ abstract class CoreModelSerializer {
   new AllScalaRegistrar()(kryo)
   kryo.register(classOf[CrfInstance])
   kryo.register(classOf[Alphabet[Long]])
-  kryo.register(classOf[MaxEntModel])  
-
+  kryo.register(classOf[MaxEntModel])
+  kryo.register(classOf[WordProperties])
+  kryo.register(classOf[RandomLongAlphabet])
+  kryo.register(classOf[BloomLexicon])
+  kryo.register(classOf[BloomFilter])  
 
   protected def checkModel(m: Model) = {
     import FastLoops._
