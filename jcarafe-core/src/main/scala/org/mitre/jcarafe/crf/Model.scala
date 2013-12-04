@@ -23,6 +23,7 @@ abstract class Model(
   val labelAlphabet: Alphabet[AbstractLabel],
   val crf: CoreModel) {
 
+  def this(labelAlphabet: Alphabet[AbstractLabel], crf: CoreModel) = this("",false,None,0,labelAlphabet,crf)
   def print(f: java.io.File): Unit
   def fixAlphabet(t: Boolean) = labelAlphabet.fixed_=(t)
 }
@@ -31,7 +32,7 @@ class MaxEntModel(
   labelAlphabet: Alphabet[AbstractLabel],
   crf: CoreModel,
   val fsetMap: Alphabet[Long],
-  val inducedMap: Option[InducedFeatureMap] = None) extends Model("", false, None, 0, labelAlphabet, crf) {
+  val inducedMap: Option[InducedFeatureMap] = None) extends Model(labelAlphabet, crf) {
   def print(f: java.io.File) = println("--no printing available--")
 }
 
@@ -224,8 +225,8 @@ object MaxEntSerializer extends CoreModelSerializer {
     val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
     val output = new KOutput(os)
     kryo.writeObject(output, am)
-    os.close()
     output.close
+    os.close()    
   }
   
   def serializeAsBytes(m: MaxEntModel) : Array[Byte] = {
