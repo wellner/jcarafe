@@ -240,6 +240,7 @@ object MaxEntSerializer extends CoreModelSerializer {
     kInput.close()
     m
   }
+  
   def readModel(f: java.io.File): MaxEntModel = {
     val is = new java.io.BufferedInputStream(new java.io.FileInputStream(f))
     val m = readModel(is)
