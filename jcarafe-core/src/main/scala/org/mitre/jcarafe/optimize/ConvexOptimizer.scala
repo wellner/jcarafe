@@ -112,7 +112,7 @@ class Cell[T](var v: T) {
   final def get = v
 }
 
-abstract class FunctionEvaluation {
+abstract class FunctionEvaluation extends Serializable {
   def evaluate(x: Array[Double], gradient: Array[Double], n: Int, step: Double) : Double
 }
 
@@ -182,7 +182,7 @@ abstract class ConvexOptimizer(n: Int) extends Numerical(n) {
 
  
 
-class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) {
+class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: FunctionEvaluation, val params: Params) extends ConvexOptimizer(x.length) with Serializable {
   
   val lSearch : LineSearch = new BackTrackingLineSearch(x.length, evaluator, params)
 
@@ -309,7 +309,7 @@ abstract class LineSearch(n: Int) extends Numerical(n) {
     wa: Array[Double]) : OptimizerStatus
 }
 
-class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) {
+class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) with Serializable {
   
   private def printVec(g: Array[Double]) = {
     g foreach {e => print(" " + e)}

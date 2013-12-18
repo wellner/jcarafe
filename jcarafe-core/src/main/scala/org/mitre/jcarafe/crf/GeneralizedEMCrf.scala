@@ -119,6 +119,29 @@ trait GeneralizedEMCrf extends Crf {
     }
   }
   
+  protected def updateScoreMatrices(iseq: Seq[AbstractInstance], pos: Int, empiricalDist: Boolean = false) = {
+    val instEl = iseq(pos)
+    val instFeatures = iseq(pos).getCompVec
+    val curLabel = iseq(pos).label
+    val prevLabel = if (pos > 0) iseq(pos-1).label else -1
+    var d = 0; while (d < instFeatures.length) {
+      var k = 0; while (k < instFeatures(d).length) {
+        val inst = instFeatures(d)(k)
+        if (inst.prv < 0) {
+          val ev = if (empiricalDist) instEl.conditionalProb(inst.cur) * inst.value else inst.value
+          if ((inst.cur == curLabel) || (curLabel < 0)) conRi(d)(inst.cur) += lambdas(inst.fid) * ev 
+        } else { 
+            if (((inst.cur == curLabel) || (curLabel < 0)) && ((inst.prv == prevLabel) || (prevLabel < 0))) {
+              val ev = if (empiricalDist) instEl.conditionalProb(inst.cur) * inst.value else inst.value
+              conMi(d)(inst.prv)(inst.cur) += lambdas(inst.fid) * ev
+            }
+        }
+        k += 1
+      }
+      d += 1
+    }    
+  }
+  
   
   def computeScoresConstrained (absInstSeq: Seq[AbstractInstance], pos: Int, takeExp: Boolean) = {
     val inst_features = absInstSeq(pos).getCompVec
@@ -126,20 +149,9 @@ trait GeneralizedEMCrf extends Crf {
     val prevLabel = if (pos > 0) absInstSeq(pos-1).label else -1
     Crf.setMatrix(conRi)
     Crf.setTensor(conMi)
+    updateScoreMatrices(absInstSeq, pos)
+    // add constraints so that states and transitions incompatable with provided labels have a score of negative infinity    
     var d = 0; while (d < inst_features.length) {
-      var k = 0; while (k < inst_features(d).length) {
-        val inst = inst_features(d)(k)
-        if (inst.prv < 0) {
-          if ((inst.cur == curLabel) || (curLabel < 0)) conRi(d)(inst.cur) += lambdas(inst.fid) * inst.value else conRi(d)(inst.cur)
-        } else 
-            if (((inst.cur == curLabel) || (curLabel < 0)) && ((inst.prv == prevLabel) || (prevLabel < 0))) 
-              conMi(d)(inst.prv)(inst.cur) += lambdas(inst.fid) * inst.value
-        k += 1
-      }
-      d += 1
-    }
-    // add constraints so that states and transitions incompatable with provided labels have a score of negative infinity
-    d = 0; while (d < inst_features.length) {
     	var k = 0; while (k < nls) {
     		if ((curLabel >= 0) && (k != curLabel)) conRi(d)(k) = -(Double.MaxValue)
     		var c = 0; while ( c < nls) {
@@ -337,9 +349,7 @@ extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, 0, 0) with Generaliz
       i += 1
     }
     sll
-  }
-  
-  
+  }    
 }
 
 class DenseGeneralizedEMCrfWorker(lambdas: Array[Double], nls: Int,nfs: Int,segSize: Int, opts: Options) 

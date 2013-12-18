@@ -146,6 +146,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
       i += 1
     }
   }
+  
 
   /**
    * When set to <code>true</code>, the Crf will allow the state-space to be dynamically
