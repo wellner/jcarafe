@@ -5,7 +5,7 @@ import scala.math.exp
 import org.mitre.jcarafe.util.Options
 
 trait GeneralizedEMCrf extends Crf {
-	
+  	
   /**
    * Constrained Beta values. Need values for each segment length for each label (in general, Semi-CRF case)  
    */
@@ -37,6 +37,8 @@ trait GeneralizedEMCrf extends Crf {
   val conMarginals : Matrix = Array.fill(nls,nls)(1.0 / (nls * nls))
   
   val conMarginalState : Array[Double] = Array.fill(nls)(1.0 / nls)
+  
+  val empiricalDist : Boolean
   
   def printMi(m: Array[Array[Array[Double]]]) = {
     m(0) foreach {
@@ -119,7 +121,7 @@ trait GeneralizedEMCrf extends Crf {
     }
   }
   
-  protected def updateScoreMatrices(iseq: Seq[AbstractInstance], pos: Int, empiricalDist: Boolean = false) = {
+  protected def updateScoreMatrices(iseq: Seq[AbstractInstance], pos: Int) = {
     val instEl = iseq(pos)
     val instFeatures = iseq(pos).getCompVec
     val curLabel = iseq(pos).label
@@ -187,6 +189,8 @@ trait GeneralizedEMCrf extends Crf {
 
 abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) 
 extends StochasticCrf(nls, nfs, segSize, opts) with GeneralizedEMCrf {
+  
+  val empiricalDist = opts.empDistTrain
   
   override def forwardPass(iseq:Seq[AbstractInstance]) = {
     var seqLogLi = 0.0
@@ -284,6 +288,8 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
 extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, 0, 0) with GeneralizedEMCrf {
   
   def this(nls: Int, nfs: Int, segSize: Int, opts: Options) = this(Array.fill(nfs)(0.0),nls, nfs, segSize, opts)
+  
+  val empiricalDist = opts.empDistTrain
   
   override def forwardPass(iseq:Seq[AbstractInstance]) = {
     var seqLogLi = 0.0

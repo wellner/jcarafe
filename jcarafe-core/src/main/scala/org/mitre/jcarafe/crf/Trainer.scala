@@ -52,16 +52,10 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     } else if (empDist) {
       println(">> Training with soft-labeled sequences ... using KL-divergence likelihood maximization <<\n")
       if (opts.psa) {
-        if (opts.partialThreshold < 1.0) {
-          new StochasticKLDivMinimizingGEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
-        }
-        else new KLDivMinimizingStochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
+        new KLDivMinimizingStochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
       }
       else {
-        if (opts.partialThreshold < 1.0) {
-          new DenseKLDivMinimizingGEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
-        }
-        else new KLDivMinimizingCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
+        new KLDivMinimizingCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       }
     } else if (opts.semiCrf) {
       val s = sGen.getMaxSegmentSize

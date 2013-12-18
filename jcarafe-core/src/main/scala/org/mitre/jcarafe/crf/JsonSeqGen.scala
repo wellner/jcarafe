@@ -240,10 +240,16 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             val dist = info.toList.filter{case (l,s) =>
               val abLab = parseEncodedAbstractLabel(l)              
               opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}            
-            if (opts.partialLabels) {
+            if (opts.partialLabels && !opts.empDistTrain) {
               val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty              
               val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
               createSource(mxVal._1, obs, pt.beg, Map())
+            } else if (opts.partialLabels && opts.empDistTrain) {
+              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
+              val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
+              if (mxVal._2 > opts.partialThreshold) { // use distribution
+                createDistributionalSource(dist,obs,true,Map())
+              } else createSource(il,obs,pt.beg,Map()) // use uncertain label
             }
             else createDistributionalSource(dist,obs,true,Map())
           }
