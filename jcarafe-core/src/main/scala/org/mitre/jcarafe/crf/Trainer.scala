@@ -49,14 +49,6 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   def getCrf(empDist: Boolean = false): Crf = {
     if (opts.neural) {
       NeuralCrf(sGen, opts)
-    } else if (empDist) {
-      println(">> Training with soft-labeled sequences ... using KL-divergence likelihood maximization <<\n")
-      if (opts.psa) {
-        new KLDivMinimizingStochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
-      }
-      else {
-        new KLDivMinimizingCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
-      }
     } else if (opts.semiCrf) {
       val s = sGen.getMaxSegmentSize
       CrfInstance.maxSegSize = s // "global" value for maximum seg size
@@ -77,6 +69,14 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
           new DenseParallelGeneralizedEMCrf(numPs,sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
         } else
           new DenseGeneralizedEMCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with CondLogLikelihoodLearner[AbstractInstance]
+      }
+    } else if (empDist) {
+      println(">> Training with soft-labeled sequences ... using KL-divergence likelihood maximization <<\n")
+      if (opts.psa) {
+        new KLDivMinimizingStochasticCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts) with PsaLearner[AbstractInstance]
+      }
+      else {
+        new KLDivMinimizingCrf(sGen.getNumberOfStates, sGen.getNumberOfFeatures, 1, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       }
     } else if (opts.psa)
       if (opts.l1)
