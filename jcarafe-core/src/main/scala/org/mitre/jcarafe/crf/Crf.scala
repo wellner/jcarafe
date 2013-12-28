@@ -555,7 +555,7 @@ object Crf {
     }
   }
 
-  final def setMatrix(m: Matrix) = {
+  final def setMatrix(m: Matrix, v: Double = 0.0) = {
     var i = 0
     var j = 0
     val mlen = m.length
@@ -563,18 +563,18 @@ object Crf {
       j = 0
       val milen = m(i).length
       while (j < milen) {
-        m(i)(j) = 0.0
+        m(i)(j) = v
         j += 1
       }
       i += 1
     }
   }
 
-  final def setTensor(t: Tensor) = {
+  final def setTensor(t: Tensor, v: Double = 0.0) = {
     var i = 0
     val tlen = t.length
     while (i < tlen) {
-      setMatrix(t(i))
+      setMatrix(t(i),v)
       i += 1
     }
   }
