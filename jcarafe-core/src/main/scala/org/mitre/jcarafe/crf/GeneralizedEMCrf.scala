@@ -93,8 +93,8 @@ trait GeneralizedEMCrf extends Crf {
     var tot = 0.0
     i = 0; while (i < nls) {
       j = 0; while (j < nls) {
-        if (i < 1) println("ri(j) => " + ri(j))
-        print(" mi(" + i + "," + j + ") => " + mi(i)(j)) 
+        //if (i < 1) println("ri(j) => " + ri(j))
+        //print(" mi(" + i + "," + j + ") => " + mi(i)(j)) 
         val u = conCurA(i) * ri(j) * mi(i)(j) * conBeta(pos)(j)
         conMarginals(i)(j) = u
         tot += u
@@ -168,13 +168,10 @@ trait GeneralizedEMCrf extends Crf {
           if (curLabel >= 0) conRi(d)(k) = math.log(curInst.conditionalProb(k))
           var c = 0; while (c < nls) {
             if ((curLabel >= 0) && (prevLabel >= 0) && (pos > 0)) {
-              println("Case 1")
               conMi(d)(c)(k) = math.log(curInst.conditionalProb(k)) + math.log(absInstSeq(pos - 1).conditionalProb(c))
             } else if ((curLabel == -1) && (prevLabel >= 0)) {
-              println("Case 2")
               conMi(d)(c)(k) = math.log(absInstSeq(pos - 1).conditionalProb(c))
             } else if ((prevLabel == -1) && (curLabel >= 0)) {
-              println("Case 3")
               conMi(d)(c)(k) = math.log(curInst.conditionalProb(k))
             }
             c += 1
@@ -331,7 +328,7 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
 
       val instFeatures = iseq(i).getCompVec
       val label = iseq(i).label
-      computeScoresConstrained(iseq, i, true)
+      computeScoresConstrained(iseq, i, true)      
       Array.copy(conCurA, 0, tmp, 0, curNls)
       Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
       assign1(conNewA, conRi(0), (_ * _))
@@ -346,13 +343,6 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
       var k = 0
       val if0 = instFeatures(0)
       val numFs = if0.length
-      
-      println("Constrained marginals")
-      var ll = 0
-      while (ll < nls) {
-        println(" " + ll + " => " + conMarginalState(ll))
-        ll += 1
-      }
       
       while (k < numFs) {
         val inst = if0(k)
@@ -393,6 +383,7 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
       gradient(i) += featureExpectations(i) / zx
       i += 1
     }
+    println
     sll
   }
 }
