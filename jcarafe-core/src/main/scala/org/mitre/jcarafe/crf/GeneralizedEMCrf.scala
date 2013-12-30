@@ -383,7 +383,6 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
       gradient(i) += featureExpectations(i) / zx
       i += 1
     }
-    println
     sll
   }
 }
