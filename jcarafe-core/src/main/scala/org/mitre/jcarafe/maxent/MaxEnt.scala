@@ -796,8 +796,6 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
       var i = 0
       while (i < ln) {
         val f = vec(i)
-        //val (cnt,msc) = frep.featureStatistics(f.fid)
-
         vec(i) = new CompactFeature(f.v, f.fid, f.classLabelWeights) // XXX - think about whether features should be auto-normalized
         i += 1
       }

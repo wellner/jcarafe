@@ -93,8 +93,6 @@ trait GeneralizedEMCrf extends Crf {
     var tot = 0.0
     i = 0; while (i < nls) {
       j = 0; while (j < nls) {
-        //if (i < 1) println("ri(j) => " + ri(j))
-        //print(" mi(" + i + "," + j + ") => " + mi(i)(j)) 
         val u = conCurA(i) * ri(j) * mi(i)(j) * conBeta(pos)(j)
         conMarginals(i)(j) = u
         tot += u

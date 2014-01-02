@@ -4,6 +4,10 @@ import org.mitre.jcarafe.crf.{AbstractInstance, PsaLearner, CompactFeature}
 import java.io.File
 import collection.mutable.HashMap
 
+/*
+ * This version of a maxent object is 'stateless' in the sense that it doesn't store the gradient/likelihood within the 
+ * object but exposes it such that other optimizers or distributed computing algorithms can use it as a sub-routine
+ */
 abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extends SparseMaxEnt(nls,nfs,opts) with Serializable {
   
   def getSimpleGradient(gr: Map[Int,DoubleCell]) : Map[Int,Double] = {

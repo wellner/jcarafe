@@ -209,7 +209,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case _ => throw new RuntimeException("Unparsable serialized label: " + s)
     }
   }
-
+  
   def toSources(d: DeserializationT): Seqs = {
     val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)  
     def seqOfTokArr(tarr: Array[Annotation]) = {
@@ -241,15 +241,22 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
               val abLab = parseEncodedAbstractLabel(l)              
               opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}            
             if (opts.partialLabels && !opts.empDistTrain) {
-              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty              
+              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
               val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
-              createSource(mxVal._1, obs, pt.beg, Map())
+              createSource(mxVal._1, obs, pt.beg, Map())              
             } else if (opts.partialLabels && opts.empDistTrain) {
               val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
+              if (opts.entropyThreshold) {
+                val entVal = getEntropy(dist.toMap)
+                if (entVal > opts.partialThreshold) {
+                  createDistributionalSource(dist,obs,true,Map())
+                } else createSource(il,obs,pt.beg,Map()) // use uncertain label
+              } else {                                                        
               val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
               if (mxVal._2 > opts.partialThreshold) { // use distribution
                 createDistributionalSource(dist,obs,true,Map())
               } else createSource(il,obs,pt.beg,Map()) // use uncertain label
+              }
             }
             else createDistributionalSource(dist,obs,true,Map())
           }
@@ -290,11 +297,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   val tokConfidenceAnnotationType = Label("tok_confidence", Map("posterior" -> "", "entropy" -> ""))
   lazy val tokPosteriorAnnotationType = Label("tok_posterior_dist", lAlphabet.mp.foldLeft(Map[String, String]()) { case (ac, (l, i)) => ac + (l.labelString -> "") })
   val logVal2 = math.log(2.0)
-  def log2(x: Double) = math.log(x) / logVal2
+  private final def log2(x: Double) = math.log(x) / logVal2
 
-  private def getEntropy(map: Map[Int, Double]) = {
+  private def getEntropy(mp: Map[_, Double]) = {
     var e = 0.0
-    map foreach { case (i, v) => e -= log2(v) * v }
+    mp foreach { case (_, v) => e -= log2(v) * v }
     e
   }
 
