@@ -248,7 +248,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
               val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
               if (opts.entropyThreshold) {
                 val entVal = getEntropy(dist.toMap)
-                if (entVal > opts.partialThreshold) {
+                if (entVal < opts.partialThreshold) {
                   createDistributionalSource(dist,obs,true,Map())
                 } else createSource(il,obs,pt.beg,Map()) // use uncertain label
               } else {                                                        
