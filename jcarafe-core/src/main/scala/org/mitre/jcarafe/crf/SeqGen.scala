@@ -374,8 +374,15 @@ abstract class SeqGen[Obs](val opts: Options) {
   def createSeqsFromFiles: Seq[InstanceSequence] = {
     if (opts.multiLine) {
       val sbuf = new collection.mutable.ListBuffer[InstanceSequence]
-      var nread = 1
+      var nread = 1      
       val seqs = gatherFiles foreach { f =>
+        if (opts.randomFeatures || opts.randomSupportedFeatures) {
+          val srcLines = io.Source.fromFile(f)("UTF-8").getLines
+          while (srcLines.hasNext) {
+            val l = srcLines.next
+            countFeatureTypes(toSources(deserializeFromString(l)))
+          }          
+        }
         val src = io.Source.fromFile(f)("UTF-8")
         val lines = src.getLines.toList
         lines foreach { l =>
