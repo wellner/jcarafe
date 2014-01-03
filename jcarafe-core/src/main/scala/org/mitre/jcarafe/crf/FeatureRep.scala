@@ -563,8 +563,11 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   }
   
   protected def addFeatureRange(ss: Int, inst: CrfInstance, edgeP: Boolean, ypEnd: Int, fname: Long, vl: Double, fcat: FeatureCat) : Unit = {
-    if (opts.randomFeatures) throw new RuntimeException("Random features do not support adding feature bundles yet..")
-    else {
+    if (opts.randomFeatures) {
+      // something awkward about this code .. 
+      // set yprv to -2 as indicator of a state feature
+      if (edgeP) addRandFeature(ss, inst, 0, 0, fname, vl) else addRandFeature(ss, inst, -2, 0, fname, vl)
+    } else {
       val ft =
         fsetMap.get(fname) match {
           case v: FeatureType => v
