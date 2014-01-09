@@ -27,7 +27,7 @@ trait DenseTrainable[T] extends Trainable[T] {
   val gradient: Array[Double]
 }
 
-trait SparseTrainable[T] extends Trainable[T] {
+trait SparseTrainable[T] extends Trainable[T] with Serializable {
   class DoubleCell(var g: Double, var e: Double)
   val maxEpochs: Int
   val batchSize: Int
@@ -55,7 +55,7 @@ class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs:
   }
 }
 
-trait AccessSeq[T] {
+trait AccessSeq[T] extends Serializable {
   def apply(i: Int): Seq[T]
   def length: Int
   def repermute(): Unit

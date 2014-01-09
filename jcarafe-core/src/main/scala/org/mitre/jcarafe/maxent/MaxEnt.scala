@@ -388,6 +388,8 @@ class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) wit
 }
 
 class MaxEntTrainingSeqGen(opts: Options) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal with Serializable {
+  
+  def this() = this(new Options)
 
   val frep = new MEFRep[List[(FeatureId, Double)]]
   val boundaries = opts.boundaries

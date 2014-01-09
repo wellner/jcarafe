@@ -515,7 +515,8 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   override def getNumberOfFeatureTypes = numFeatureTypes
 
   lazy val numRandomFeatures =
-    PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
+    if (opts.numRandomFeatures > 10) opts.numRandomFeatures
+    else PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
 
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }
   lazy val faMap: LongAlphabet = initialModel match {
