@@ -101,7 +101,8 @@ class Params(
     var wolfe : Double = 0.9,
     var gtol : Double = 0.9,
     var xtol : Double = 1E-16,
-    var verbose : Boolean = false
+    var verbose : Boolean = false,
+    var veryVerbose : Boolean = false
     )
     
 case class Result(var status: OptimizerStatus, var additionalStatus: Int = 0, var objective: Double = 0.0, var gnorm: Double = 0.0,
@@ -343,6 +344,7 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
+      if (params.veryVerbose) println("^^^ Calling evaluate within line search object: " + this.hashCode())
       f set evaluator.evaluate(x, g, n, stp.get)
       cnt += 1
       if (f.get > fInit + stp.get * dgTest) 
