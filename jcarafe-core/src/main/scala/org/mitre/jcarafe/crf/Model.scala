@@ -31,7 +31,7 @@ abstract class Model(
 class MaxEntModel(
   labelAlphabet: Alphabet[AbstractLabel],
   crf: CoreModel,
-  val fsetMap: Alphabet[Long],
+  val fsetMap: LongAlphabet,
   val inducedMap: Option[InducedFeatureMap] = None) extends Model(labelAlphabet, crf) {
   def print(f: java.io.File) = println("--no printing available--")
 }
@@ -499,11 +499,11 @@ object Model {
         val anid = nid + k * newNfs
         narr(anid) = v
     }
-    val nfsetMap = new Alphabet[Long]()
-    model.fsetMap.mp foreach {
+    val nfsetMap = new LongAlphabet()
+    model.fsetMap foreach {
       case (fid, f) =>
         idMap.get((f, 0)) match {
-          case Some((nf, v)) => nfsetMap.update(fid, nf)
+          case Some((nf, v)) => nfsetMap.update(fid.toInt, nf) // XXX - not sure this is sound
           case None =>
         }
     }

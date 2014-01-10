@@ -109,6 +109,16 @@ class LongAlphabet(var fixed: Boolean) {
       s
     }
   }
+  // wrap this for convenience 
+  def foreach(fn : ((Long,Int) => Unit)) = {
+    val proc = new cern.colt.function.LongIntProcedure() {
+      def apply(k: Long, v: Int) = {
+        fn(k,v)
+        true
+      }
+    }
+    iMap.forEachPair(proc)    
+  }
   def getUnderlyingMap: OpenLongIntHashMap = iMap
   def add(k: Long, v: Int) = {
     iMap.put(k, v)

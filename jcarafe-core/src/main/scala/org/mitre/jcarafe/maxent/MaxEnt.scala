@@ -455,7 +455,10 @@ class DiskBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(
   }
 }
 
-class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](false) with Serializable {
+class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new MEOptions) extends FeatureRep[Obs](false) with Serializable {
+  def this(m: MaxEntModel) = this(Some(m))
+  def this(m: MaxEntModel, opts: MEOptions) = this(Some(m),opts)
+  
   var inducedFeatureMap: Option[InducedFeatureMap] = None
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]) = new ObsSource(l, o, b, None)
   def createSource(l: Int, o: Obs, b: Boolean) = new ObsSource(l, o, b, None)
@@ -472,14 +475,17 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
   def getWordProps: Option[WordProperties] = None
   def getWordScores: Option[WordScores] = None
   def getInducedFeatureMap: Option[InducedFeatureMap] = inducedFeatureMap
-  def this(m: MaxEntModel) = this(Some(m))
+  
 
   val fMap = m match {
     case Some(m) =>
       val mm = m.fsetMap
       mm.fixed_=(true)
       mm
-    case None => new Alphabet[Long]()
+    case None =>
+      if (opts.numRandomFeatures > 10) // using random/hashed features
+        new RandomLongAlphabet(opts.numRandomFeatures)
+      else new LongAlphabet()
   }
   val unkCode = hash("$=BIAS=$", 0)
 
@@ -508,9 +514,9 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None) extends FeatureRep[Obs](fal
 
 }
 
-abstract class MaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends DecodingSeqGen[List[(FeatureId, Double)]](m, opts) with MaxEntSeqGenAttVal {
+abstract class MaxEntDecodeSeqGen(m: MaxEntModel, opts: MEOptions) extends DecodingSeqGen[List[(FeatureId, Double)]](m, opts) with MaxEntSeqGenAttVal {
 
-  val frep = new MEFRep[List[(FeatureId, Double)]](m)
+  val frep = new MEFRep[List[(FeatureId, Double)]](m, opts)
 
   def getNumberOfFeatures = frep.fMap.size * getNumberOfStates
 
@@ -787,6 +793,10 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     val insts = tmpBuf.toIndexedSeq
     filterAndNormalizeFeatures(insts)
     insts
+  }
+  
+  def toAbstractInstance(s: String) : AbstractInstance = {
+    buildInstanceUsingPosteriors(s).get
   }
 
   def toInstances(inReader: DeserializationT): InstanceSequence = InstSeq(toAbstractInstanceSeq(inReader))
