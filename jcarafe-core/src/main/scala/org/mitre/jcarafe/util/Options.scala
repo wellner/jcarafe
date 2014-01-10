@@ -169,8 +169,6 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   import Tagset.parseTagSpec
   import Tagset.loadTagset
 
-  val utf8Codec = scala.io.Codec("utf-8")
-
   if (processArgs) optHandler.process // process the arguments
 
   var required : List[String] = Nil
