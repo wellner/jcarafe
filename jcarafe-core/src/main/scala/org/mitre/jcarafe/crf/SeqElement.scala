@@ -13,7 +13,7 @@ import scala.collection.mutable.ArrayBuffer
  * Top-level abstract class for representing labeled elements in a sequence
  * @param label - the integer label for this sequence element
 */
-abstract class SeqElement(var label: Int) {
+abstract class SeqElement(var label: Int) extends Serializable {
   def getRange: Int
   def conditionalProb(i: Int): Double
   def setConditionalProb(i: Int, v: Double): Unit
@@ -28,7 +28,7 @@ abstract class SeqElement(var label: Int) {
  * @param segId - an integer, i, indicating its the ith segment in a sequence
  * @author Ben Wellner
 */
-abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) extends SeqElement(label) {
+abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) extends SeqElement(label) with Serializable {
   type FType <: FeatureCore
 
   var userFeatures: Set[FType] = Set() // ( we create a lot of these objects )

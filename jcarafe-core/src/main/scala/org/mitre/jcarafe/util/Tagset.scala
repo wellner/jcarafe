@@ -1,6 +1,6 @@
 package org.mitre.jcarafe.util
 
-class Tagset(val set: Set[AbstractLabel]) {
+class Tagset(val set: Set[AbstractLabel]) extends Serializable {
   
   def isWithin(s: String) : Boolean = 
     set.exists{case e: Label => e.l == s case e: SLabel => e.v == s case _ => false}

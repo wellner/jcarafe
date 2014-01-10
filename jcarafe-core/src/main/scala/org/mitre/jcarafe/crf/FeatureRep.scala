@@ -18,7 +18,7 @@ abstract class FeatureCore {
     
 }
 
-class CompactFeature(val v: Double, val fid: Int, val classLabelWeights: Option[Array[Double]] = None) extends FeatureCore {
+class CompactFeature(val v: Double, val fid: Int, val classLabelWeights: Option[Array[Double]] = None) extends FeatureCore with Serializable {
   def apply(i: Int) = classLabelWeights match { case Some(vec) => vec(i) case None => v }
   def value = v
   def getName = ""
@@ -252,7 +252,7 @@ class ValuedRandomFeatureType(value: Double, val ss: Int, val fname: Long, val e
 
 case class PreFeature(val prv: Int, val cur: Int, val name: Long)
 
-abstract class FeatureRep[Obs](val semiCrf: Boolean) {
+abstract class FeatureRep[Obs](val semiCrf: Boolean) extends Serializable {
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs]
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs]
   // these two cases are for recoding

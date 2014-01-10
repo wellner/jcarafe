@@ -188,7 +188,7 @@ class SourceSequence[Obs](val seq: Seq[ObsSource[Obs]], val parentSeq: Option[So
  * @param opts        A set of command-line options passed in by user
  * @author Ben Wellner
  */
-abstract class SeqGen[Obs](val opts: Options) {
+abstract class SeqGen[Obs](val opts: Options) extends Serializable {
 
   type DeserializationT <: Deserialization
   type Src = ObsSource[Obs]

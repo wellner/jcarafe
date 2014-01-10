@@ -7,7 +7,7 @@ import collection.mutable.HashSet
 import collection.mutable.HashMap
 import org.mitre.jcarafe.util.Options
 
-trait Trainable[T] {
+trait Trainable[T] extends Serializable {
   val lambdas: Array[Double]
   val numParams: Int
 
@@ -44,7 +44,7 @@ trait SparseTrainable[T] extends Trainable[T] with Serializable {
   val pAlpha: Double
 }
 
-class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) {
+class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) extends Serializable {
   def print() = {
     println("NLS: => " + nls)
     println("NFS: => " + nfs)

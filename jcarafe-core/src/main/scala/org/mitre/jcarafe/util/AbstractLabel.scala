@@ -1,6 +1,6 @@
 package org.mitre.jcarafe.util
 
-sealed abstract class AbstractLabel extends java.io.Serializable {
+sealed abstract class AbstractLabel extends Serializable {
   val labelString : String
   val uncertain: Boolean = false
   def labelTag(b: Boolean, additionalAtts: Option[Map[String,String]], noDuplicate: Boolean = true) : String
