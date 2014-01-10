@@ -162,7 +162,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--use-entropy-threshold"  flag "Use entropy instead of mode prob. mass as threshold criterion"
 }
 
-class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) {
+class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) extends Serializable {
   def this(argv: Array[String]) = this(argv,new OptionHandler(argv, false), true) 
   def this() = this(Array()) 
 
