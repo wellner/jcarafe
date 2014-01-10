@@ -93,7 +93,7 @@ class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) e
     }
 }
 
-class LongAlphabet(var fixed: Boolean) {
+class LongAlphabet(var fixed: Boolean) extends Serializable {
   def this() = this(false)
   var size = 0
   private val iMap = new OpenLongIntHashMap()
