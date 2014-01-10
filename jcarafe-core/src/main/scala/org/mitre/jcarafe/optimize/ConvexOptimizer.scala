@@ -310,7 +310,7 @@ abstract class LineSearch(n: Int) extends Numerical(n) {
     wa: Array[Double]) : OptimizerStatus
 }
 
-class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) with Serializable {
+class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) {
   
   private def printVec(g: Array[Double]) = {
     g foreach {e => print(" " + e)}
@@ -344,8 +344,15 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
-      if (params.veryVerbose) println("^^^ Calling evaluate within line search object: " + this.hashCode())
+      if (params.veryVerbose) {
+        println("^^^ Calling evaluate within line search object: " + this.hashCode())
+        println("Current function input:")
+        printVec(x)
+      }
       f set evaluator.evaluate(x, g, n, stp.get)
+      if (params.veryVerbose) {
+        println("Function value: " + f.get)
+      }
       cnt += 1
       if (f.get > fInit + stp.get * dgTest) 
         width = dec
