@@ -57,7 +57,7 @@ class NBinFeature(override val value: Double, prv: Int, cur: Int, fid: Int, nfid
  * @param - fixed whether the alphabet is fixed or not
  * @author Ben Wellner
  */
-class Alphabet[A](var fixed: Boolean) {
+class Alphabet[A](var fixed: Boolean) extends Serializable {
   
   val mp = new HashMap[A, Int]
   
