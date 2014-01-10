@@ -10,11 +10,11 @@ import collection.mutable.HashMap
  */
 abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extends SparseMaxEnt(nls,nfs,opts) with Serializable {
   
-  def getSimpleGradient(gr: Map[Int,DoubleCell]) : Map[Int,Double] = {
-    gr map {case (k,cell) => (k,cell.g - cell.e) }
+  def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
+    gr map {case (k,cell) => if (inv) (k, (cell.e - cell.g)) else (k,cell.g - cell.e) }
   }
   
-  def gradientOfSingleElement(el: AbstractInstance) : (Double, Map[Int,Double])= {
+  def gradientOfSingleElement(el: AbstractInstance, inv: Boolean = true) : (Double, Map[Int,Double])= {
     val localGrad : collection.mutable.Map[Int,Double] = HashMap[Int,Double]()
     var gr: Map[Int, DoubleCell] = Map[Int, DoubleCell]()
     val instFeatures: Array[CompactFeature] = el.getCompactVec
@@ -52,7 +52,8 @@ abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extend
         cost += math.log(scores(k)) * el.conditionalProb(k)
         k += 1
       }
-      (cost * w, getSimpleGradient(gr))
+      val loss = if (inv) -(cost * w) else cost * w
+      (loss, getSimpleGradient(gr, inv))
     } else {
       while (k < il) {
         var l = 0
@@ -78,7 +79,8 @@ abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extend
         }
         k += 1
       }
-      (math.log(scores(trueLabel)), getSimpleGradient(gr))
+      val loss = if (inv) -(math.log(scores(trueLabel))) else (math.log(scores(trueLabel))) 
+      (loss, getSimpleGradient(gr,inv))
     }
   }
 }
