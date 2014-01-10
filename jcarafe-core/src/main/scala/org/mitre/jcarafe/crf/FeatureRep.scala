@@ -119,6 +119,12 @@ class LongAlphabet(var fixed: Boolean) {
     }
     iMap.forEachPair(proc)    
   }
+  
+  def getInvMap = {
+    var mm = Map[Int,Long]()
+    foreach {case (k,v) => mm += (v -> k)}
+    mm
+  }
   def getUnderlyingMap: OpenLongIntHashMap = iMap
   def add(k: Long, v: Int) = {
     iMap.put(k, v)
