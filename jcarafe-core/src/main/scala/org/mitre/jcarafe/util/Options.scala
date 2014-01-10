@@ -7,7 +7,7 @@ package org.mitre.jcarafe.util
  * This will handle options provided to the trainer and decoder applications
 */
 
-abstract class CommandLineHandler {
+abstract class CommandLineHandler extends Serializable {
   val regStrMap = new scala.collection.mutable.HashMap[String,String]
   val regFlagMap = new scala.collection.mutable.HashMap[String,String]
   val regMultiMap = new scala.collection.mutable.HashMap[String,String]
@@ -79,7 +79,7 @@ class BaseOptionHandler(params: Array[String], val check: Boolean) extends Comma
 }
 
 
-class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHandler(params,check) {
+class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHandler(params,check) with Serializable {
   def this(params: Array[String]) = this(params,false)
 
   "--mode"           desc "Input/output mode: inline|json|basic"
