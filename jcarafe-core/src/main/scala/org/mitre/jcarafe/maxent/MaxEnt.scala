@@ -388,11 +388,11 @@ class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) wit
   }
 }
 
-class MaxEntTrainingSeqGen(opts: Options) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal with Serializable {
+class MaxEntTrainingSeqGen(opts: MEOptions) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal with Serializable {
   
-  def this() = this(new Options)
+  def this() = this(new MEOptions)
 
-  val frep = new MEFRep[List[(FeatureId, Double)]]
+  val frep = new MEFRep[List[(FeatureId, Double)]](None,opts)
   val boundaries = opts.boundaries
 
   def getNumberOfFeatures = frep.fMap.size * getNumberOfStates
@@ -401,11 +401,11 @@ class MaxEntTrainingSeqGen(opts: Options) extends SeqGen[List[(FeatureId, Double
 
 }
 
-class FileBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(opts) with MaxEntSeqGenAttValFromFileProcessor {
+class FileBasedMaxEntTrainingSeqGen(opts: MEOptions) extends MaxEntTrainingSeqGen(opts) with MaxEntSeqGenAttValFromFileProcessor {
   val subSeqGen = new TrainingSeqGen[String](opts) with TextSeqGen
 }
 
-class DiskBasedMaxEntTrainingSeqGen(opts: Options) extends MaxEntTrainingSeqGen(opts) {
+class DiskBasedMaxEntTrainingSeqGen(opts: MEOptions) extends MaxEntTrainingSeqGen(opts) {
 
   
   def writeInstance(odir: String, inst: MaxEntInstance) = {
@@ -484,8 +484,10 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
       mm.fixed_=(true)
       mm
     case None =>
-      if (opts.numRandomFeatures > 10) // using random/hashed features
+      if (opts.numRandomFeatures > 10) {// using random/hashed features
+        println("Using RANDOM features")
         new RandomLongAlphabet(opts.numRandomFeatures)
+      }
       else new LongAlphabet()
   }
   val unkCode = hash("$=BIAS=$", 0)
@@ -1048,6 +1050,7 @@ object MaxEntDecoder {
 
 class MEOptions(override val argv: Array[String], override val optHandler: MaxEntOptionHandler, proc: Boolean = true) extends Options(argv, optHandler, proc) with Serializable {
   def this() = this(Array(), new MaxEntOptionHandler(Array()))
+  def this(argv: Array[String]) = this(argv, new MaxEntOptionHandler(argv))
   val fileBased: Boolean = optHandler.check("--file-processing")
   val dumpInstances = optHandler.get("--dump-instances")
   val minCnt: Int = optHandler.get("--min-cnt").getOrElse("1").toInt

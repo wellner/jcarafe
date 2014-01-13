@@ -3,7 +3,7 @@ package org.mitre.jcarafe.maxent
 import org.mitre.jcarafe.util.Options
 import org.mitre.jcarafe.crf.AbstractInstance
 
-class SparseToDenseMapper(opts: Options) {
+class SparseToDenseMapper(opts: MEOptions) {
   def mapIt() = {
     val sGen = new MaxEntTrainingSeqGen(opts)
     val input: Seq[AbstractInstance] = sGen.createSeqsFromFiles(0).iseq
@@ -24,7 +24,7 @@ class SparseToDenseMapper(opts: Options) {
 
 object ConvertSparseToDense {
   def main (argv: Array[String]) : Unit = {
-    val opts = new Options(argv)
+    val opts = new MEOptions(argv)
     val mapper = new SparseToDenseMapper(opts)
     mapper.mapIt()
   }

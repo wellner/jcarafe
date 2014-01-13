@@ -7,7 +7,7 @@ package org.mitre.jcarafe.maxent
 import org.mitre.jcarafe.util.{ Options, AbstractLabel }
 import org.mitre.jcarafe.crf.AbstractInstance
 
-class FeatureAnalyzer(opts: Options) {
+class FeatureAnalyzer(opts: MEOptions) {
 
   private def log2(v: Double) = math.log(v) / math.log(2.0)
 
@@ -94,7 +94,7 @@ class FeatureAnalyzer(opts: Options) {
 
 object AnalyzeFeatures {
   def main(argv: Array[String]): Unit = {
-    val opts = new Options(argv)
+    val opts = new MEOptions(argv)
     val analyzer = new FeatureAnalyzer(opts)
     FeatureId.maintainMapping_=(true)
     analyzer.analyzeFeatures()

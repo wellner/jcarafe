@@ -16,9 +16,9 @@ import org.mitre.jcarafe.util.SLabel
 import org.mitre.jcarafe.crf.IncrementalMurmurHash
 
 class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decodingSeqGen: Option[MaxEntSeqGenAttVal] = None) {
-  def this(opts: MEOptions, sg: MaxEntSeqGenAttVal) = this(opts, new MaxEntTrainingSeqGen(new Options()), Some(sg))
-  def this(opts: MEOptions) = this(opts, new MaxEntTrainingSeqGen(new Options()))  
-  def this() = this(new MEOptions(), new MaxEntTrainingSeqGen(new Options()))
+  def this(opts: MEOptions, sg: MaxEntSeqGenAttVal) = this(opts, new MaxEntTrainingSeqGen(new MEOptions()), Some(sg))
+  def this(opts: MEOptions) = this(opts, new MaxEntTrainingSeqGen(new MEOptions()))  
+  def this() = this(new MEOptions(), new MaxEntTrainingSeqGen(new MEOptions()))
   
   import scala.collection.JavaConversions._
 
