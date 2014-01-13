@@ -8,13 +8,17 @@ import collection.mutable.HashMap
  * This version of a maxent object is 'stateless' in the sense that it doesn't store the gradient/likelihood within the 
  * object but exposes it such that other optimizers or distributed computing algorithms can use it as a sub-routine
  */
-abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extends SparseMaxEnt(nls,nfs,opts) with Serializable {
+abstract class SparseStatelessMaxEnt(nls: Int, nfs: Int, opts: MEOptions) extends MaxEntCore with Serializable {
+  
+  class DoubleCell(var g: Double, var e: Double)
+  
+  val predNFS = nfs / nls
   
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     gr map {case (k,cell) => if (inv) (k, (cell.e - cell.g)) else (k,cell.g - cell.e) }
   }
   
-  def gradientOfSingleElement(el: AbstractInstance, inv: Boolean = true) : (Double, Map[Int,Double])= {
+  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, Map[Int,Double])= {
     val localGrad : collection.mutable.Map[Int,Double] = HashMap[Int,Double]()
     var gr: Map[Int, DoubleCell] = Map[Int, DoubleCell]()
     val instFeatures: Array[CompactFeature] = el.getCompactVec
