@@ -8,7 +8,7 @@ import collection.mutable.HashMap
  * This version of a maxent object is 'stateless' in the sense that it doesn't store the gradient/likelihood within the 
  * object but exposes it such that other optimizers or distributed computing algorithms can use it as a sub-routine
  */
-abstract class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with Serializable {
+class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with Serializable {
   
   class DoubleCell(var g: Double, var e: Double)
   
