@@ -30,24 +30,7 @@ object TestSerializationDirect {
     objIn.readObject().asInstanceOf[T]
   }
 
-  class MaxEntStatelessTest(nls: Int, nfs: Int, opts: MEOptions) extends SparseStatelessMaxEnt(nls, nfs, opts)
-    with PsaLearner[AbstractInstance] with Serializable
-
   def main(args: Array[String]) = {
-    val meStateless = new MaxEntStatelessTest(2, 10, new MEOptions)
-    serialize(meStateless)
-    println("initial params = " + meStateless.numParams)
-    try {
-      val obj = deserialize[MaxEntStatelessTest]
-      println("Object deserialization completed...")
-      println("num params = " + obj.numParams)
-    } catch {
-      case e: Throwable =>
-        val swrite = new java.io.StringWriter
-        swrite.write("Deserialization failed ...\n")
-        e.printStackTrace(new java.io.PrintWriter(swrite))
-        System.err.println(swrite.toString())
-    }
     
   }
 }
