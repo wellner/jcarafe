@@ -161,6 +161,7 @@ abstract class CoreModelSerializer {
   kryo.register(classOf[MaxEntModel])
   kryo.register(classOf[WordProperties])
   kryo.register(classOf[RandomLongAlphabet])
+  kryo.register(classOf[LongAlphabet])
   kryo.register(classOf[BloomLexicon])
   kryo.register(classOf[BloomFilter])  
 

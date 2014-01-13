@@ -31,6 +31,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--fspec" desc "Feature spec"
   "--min-cnt" desc "Minimum number of feature occurrences"
   "--evaluate" desc "Evaluate decoder on gold-standard test data"
+  "--num-random-features" desc "Size of Random Feature Vector"
   "--word-properties" desc "Word properties file"
   "--word-scores" desc "Word scores file"
   "--parallel" flag "Parallelize feature expectation computation"
