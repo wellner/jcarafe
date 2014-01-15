@@ -66,6 +66,7 @@ object JsonAnnotationHandler {
                         val vl = signal match { case Some(sig) => Some(sig.substring(st, en)) case None => None }
                         annotBuf += new Annotation(st, en, false, SLabel(s), vl)
                       case JsArray(JsInt(st) :: JsInt(en) :: attvlsP) => // case where annotation has an attribute
+                        
                         val attvls: List[String] = attvlsP map { case JsString(s1) => s1 case _ => "--" }
                         val attVlMap = (s_attsKeys zip attvls).foldLeft(Map(): Map[String, String]) { _ + _ }
                         var attC: Option[String] = None
@@ -74,7 +75,8 @@ object JsonAnnotationHandler {
                         if (asPreProc) {                          
                           annotBuf += new Annotation(st, en, false, SLabel(s), vl, Some(attVlMap))
                         } else {
-                          tagset.set.foreach { al: AbstractLabel =>
+                          // a bit clumsy, but find tagset elements whose label head matches the annotation type
+                          tagset.set.filter{_.labelHead equals s} foreach { al: AbstractLabel =>                            
                             al match {
                               case Label(_, _) =>
                                 al.hasValue(attvls) match { // in this case, just check whether attribute value matches a provided label

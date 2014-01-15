@@ -211,7 +211,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   }
   
   def toSources(d: DeserializationT): Seqs = {
-    val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)  
+    val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
     def seqOfTokArr(tarr: Array[Annotation]) = {
       forIndex(tarr.length) { i =>
         val curTok = tarr(i)
