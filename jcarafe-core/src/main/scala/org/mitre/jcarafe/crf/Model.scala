@@ -5,7 +5,7 @@
 package org.mitre.jcarafe.crf
 import scala.collection.mutable.HashMap
 import scala.collection.immutable.IntMap
-import cern.colt.map.OpenLongObjectHashMap;
+import cern.colt.map.{OpenLongObjectHashMap,AbstractLongIntMap,OpenLongIntHashMap};
 import org.mitre.jcarafe.util._
 
 case class ModelMetaData(val ver: String, val date: String, val user: String)
@@ -164,6 +164,8 @@ abstract class CoreModelSerializer {
   kryo.register(classOf[LongAlphabet])
   kryo.register(classOf[BloomLexicon])
   kryo.register(classOf[BloomFilter])  
+  kryo.register(classOf[OpenLongIntHashMap])
+  kryo.register(classOf[AbstractLongIntMap])
 
   protected def checkModel(m: Model) = {
     import FastLoops._
@@ -220,14 +222,14 @@ object InducedFeatureMapProtocol {
 object MaxEntSerializer extends CoreModelSerializer {
   import com.esotericsoftware.kryo.io.{Input => KInput, Output => KOutput}
   
-  def writeModel(m: MaxEntModel, f: java.io.File) = {
+  def writeModel(m: MaxEntModel, f: java.io.File) = {    
     checkModel(m)
-    val am = Model.compactMEModel(m)
+    //val am = Model.compactMEModel(m)
     val os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(f))
     val output = new KOutput(os)
-    kryo.writeObject(output, am)
+    kryo.writeObject(output, m)
     output.close
-    os.close()    
+    os.close()
   }
   
   def serializeAsBytes(m: MaxEntModel) : Array[Byte] = {
@@ -239,7 +241,7 @@ object MaxEntSerializer extends CoreModelSerializer {
 
   def readModel(kInput: KInput) : MaxEntModel = {
     val m = kryo.readObject(kInput, classOf[MaxEntModel])
-    kInput.close()
+    kInput.close()    
     m
   }
   

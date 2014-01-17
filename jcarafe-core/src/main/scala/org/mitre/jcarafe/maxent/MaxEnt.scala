@@ -504,9 +504,10 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
   def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None): Unit = {
     val fid = fMap.update(fname)
     if (fid >= 0) {
-      updateStatistics(fid, vl)
+      updateStatistics(fid, vl)      
       inst add (new CompactFeature(vl, fid, clWts))
     }
+    
   }
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
@@ -928,8 +929,7 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     if (decodingOpts.fileBased)
       new FileBasedMaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
     else new MaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
-  
-  
+    
   setDecoder(true)
 
   protected def gatherFeatures(seqs: Seq[InstanceSequence]): Set[String] =
@@ -989,10 +989,13 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     if (decodingOpts.fileBased) decodeFileBased()
     else decodeStd()
   }
+  
+  
+  
 
   def decodeStd() = {
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
-
+        
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
       val evaluator = new Evaluator(decodingOpts, sGen)
