@@ -516,6 +516,10 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
   
   var localParams : Array[Double] = Array() // ugly way to do this
   override def getLambdas = localParams
+  
+  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+    new CoreModel(getLambdas, nls, nfs)
+  }
     
   def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     var mm = Map[Int,Double]()
