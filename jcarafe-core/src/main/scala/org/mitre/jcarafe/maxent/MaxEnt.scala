@@ -485,7 +485,7 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
       mm
     case None =>
       if (opts.numRandomFeatures > 10) {// using random/hashed features
-        println("Using RANDOM features")
+        println("!!! Using RANDOM/Hashed features !!!")
         new RandomLongAlphabet(opts.numRandomFeatures)
       }
       else new LongAlphabet()

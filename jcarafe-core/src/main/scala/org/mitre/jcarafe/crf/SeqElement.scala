@@ -170,9 +170,9 @@ class FastNonFactoredCrfInstance(label: Int, orig: Int) extends NonFactoredCrfIn
 class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[Map[String, String]], var condTable: Map[Int,Double] = Map()) extends SeqElement(lab) {
   def this (obs: Obs, beg: Boolean, info: Option[Map[String,String]], ct: Map[Int,Double]) = this(0,obs,beg,info,ct)
   import IncrementalMurmurHash._
-  val st = obs.toString
+  lazy val st = obs.toString
   //val code = if (isNumberString(st)) numSpecialHash else hash(st)
-  val code = hash(st)
+  lazy val code = hash(st)
   lazy val prefCode = 
     if (st.size < 6) code
     else if (isNumberString(st)) numSpecialHash
