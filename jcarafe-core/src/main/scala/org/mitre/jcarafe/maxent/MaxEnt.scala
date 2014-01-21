@@ -107,14 +107,18 @@ object FeatureId {
   val fMapping = new collection.mutable.HashMap[Long, String]()
   val unkCode = hash("$=BIAS=$", 0)
   var maintainMapping = false
+  var useFeatureClasses = false
 
-  def apply(s: String) = s.split('|').toList match {
-    case a :: b :: Nil =>
-      val fid = new FeatureId(b, a); if (maintainMapping) fMapping.update(fid.fnId, b); fid
-    case a :: _ =>
-      val fid = new FeatureId(a); if (maintainMapping) fMapping.update(fid.fnId, a); fid
-    case Nil => throw new RuntimeException("Unable to parse input line: " + s)
-  }
+  def apply(s: String) =
+    if (useFeatureClasses) {
+      s.split('|').toList match {
+        case a :: b :: Nil =>
+          val fid = new FeatureId(b, a); if (maintainMapping) fMapping.update(fid.fnId, b); fid
+        case a :: _ =>
+          val fid = new FeatureId(a); if (maintainMapping) fMapping.update(fid.fnId, a); fid
+        case Nil => throw new RuntimeException("Unable to parse input line: " + s)
+      }
+    } else new FeatureId(s)
 }
 
 class MaxEntFeatureType(val fid: Int) extends FeatureType(0L, false, 0)
@@ -389,10 +393,10 @@ class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) wit
 }
 
 class MaxEntTrainingSeqGen(opts: MEOptions) extends SeqGen[List[(FeatureId, Double)]](opts) with MaxEntSeqGenAttVal with Serializable {
-  
+
   def this() = this(new MEOptions)
 
-  val frep = new MEFRep[List[(FeatureId, Double)]](None,opts)
+  val frep = new MEFRep[List[(FeatureId, Double)]](None, opts)
   val boundaries = opts.boundaries
 
   def getNumberOfFeatures = frep.fMap.size * getNumberOfStates
@@ -407,10 +411,9 @@ class FileBasedMaxEntTrainingSeqGen(opts: MEOptions) extends MaxEntTrainingSeqGe
 
 class DiskBasedMaxEntTrainingSeqGen(opts: MEOptions) extends MaxEntTrainingSeqGen(opts) {
 
-  
   def writeInstance(odir: String, inst: MaxEntInstance) = {
     val ofile = new java.io.File(odir + "/" + cnt.toString)
-    MESerializations.writeInstance(inst,ofile)
+    MESerializations.writeInstance(inst, ofile)
   }
 
   protected def toDiskInstances(inReader: DeserializationT): Unit = {
@@ -458,8 +461,8 @@ class DiskBasedMaxEntTrainingSeqGen(opts: MEOptions) extends MaxEntTrainingSeqGe
 
 class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new MEOptions) extends FeatureRep[Obs](false) with Serializable {
   def this(m: MaxEntModel) = this(Some(m))
-  def this(m: MaxEntModel, opts: MEOptions) = this(Some(m),opts)
-  
+  def this(m: MaxEntModel, opts: MEOptions) = this(Some(m), opts)
+
   var inducedFeatureMap: Option[InducedFeatureMap] = None
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]) = new ObsSource(l, o, b, None)
   def createSource(l: Int, o: Obs, b: Boolean) = new ObsSource(l, o, b, None)
@@ -476,7 +479,6 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
   def getWordProps: Option[WordProperties] = None
   def getWordScores: Option[WordScores] = None
   def getInducedFeatureMap: Option[InducedFeatureMap] = inducedFeatureMap
-  
 
   val fMap = m match {
     case Some(m) =>
@@ -484,11 +486,10 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
       mm.fixed_=(true)
       mm
     case None =>
-      if (opts.numRandomFeatures > 10) {// using random/hashed features
+      if (opts.numRandomFeatures > 10) { // using random/hashed features
         println("!!! Using RANDOM/Hashed features !!!")
         new RandomLongAlphabet(opts.numRandomFeatures)
-      }
-      else new LongAlphabet()
+      } else new LongAlphabet()
   }
   val unkCode = hash("$=BIAS=$", 0)
 
@@ -504,10 +505,10 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
   def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None, getStats: Boolean = false): Unit = {
     val fid = fMap.update(fname)
     if (fid >= 0) {
-      if (getStats) updateStatistics(fid, vl)      
+      if (getStats) updateStatistics(fid, vl)
       inst add (new CompactFeature(vl, fid, clWts))
     }
-    
+
   }
 
   def createMEInstance(l: Int, o: Int): MaxEntInstance = new MaxEntInstance(l, o)
@@ -536,7 +537,6 @@ class FileBasedMaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends Decodin
   def createInstancesOnDisk: Unit = {}
 
   val frep = new MEFRep[List[(FeatureId, Double)]](m)
-  
 
 }
 
@@ -775,8 +775,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
       } else buildInstance(l)
     } else None
   }
-  
-  def toAbstractInstanceSeq(inReader: DeserializationT, quiet: Boolean = false) : Seq[AbstractInstance] = {
+
+  def toAbstractInstanceSeq(inReader: DeserializationT, quiet: Boolean = false): Seq[AbstractInstance] = {
     val instr = inReader.is
     var l = instr.readLine()
     val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
@@ -798,8 +798,8 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     filterAndNormalizeFeatures(insts)
     insts
   }
-  
-  def toAbstractInstance(s: String) : AbstractInstance = {
+
+  def toAbstractInstance(s: String): AbstractInstance = {
     buildInstanceUsingPosteriors(s).get
   }
 
@@ -929,7 +929,7 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     if (decodingOpts.fileBased)
       new FileBasedMaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
     else new MaxEntDecodeSeqGen(model, decodingOpts) with SeqGenScorer[List[(FeatureId, Double)]]
-    
+
   setDecoder(true)
 
   protected def gatherFeatures(seqs: Seq[InstanceSequence]): Set[String] =
@@ -989,13 +989,10 @@ class MaxEntDecoder(decodingOpts: MEOptions, val model: MaxEntModel) extends Dec
     if (decodingOpts.fileBased) decodeFileBased()
     else decodeStd()
   }
-  
-  
-  
 
   def decodeStd() = {
     val decoder = new MaxEntDecodingAlgorithm(model.crf)
-        
+
     if (decodingOpts.evaluate.isDefined) {
       val seqs = sGen.createSeqsFromFiles
       val evaluator = new Evaluator(decodingOpts, sGen)
