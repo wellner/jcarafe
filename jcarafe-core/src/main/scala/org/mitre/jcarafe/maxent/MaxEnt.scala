@@ -501,10 +501,10 @@ class MEFRep[Obs](val m: Option[MaxEntModel] = None, val opts: MEOptions = new M
     featureStatistics += ((fid, (nCnt, nMax)))
   }
 
-  def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None): Unit = {
+  def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]] = None, getStats: Boolean = false): Unit = {
     val fid = fMap.update(fname)
     if (fid >= 0) {
-      updateStatistics(fid, vl)      
+      if (getStats) updateStatistics(fid, vl)      
       inst add (new CompactFeature(vl, fid, clWts))
     }
     
