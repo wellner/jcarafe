@@ -112,8 +112,8 @@ class SelfInducibleMEFRep[Obs](m: Option[MaxEntModel]) extends MEFRep[Obs](m) {
   override def createMEInstance(l: Int, o: Int) = new SelfInducibleMaxEntInstance(l, o)
   override def getInducedFeatureMap: Option[InducedFeatureMap] = m.get.inducedMap
 
-  override def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]]): Unit = {
-    super.addMEFeature(inst, fname, vl, clWts)
+  override def addMEFeature(inst: MaxEntInstance, fname: Long, vl: Double, clWts: Option[Array[Double]], getStats: Boolean = false): Unit = {
+    super.addMEFeature(inst, fname, vl, clWts, getStats)
     inst.addSelf(fname) // add this feature (regardless of whether we saw it during training) to self-inducible feature set
   }
 
