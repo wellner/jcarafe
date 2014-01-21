@@ -16,6 +16,8 @@ trait Trainable[T] extends Serializable {
   def initialize(): Unit
 
   def getCoreModel(): CoreModel
+  
+  def getLambdas : Array[Double] = lambdas
 
   def train(accessSeq: AccessSeq[T], num: Int = 200, mi: Option[(CoreModel, Int) => Unit] = None): CoreModel
 
@@ -137,12 +139,13 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   def this(nls: Int, nfs: Int, segSize: Int) = this(Array.fill(nfs)(0.0), nls, nfs, segSize, 10.0, 0, 0)
   def this(nls: Int, nfs: Int) = this(nls, nfs, 1)
 
-  def getCoreModel() = new CoreModel(lambdas, numParams, nls, nNfs, nGates)
+  def getCoreModel() = new CoreModel(getLambdas, numParams, nls, nNfs, nGates)
   
   def resetParameters() : Unit = {
-    val l = lambdas.length
+    val params = getLambdas
+    val l = params.length
     var i = 0; while (i < l) {
-      lambdas(i) = 0.0
+      params(i) = 0.0
       i += 1
     }
   }
@@ -236,7 +239,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   }
 
   protected def computeScores(inst_features: Array[Array[Feature]], takeExp: Boolean) =
-    Crf.computeScores(ri, mi, inst_features, takeExp, curNls, lambdas)
+    Crf.computeScores(ri, mi, inst_features, takeExp, curNls, getLambdas)
 
   protected def vecSum(vec: Array[Double]) = {
     var s = 0.0; var i = 0;
@@ -301,9 +304,10 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
   def regularize() = {
     var i = 0
     var llMod = 0.0
-    val llen = lambdas.length
+    val params = getLambdas
+    val llen = params.length
     while (i < llen) {
-      val li = lambdas(i)
+      val li = params(i)
       gradient(i) = li * invSigSqr
       featureExpectations(i) = 0.0 // need to set this to zero again
       llMod += (li * li * invSigSqr) / 2.0
@@ -313,6 +317,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
   }
 
   protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+    val params = getLambdas
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
@@ -329,7 +334,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
         val inst = instFeatures0(k)
         if ((label == inst.cur) && ((inst.prv < 0) || ((i > 0) && (iseq(i - 1).label == inst.prv)))) {
           gradient(inst.fid) -= inst.value
-          seqLogLi += lambdas(inst.fid) * inst.value
+          seqLogLi += params(inst.fid) * inst.value
         }
         if (inst.prv < 0) 
           featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value
@@ -428,6 +433,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
   protected def forwardPass(iseq: Seq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
+    val params = getLambdas
     while (i < iseq.length) {
       val instFeatures = iseq(i).getCompVec
       val label = iseq(i).label
@@ -449,7 +455,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
         }
         if ((label == inst.cur) && ((inst.prv < 0) || ((i > 0) && (iseq(i - 1).label == inst.prv)))) {
           gref.g_=(gref.g + inst.value)
-          seqLogLi += lambdas(inst.fid) * inst.value
+          seqLogLi += params(inst.fid) * inst.value
         }
         if (inst.prv < 0) gref.e_=((gref.e + newA(inst.cur) * beta(i)(inst.cur)) * inst.value)
         else gref.e_=((gref.e + curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur)) * inst.value)
@@ -468,6 +474,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
     val asize = batchSize min seqAccessor.length
     var gradNormalizer = 0.0
     var totalLL = 0.0
+    val params = getLambdas
     for (i <- curPos until curPos + asize) {
       val j = i % seqAccessor.length
       val iseq = seqAccessor(j)
@@ -495,7 +502,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
     if (gradNormalizer > 50.0) {
       numGradIssues += 1
       val nn = 50.0 / gradNormalizer
-      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - lambdas(k) * invSigSqr)
+      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - params(k) * invSigSqr)
     } else {
       for ((k, cell) <- gradient) {
         cell.g_=(cell.g - lambdas(k) * invSigSqr)
@@ -506,8 +513,10 @@ abstract class StochasticCrf(lambdas: Array[Double],
 }
 
 class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 0, new Options, 0, 0) with Serializable {
-  final override var lambdas = Array.fill(0)(0.0)
   
+  var localParams : Array[Double] = Array() // ugly way to do this
+  override def getLambdas = localParams
+    
   def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     var mm = Map[Int,Double]()
     gr foreach {case (k,cell) => if (inv) mm += ((k, (cell.e - cell.g))) else mm += ((k,cell.g - cell.e)) }
@@ -515,7 +524,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
   }
   
   def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) = {
-    lambdas = curLambdas // set the parameter array reference directly
+    localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
     var gradNormalizer = 0.0
