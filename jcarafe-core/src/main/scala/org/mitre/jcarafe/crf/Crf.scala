@@ -505,6 +505,48 @@ abstract class StochasticCrf(lambdas: Array[Double],
   }
 }
 
+class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 0, new Options, 0, 0) with Serializable {
+  final override var lambdas = Array.fill(0)(0.0)
+  
+  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
+    var mm = Map[Int,Double]()
+    gr foreach {case (k,cell) => if (inv) mm += ((k, (cell.e - cell.g))) else mm += ((k,cell.g - cell.e)) }
+    mm
+  }
+  
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) = {
+    lambdas = curLambdas // set the parameter array reference directly
+    val iseq = s.iseq
+    val sl = iseq.length
+    var gradNormalizer = 0.0
+    gradient.clear // clear the 
+      if (sl > 0) {
+        reset(iseq.length)
+        gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
+        backwardPass(iseq)
+        var sll = forwardPass(iseq)
+        val pzx = vecSum(curA)
+        val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
+        sll -= math.log(zx)
+        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+        for ((k, cell) <- gradient) {
+          cell.g_=(cell.g - (cell.e / zx))
+          val cabs = math.abs(cell.g)
+          if (cabs > gradNormalizer) { gradNormalizer = cabs }
+        }
+      }
+    if (gradNormalizer > 50.0) {
+      val nn = 50.0 / gradNormalizer
+      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - lambdas(k) * invSigSqr)
+    } else {
+      for ((k, cell) <- gradient) {
+        cell.g_=(cell.g - lambdas(k) * invSigSqr)
+      }
+    }
+    getSimpleGradient(gradient)
+  }
+}
+
 /**
  * A set of static methods used by Crf objects as well as by decoders (e.g. Viterbi)
  */
