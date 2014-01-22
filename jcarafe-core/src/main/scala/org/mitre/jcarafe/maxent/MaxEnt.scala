@@ -328,21 +328,23 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
   }
 
   override def getGradient(seqAccessor: AccessSeq[AbstractInstance]) = getGradient(true, seqAccessor)
-  def getGradient(l2: Boolean, seqAccessor: AccessSeq[AbstractInstance]) = {
+  
+  def getGradient(l2: Boolean, seqAccessor: AccessSeq[AbstractInstance]) : Option[Double] = {
     val asize = batchSize
     val sl = seqAccessor.length
-    var gradNormalizer = 0.0
+    var ll = 0.0
     for (i <- curPos until curPos + asize) {
       val j = i % sl
       gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
       val el = seqAccessor.accessSingleInstance(j)
-      val gr = gradOfElement(el)
+      val l = gradOfElement(el)
+      ll -= l
       for ((k, cell) <- gradient) {
         cell.g_=(cell.g - cell.e)
       }
     }
     curPos += asize
-    None
+    Some(ll)
   }
 }
 
@@ -845,7 +847,12 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
         }
         println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
         new DenseParallelMaxEnt(numPs, sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts.gaussian)
-      } else if (opts.psa) {
+      } else if (opts.sgd) {
+        if (opts.l1)
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with SgdLearnerWithL1[AbstractInstance]
+        else 
+          new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with SgdLearner[AbstractInstance]
+      } else if (opts.psa) {      
         println("PSA training....")
         if (opts.l1)
           new SparseMaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
