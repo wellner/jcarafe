@@ -906,7 +906,12 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
       }
       println(">> Initiating Parallel Training using " + numPs + " processors <<\n")
       new DenseParallelMaxEnt(numPs, nstates, sGen.getNumberOfFeatures, opts.gaussian)
-    } else if (opts.psa) {
+    } else if (opts.sgd) {
+        if (opts.l1)
+          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with SgdLearnerWithL1[AbstractInstance]
+        else 
+          new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with SgdLearner[AbstractInstance]
+      } else if (opts.psa) {
       if (opts.l1)
         new SparseMaxEnt(nstates, sGen.getNumberOfFeatures, opts) with PsaLearnerWithL1[AbstractInstance]
       else
