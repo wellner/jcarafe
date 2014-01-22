@@ -527,11 +527,12 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     mm
   }
   
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Map[Int,Double]) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
     var gradNormalizer = 0.0
+    var ll = 0.0
     gradient.clear // clear the 
       if (sl > 0) {
         reset(iseq.length)
@@ -547,6 +548,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
           val cabs = math.abs(cell.g)
           if (cabs > gradNormalizer) { gradNormalizer = cabs }
         }
+        ll += sll
       }
     if (gradNormalizer > 50.0) {
       val nn = 50.0 / gradNormalizer
@@ -556,7 +558,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
         cell.g_=(cell.g - lambdas(k) * invSigSqr)
       }
     }
-    getSimpleGradient(gradient)
+    (ll,getSimpleGradient(gradient))
   }
 }
 
