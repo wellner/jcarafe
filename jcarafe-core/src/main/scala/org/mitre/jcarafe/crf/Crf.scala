@@ -537,6 +537,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     val sl = iseq.length
     var gradNormalizer = 0.0
     var ll = 0.0
+    val params = getLambdas
     gradient.clear // clear the 
       if (sl > 0) {
         reset(true,iseq.length)
@@ -556,10 +557,10 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
       }
     if (gradNormalizer > 50.0) {
       val nn = 50.0 / gradNormalizer
-      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - lambdas(k) * invSigSqr)
+      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - params(k) * invSigSqr)
     } else {
       for ((k, cell) <- gradient) {
-        cell.g_=(cell.g - lambdas(k) * invSigSqr)
+        cell.g_=(cell.g - params(k) * invSigSqr)
       }
     }
     (ll,getSimpleGradient(gradient))
