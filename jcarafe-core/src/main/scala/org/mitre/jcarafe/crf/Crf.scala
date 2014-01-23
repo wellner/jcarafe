@@ -179,21 +179,21 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   /**
    * For each segment size (general case) the ri matrix holds state scores for each label
    */
-  var ri: Matrix = Array.fill(segSize, nls)(0.0)
+  val ri: Matrix = Array.fill(segSize, nls)(0.0)
   /**
    * For each segment size, the mi matrix holds transition scores for adjacent labels
    */
-  var mi: Tensor = Array.fill(segSize, nls, nls)(0.0)
+  val mi: Tensor = Array.fill(segSize, nls, nls)(0.0)
   /**
    * Current alpha values used for Forward-Backward computation
    */
-  var curA: Array[Double] = Array.fill(nls)(0.0)
+  val curA: Array[Double] = Array.fill(nls)(0.0)
   /**
    * Alpha values at the next position used for Forward-Backward computation
    */
-  var newA: Array[Double] = Array.fill(nls)(0.0)
+  val newA: Array[Double] = Array.fill(nls)(0.0)
 
-  var tmp: Array[Double] = Array.fill(nls)(0.0)
+  val tmp: Array[Double] = Array.fill(nls)(0.0)
 
   /**
    * An array of scaling coefficients to avoid underflow without having to do computations
@@ -216,7 +216,9 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   def initialize() = {}
 
   protected def reset(all: Boolean, slen: Int): Unit = {
-    val aNls = if (adjustible) slen else nls
+    //val aNls = if (adjustible) slen else nls
+    val aNls = nls
+    /*
     if (adjustible) {
       ri = Array.fill(segSize, slen)(0.0)
       mi = Array.fill(segSize, slen, slen)(0.0)
@@ -230,6 +232,8 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
       }
     }
     if (adjustible) curNls = slen
+    * 
+    */
     if (all && (alpha.length < slen)) alpha = Array.fill(2 * slen, aNls)(0.0)
     else for (i <- 0 until aNls) curA(i) = 1.0
     if (beta.length < slen) {
@@ -535,7 +539,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     var ll = 0.0
     gradient.clear // clear the 
       if (sl > 0) {
-        reset(iseq.length)
+        reset(true,iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
         var sll = forwardPass(iseq)
