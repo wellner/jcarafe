@@ -84,7 +84,8 @@ object BloomFilter {
 
 class BloomFilter(val size: Int, val width: Int) {
   
-  val filter = new collection.mutable.BitSet 
+  //val filter = new collection.mutable.BitSet
+  val filter = new java.util.BitSet()
 
   import org.mitre.jcarafe.crf.IncrementalMurmurHash.mix
 
@@ -95,10 +96,9 @@ class BloomFilter(val size: Int, val width: Int) {
 
   def contains(k: Long): Boolean = {
     var c = true
-    var going = true
     var i = 0
     while (c && i < size) {
-      c = filter(getHash(k, i))
+      c = filter.get(getHash(k, i))
       i += 1
     }
     c
@@ -106,7 +106,7 @@ class BloomFilter(val size: Int, val width: Int) {
   
   def add(l: Long) : Unit = {
     var i = 0; while (i < size) {    
-      filter.add(getHash(l, i))
+      filter.set(getHash(l, i))
       i += 1
     }
   }
