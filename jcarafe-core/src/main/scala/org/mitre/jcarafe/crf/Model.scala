@@ -166,6 +166,7 @@ abstract class CoreModelSerializer {
   kryo.register(classOf[BloomFilter])  
   kryo.register(classOf[OpenLongIntHashMap])
   kryo.register(classOf[AbstractLongIntMap])
+  kryo.register(classOf[java.util.BitSet])
 
   protected def checkModel(m: Model) = {
     import FastLoops._
