@@ -35,7 +35,7 @@ class CompactFeature(val v: Double, val fid: Int, val classLabelWeights: Option[
  * @param nfid - feature id for neural features
  * @author Ben Wellner
 */
-class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) extends FeatureCore {
+class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) extends FeatureCore with Serializable {
 
   import IncrementalMurmurHash._
   def this(prv: Int, cur: Int, fid: Int) = this(prv, cur, fid, -1)
@@ -204,7 +204,7 @@ class SemiRandomFsetMappingOptimized(val sz: Int, val arr: Array[Array[Int]]) {
  * @param fcat - category for whether feature is standard, neural or multi
  * @author Ben Wellner
 */
-class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fcat: FeatureCat = StdFeature) extends FeatureCore {
+class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fcat: FeatureCat = StdFeature) extends FeatureCore with Serializable {
   private var fdetailSet: collection.immutable.Set[Feature] = Set()
 
   def add(f: Feature) = fdetailSet += f
@@ -224,7 +224,7 @@ class FeatureType(val fname: Long, val edgep: Boolean, val segsize: Int, val fca
   override def hashCode: Int = 41 * (41 * (41 + fname.toInt) + segsize) + edgep.hashCode
 }
 
-abstract class AbstractValuedFeatureType(val value: Double) extends FeatureCore {
+abstract class AbstractValuedFeatureType(val value: Double) extends FeatureCore with Serializable {
   def getFeatures: Iterable[Feature]
   def segsize: Int
 }
