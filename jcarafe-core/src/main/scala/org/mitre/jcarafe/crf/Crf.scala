@@ -516,7 +516,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
   }
 }
 
-class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 0, new Options, 0, 0) with Serializable {
+class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, new Options, 0, 0) with Serializable {
   
   var localParams : Array[Double] = Array() // ugly way to do this
   override def getLambdas = localParams
