@@ -528,7 +528,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     
   def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     var mm = Map[Int,Double]()
-    gr foreach {case (k,cell) => if (inv) mm += ((k, (cell.e - cell.g))) else mm += ((k,cell.g - cell.e)) }
+    gr foreach {case (k,cell) => if (inv) mm += ((k, -(cell.g))) else mm += ((k,cell.g)) }
     mm
   }
   
@@ -563,7 +563,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
         cell.g_=(cell.g - params(k) * invSigSqr)
       }
     }
-    (-ll,getSimpleGradient(gradient,false))
+    (-ll,getSimpleGradient(gradient,true)) // get negative LL and inverted gradient for LBFGS optimization
   }
 }
 
