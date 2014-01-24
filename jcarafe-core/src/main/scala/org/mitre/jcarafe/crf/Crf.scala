@@ -445,6 +445,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
       Array.copy(curA, 0, tmp, 0, curNls)
       Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
+      
       var k = 0
       val nfeas = instFeatures(0).length
       val instFeatures0 = instFeatures(0)
@@ -487,10 +488,10 @@ abstract class StochasticCrf(lambdas: Array[Double],
         reset(iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
-        var sll = forwardPass(iseq)
+        var sll = forwardPass(iseq)        
         val pzx = vecSum(curA)
         val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
-        sll -= math.log(zx)
+        sll -= math.log(zx)        
         for (k <- 0 until iseq.length) sll -= math.log(scale(k))
         for ((k, cell) <- gradient) {
           cell.g_=(cell.g - (cell.e / zx))
@@ -540,7 +541,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     val params = getLambdas
     gradient.clear // clear the 
       if (sl > 0) {
-        reset(true,iseq.length)
+        reset(iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
         var sll = forwardPass(iseq)
