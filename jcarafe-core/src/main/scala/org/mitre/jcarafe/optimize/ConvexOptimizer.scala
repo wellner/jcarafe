@@ -310,6 +310,7 @@ abstract class LineSearch(n: Int) extends Numerical(n) {
     wa: Array[Double]) : OptimizerStatus
 }
 
+
 class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val params: Params) extends LineSearch(n) {
   
   private def printVec(g: Array[Double]) = {
