@@ -510,7 +510,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
       for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - params(k) * invSigSqr)
     } else {
       for ((k, cell) <- gradient) {
-        cell.g_=(cell.g - lambdas(k) * invSigSqr)
+        cell.g_=(cell.g - params(k) * invSigSqr)
       }
     }
     Some(totalLL)
@@ -544,17 +544,16 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
         reset(iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
-        var sll = forwardPass(iseq)
+        ll = forwardPass(iseq)
         val pzx = vecSum(curA)
         val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
-        sll -= math.log(zx)
-        for (k <- 0 until iseq.length) sll -= math.log(scale(k))
+        ll -= math.log(zx)
+        for (k <- 0 until iseq.length) ll -= math.log(scale(k))
         for ((k, cell) <- gradient) {
           cell.g_=(cell.g - (cell.e / zx))
           val cabs = math.abs(cell.g)
           if (cabs > gradNormalizer) { gradNormalizer = cabs }
-        }
-        ll += sll
+        }       
       }
     if (gradNormalizer > 50.0) {
       val nn = 50.0 / gradNormalizer
@@ -564,7 +563,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
         cell.g_=(cell.g - params(k) * invSigSqr)
       }
     }
-    (ll,getSimpleGradient(gradient))
+    (-ll,getSimpleGradient(gradient,false))
   }
 }
 
