@@ -5,7 +5,7 @@
 package org.mitre.jcarafe.crf
 import collection.mutable.HashSet
 import collection.mutable.HashMap
-import org.mitre.jcarafe.util.Options
+import org.mitre.jcarafe.util.{Options, SparseVector}
 
 trait Trainable[T] extends Serializable {
   val lambdas: Array[Double]
@@ -526,10 +526,10 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     new CoreModel(getLambdas, nls, nfs)
   }
     
-  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
-    var mm = Map[Int,Double]()
-    gr foreach {case (k,cell) => if (inv) mm += ((k, -(cell.g))) else mm += ((k,cell.g)) }
-    mm
+  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : SparseVector = {
+    val indices = gr.keys.toArray
+    val values = if (inv) gr.values map {c => -(c.g)} else gr.values map {_.g}
+    new SparseVector(indices, values.toArray)
   }
   
   def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Map[Int,Double]) = {
