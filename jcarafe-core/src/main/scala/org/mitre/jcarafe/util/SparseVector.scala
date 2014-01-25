@@ -10,5 +10,7 @@ class SparseVector(val indices: Array[Int], val values: Array[Double]) extends S
   def map(f: Double => Double) = {
     new SparseVector(indices, (values map {x => f(x)}))
   }
+  
 
 }
+
