@@ -1,6 +1,7 @@
 package org.mitre.jcarafe.maxent
 
 import org.mitre.jcarafe.crf.{AbstractInstance, PsaLearner, CompactFeature}
+import org.mitre.jcarafe.util.SparseVector
 import java.io.File
 import collection.mutable.HashMap
 
@@ -14,11 +15,13 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
   
   val predNFS = nfs / nls
   
-  def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
-    gr map {case (k,cell) => if (inv) (k, (cell.e - cell.g)) else (k,cell.g - cell.e) }
+  def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVector = {
+    val indices = gr.keys.toArray
+    val values = if (inv) gr.values map {cell => cell.e - cell.g} else gr.values map {cell => cell.g - cell.e}
+    new SparseVector(indices, values.toArray)
   }
   
-  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, Map[Int,Double])= {
+  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, Map[Int,Double]) = {
     val localGrad : collection.mutable.Map[Int,Double] = HashMap[Int,Double]()
     var gr: Map[Int, DoubleCell] = Map[Int, DoubleCell]()
     val instFeatures: Array[CompactFeature] = el.getCompactVec
