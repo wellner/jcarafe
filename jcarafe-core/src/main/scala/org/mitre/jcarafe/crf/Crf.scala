@@ -532,7 +532,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     new SparseVector(indices, values.toArray)
   }
   
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Map[Int,Double]) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVector) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
