@@ -7,6 +7,8 @@ package org.mitre.jcarafe.util
  */
 class SparseVector(val indices: Array[Int], val values: Array[Double]) extends Serializable {
   
+  require(indices.length == values.length)
+  
   val length = indices.length
   
   def map(f: Double => Double) = {
@@ -34,7 +36,7 @@ class SparseVector(val indices: Array[Int], val values: Array[Double]) extends S
       if (iVal1 >= 0 && iVal2 >= 0) { 
         if (iVal1 == iVal2) {// both have this index
           nindices append iVal1
-          data append (this.values(i1) + sp.values(i1))
+          data append (this.values(i1) + sp.values(i2))
           i1 += 1
           i2 += 1
         }
@@ -87,6 +89,11 @@ object TestSparseVec {
     val v2 = SparseVector(Map(5 -> 1.0, 8 -> 1.0, 10 -> 1.0))
     val v3 = v1.add(v2)
     v3.printVec
+    
+    val w1 = SparseVector(Map())
+    val w2 = SparseVector(Map(2 -> 1.0))
+    val w3 = w1.add(w2)
+    w3.printVec
   }
 }
 
