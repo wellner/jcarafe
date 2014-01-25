@@ -16,13 +16,17 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
   val predNFS = nfs / nls
   
   def getSimpleGradientCompact(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVector = {
-    val indices = gr.keys.toArray
-    val values = if (inv) gr.values map {cell => cell.e - cell.g} else gr.values map {cell => cell.g - cell.e}
-    new SparseVector(indices, values.toArray)
+    val nm = gr map {case (k,v) => if (inv) (k,(v.e - v.g)) else (k,(v.g - v.e))}
+    SparseVector(nm)
   }
   
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     gr map {case (k,v) => if (inv) (k,(v.e - v.g)) else (k,(v.g - v.e))}
+  }
+  
+  def gradientOfSingleElementAsSprase(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, SparseVector) = {
+    val (ll,g) = gradientOfSingleElement(el, lambdas, inv)
+    (ll,SparseVector(g))
   }
   
   def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, Map[Int,Double]) = {

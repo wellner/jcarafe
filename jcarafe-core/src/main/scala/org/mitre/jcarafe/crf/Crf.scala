@@ -526,21 +526,15 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     new CoreModel(getLambdas, nls, nfs)
   }
     
-  def getSimpleGradientAsSparseVec(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : SparseVector = {
-    val indices = gr.keys.toArray
-    val values = if (inv) gr.values map {c => -(c.g)} else gr.values map {_.g}
-    new SparseVector(indices, values.toArray)
-  }
-  
   def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     var mm = Map[Int,Double]()
     gr foreach {case (k,v) => if (inv) mm += ((k,-(v.g))) else mm += ((k,v.g))}
     mm
   }
-  
-  def getGradientSingleInstanceCompact(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVector) = {
-    val (d,mm) = getGradientSingleSequence(s, curLambdas)
-    (d, new SparseVector(mm.keys.toArray, mm.values.toArray))
+    
+  def getGradientSingleSequenceAsSparseVector(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVector) = {
+    val (d, mm) = getGradientSingleSequence(s,curLambdas)
+    (d, SparseVector(mm))
   }
   
   def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Map[Int,Double]) = {
