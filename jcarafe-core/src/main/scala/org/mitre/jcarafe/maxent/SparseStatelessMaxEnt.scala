@@ -1,10 +1,9 @@
 package org.mitre.jcarafe.maxent
 
 import org.mitre.jcarafe.crf.{AbstractInstance, PsaLearner, CompactFeature}
-import org.mitre.jcarafe.util.SparseVector
+import org.mitre.jcarafe.util.{SparseVector, SparseVectorAsMap}
 import java.io.File
 import collection.mutable.HashMap
-
 /*
  * This version of a maxent object is 'stateless' in the sense that it doesn't store the gradient/likelihood within the 
  * object but exposes it such that other optimizers or distributed computing algorithms can use it as a sub-routine
@@ -20,16 +19,19 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
     SparseVector(nm)
   }
   
+/*
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
     gr map {case (k,v) => if (inv) (k,(v.e - v.g)) else (k,(v.g - v.e))}
   }
-  
-  def gradientOfSingleElementAsSprase(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, SparseVector) = {
-    val (ll,g) = gradientOfSingleElement(el, lambdas, inv)
-    (ll,SparseVector(g))
+*/
+  def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
+    val mn = new collection.mutable.OpenHashMap[Int,Double]
+    var s = 0
+    gr foreach {case (k,v) => s += 1; if (inv) mn.update(k, (v.e - v.g)) else mn.update(k,(v.g - v.e))}
+    new SparseVectorAsMap(s, mn)
   }
   
-  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, Map[Int,Double]) = {
+  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, SparseVectorAsMap) = {
     val localGrad : collection.mutable.Map[Int,Double] = HashMap[Int,Double]()
     var gr: Map[Int, DoubleCell] = Map[Int, DoubleCell]()
     val instFeatures: Array[CompactFeature] = el.getCompactVec

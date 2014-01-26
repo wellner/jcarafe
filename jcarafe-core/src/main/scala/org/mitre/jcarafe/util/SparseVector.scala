@@ -1,5 +1,9 @@
 package org.mitre.jcarafe.util
 
+abstract class AbstractSparseVector {
+  def add(sp: AbstractSparseVector) : AbstractSparseVector
+}
+
 /*
  * A compact representation for a SparseVector (more so than Map[Int, Double])
  * @param indices - index values for non-zero vector components
@@ -11,9 +15,6 @@ class SparseVector(val indices: Array[Int], val values: Array[Double]) extends S
   
   val length = indices.length
   
-  def map(f: Double => Double) = {
-    new SparseVector(indices, (values map {x => f(x)}))
-  }
   
   def printVec() = {
     for (i <- 0 until length) {
@@ -81,6 +82,24 @@ object SparseVector {
     new SparseVector(indices,data)    
   }
 }
+
+class SparseVectorAsMap(val size: Int, val umap: collection.mutable.OpenHashMap[Int,Double]) extends AbstractSparseVector with Serializable {
+  
+  def add(otherMap: SparseVectorAsMap) = {
+    val (larger,smaller) = if (otherMap.size > size) (otherMap.umap, umap) else (umap, otherMap.umap)
+    var ns = larger.size
+    smaller foreach {case (k,v) =>
+      larger.get(k) match {
+        case Some(curV) => larger.update(k,curV + v)
+        case None => // entry not in larger map
+          ns += 1
+          larger.update(k,v)
+      }
+    }
+    new SparseVectorAsMap(ns, larger)
+  }
+}
+
 
 object TestSparseVec {
   
