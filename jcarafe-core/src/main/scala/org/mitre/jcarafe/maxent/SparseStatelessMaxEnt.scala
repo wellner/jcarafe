@@ -25,7 +25,7 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
   }
 */
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
-    val mn = new collection.mutable.OpenHashMap[Int,Double]
+    val mn = new collection.mutable.HashMap[Int,Double]
     var s = 0
     gr foreach {case (k,v) => s += 1; if (inv) mn.update(k, (v.e - v.g)) else mn.update(k,(v.g - v.e))}
     new SparseVectorAsMap(s, mn)
