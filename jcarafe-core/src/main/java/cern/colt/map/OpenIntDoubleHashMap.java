@@ -88,23 +88,9 @@ Assigns the result of a function to each value; <tt>v[i] = function(v[i])</tt>.
 @param function a function object taking as argument the current association's value.
 */
 public void assign(cern.colt.function.DoubleFunction function) {
-	// specialization for speed
-	if (function instanceof cern.jet.math.Mult) { // x[i] = mult*x[i]
-		double multiplicator = ((cern.jet.math.Mult)function).multiplicator;
-		if (multiplicator==1) return;
-		if (multiplicator==0) {
-			clear();
-			return;
-		}
-		for (int i = table.length ; i-- > 0 ;) {
-			if (state[i]==FULL) values[i] *= multiplicator;
-		}
-	}
-	else { // the general case x[i] = f(x[i])
 		for (int i = table.length ; i-- > 0 ;) {
 			if (state[i]==FULL) values[i] = function.apply(values[i]);
 		}
-	}
 }
 /**
  * Clears the receiver, then adds all (key,value) pairs of <tt>other</tt>values to it.
