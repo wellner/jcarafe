@@ -1,5 +1,7 @@
 package org.mitre.jcarafe.util
 
+import cern.colt.map.OpenIntDoubleHashMap
+
 abstract class AbstractSparseVector {
   def add(sp: AbstractSparseVector) : AbstractSparseVector
 }
@@ -83,22 +85,7 @@ object SparseVector {
   }
 }
 
-class SparseVectorAsMap(val size: Int, val umap: collection.mutable.HashMap[Int,Double]) extends Serializable {
-  
-  def add(otherMap: SparseVectorAsMap) = {
-    val (larger,smaller) = if (otherMap.size > size) (otherMap.umap, umap) else (umap, otherMap.umap)
-    var ns = larger.size
-    smaller foreach {case (k,v) =>
-      larger.get(k) match {
-        case Some(curV) => larger.update(k,curV + v)
-        case None => // entry not in larger map
-          ns += 1
-          larger.update(k,v)
-      }
-    }
-    new SparseVectorAsMap(ns, larger)
-  }
-}
+class SparseVectorAsMap(val size: Int, val umap: OpenIntDoubleHashMap) extends Serializable
 
 
 object TestSparseVec {

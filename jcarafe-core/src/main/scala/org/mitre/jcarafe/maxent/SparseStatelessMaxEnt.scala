@@ -4,6 +4,7 @@ import org.mitre.jcarafe.crf.{AbstractInstance, PsaLearner, CompactFeature}
 import org.mitre.jcarafe.util.{SparseVector, SparseVectorAsMap}
 import java.io.File
 import collection.mutable.HashMap
+import cern.colt.map.OpenIntDoubleHashMap
 /*
  * This version of a maxent object is 'stateless' in the sense that it doesn't store the gradient/likelihood within the 
  * object but exposes it such that other optimizers or distributed computing algorithms can use it as a sub-routine
@@ -25,9 +26,9 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
   }
 */
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
-    val mn = new collection.mutable.HashMap[Int,Double]
+    val mn = new OpenIntDoubleHashMap
     var s = 0
-    gr foreach {case (k,v) => s += 1; if (inv) mn.update(k, (v.e - v.g)) else mn.update(k,(v.g - v.e))}
+    gr foreach {case (k,v) => s += 1; if (inv) mn.put(k, (v.e - v.g)) else mn.put(k,(v.g - v.e))}
     new SparseVectorAsMap(s, mn)
   }
   
