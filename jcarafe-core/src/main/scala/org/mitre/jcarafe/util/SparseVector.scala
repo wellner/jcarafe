@@ -83,7 +83,7 @@ object SparseVector {
   }
 }
 
-class SparseVectorAsMap(val size: Int, val umap: collection.mutable.OpenHashMap[Int,Double]) extends AbstractSparseVector with Serializable {
+class SparseVectorAsMap(val size: Int, val umap: collection.mutable.OpenHashMap[Int,Double]) extends Serializable {
   
   def add(otherMap: SparseVectorAsMap) = {
     val (larger,smaller) = if (otherMap.size > size) (otherMap.umap, umap) else (umap, otherMap.umap)
