@@ -339,18 +339,9 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
       val el = seqAccessor.accessSingleInstance(j)
       val l = gradOfElement(el)
       ll -= l
-      println("Constraint:")
-      gradient foreach {case (k,v) => print(" " + k+"=> "+v.g )}
-      println
       for ((k, cell) <- gradient) {        
         cell.g_=(cell.g - cell.e)
       }
-      println("Expectations:")
-      gradient foreach {case (k,v) => print(" " + k+"=> "+v.e )}
-      println
-      println("SparseGrad: ")
-      gradient foreach {case (k,v) => print(" " + k+"=> "+v.g )}
-      println
     }
     curPos += asize
     Some(ll)
