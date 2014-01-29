@@ -28,7 +28,10 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
   def getSimpleGradient(gr: Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
     val mn = new OpenIntDoubleHashMap
     var s = 0
-    gr foreach {case (k,v) => s += 1; if (inv) mn.put(k, (v.e - v.g)) else mn.put(k,(v.g - v.e))}
+    gr foreach {case (k,v) => 
+      s += 1;
+      if (inv) mn.put(k, (v.e - v.g)) 
+      else mn.put(k,(v.g - v.e))}
     new SparseVectorAsMap(s, mn)
   }
   
@@ -100,5 +103,73 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
       val loss = if (inv) -(math.log(scores(trueLabel))) else (math.log(scores(trueLabel))) 
       (loss, getSimpleGradient(gr,inv))
     }
+  }
+}
+
+object TestGradients {
+  
+  def main(args: Array[String]) = {
+    val sgen = new MaxEntTrainingSeqGen
+    
+    val instances = sgen.toAbstractInstanceSeq(sgen.deserializeFromFile(args(0)), true)
+    val sp = new SparseStatelessMaxEnt(sgen.getNumberOfStates, sgen.getNumberOfFeatures)
+    val lambdas = Array.fill(sgen.getNumberOfFeatures)(0.0)
+    val denseGrad = Array.fill(sgen.getNumberOfFeatures)(0.0)
+    var ind = 0
+    instances foreach {i =>
+      val fs = i.getCompactVec
+      fs foreach {s => print(" " + s.fid)}
+      println
+      val (ll,g) = sp.gradientOfSingleElement(i, lambdas, true)
+      println("Grad for inst: " + ind)
+      for (i <- 0 until sgen.getNumberOfFeatures) {
+        if (g.umap.containsKey(i)) {
+          print(" " + i + " => " + g.umap.get(i))
+          denseGrad(i) += g.umap.get(i)
+        } else {
+          
+        }
+      }
+      ind += 1
+      println
+    }
+    println("Total gradient: ")
+    denseGrad foreach {v => print(" " + v)}
+    println
+    ind = 0
+    val control = new SparseMaxEnt(sgen.getNumberOfStates, sgen.getNumberOfFeatures, new MEOptions) with PsaLearner[AbstractInstance]
+    val cgrad = Array.fill(sgen.getNumberOfFeatures)(0.0)
+    instances foreach {inst =>
+      val loss = control.gradOfElement(inst)
+      println("Control grad for " + ind)
+      for (i <- 0 until sgen.getNumberOfFeatures) {
+        val cv = control.gradient.get(i)        
+        cv match {case Some(cell) =>
+          cgrad(i) += (cell.g - cell.e)
+          println("Grad component("+i+") => " + (cell.g - cell.e)) case None =>}         
+        control.gradient.clear
+      }
+      println
+      ind += 1
+      }
+    
+    println("Cgrad 1")
+    cgrad foreach {v => print(" " + v)}
+    println
+    val seqAccessor = new org.mitre.jcarafe.crf.MemoryAccessSeq(Seq(new org.mitre.jcarafe.crf.MemoryInstanceSequence(instances)))
+    
+    
+    val gg = control.getGradient(false, seqAccessor)
+    println("CONTROL GRAD:")
+    val cgrad1 = Array.fill(sgen.getNumberOfFeatures)(0.0)
+    control.gradient foreach {case (k,v) => cgrad(k) += v.g}
+    cgrad foreach {g => print(" " + g)}
+    println
+    
+    val denseControl = new MaxEnt(sgen.getNumberOfStates, sgen.getNumberOfFeatures, 1E300) with org.mitre.jcarafe.crf.CondLogLikelihoodLearner[AbstractInstance]
+    val denseG = denseControl.getGradient(false, seqAccessor)
+    println("DENSE GRADIENT:")
+    denseControl.gradient foreach {g => print(" " + g)}
+    println
   }
 }
