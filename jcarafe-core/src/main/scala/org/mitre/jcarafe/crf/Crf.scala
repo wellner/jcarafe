@@ -5,7 +5,8 @@
 package org.mitre.jcarafe.crf
 import collection.mutable.HashSet
 import collection.mutable.HashMap
-import org.mitre.jcarafe.util.{Options, SparseVector}
+import org.mitre.jcarafe.util.{Options, SparseVector, SparseVectorAsMap}
+import cern.colt.map.OpenIntDoubleHashMap
 
 trait Trainable[T] extends Serializable {
   val lambdas: Array[Double]
@@ -526,18 +527,18 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     new CoreModel(getLambdas, nls, nfs)
   }
     
-  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : Map[Int,Double] = {
-    var mm = Map[Int,Double]()
-    gr foreach {case (k,v) => if (inv) mm += ((k,-(v.g))) else mm += ((k,v.g))}
-    mm
+  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
+    val mn = new OpenIntDoubleHashMap
+    var s = 0
+    gr foreach {case (k,v) => 
+      s += 1;
+      if (inv) mn.put(k, (v.e - v.g)) 
+      else mn.put(k,(v.g - v.e))}
+    new SparseVectorAsMap(s, mn)
   }
     
-  def getGradientSingleSequenceAsSparseVector(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVector) = {
-    val (d, mm) = getGradientSingleSequence(s,curLambdas)
-    (d, SparseVector(mm))
-  }
   
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Map[Int,Double]) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVectorAsMap) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
