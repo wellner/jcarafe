@@ -35,9 +35,6 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
       def evaluate(x: Array[Double], g: Array[Double], n: Int, st: Double) = {
         
         val Some(f) = getGradient(accessSeq)
-        print("Gradient:")
-        g foreach {v => print(" " + v)}
-        println   
         f
       } 
     }
