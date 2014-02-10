@@ -43,7 +43,7 @@ object JCarafeBuild extends Build {
       "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
       "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
       "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
-      "com.twitter" % "chill_2.10" % "0.3.5"
+      "com.twitter" % "chill_2.10" % "0.3.1"
     )
   )
 
@@ -54,7 +54,7 @@ object JCarafeBuild extends Build {
       "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
       "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
       "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
-      "com.twitter" % "chill_2.10" % "0.3.5"
+      "com.twitter" % "chill_2.10" % "0.3.1"
     )
   )
 

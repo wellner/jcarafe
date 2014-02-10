@@ -32,8 +32,7 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
     initialize()
     val t_s = System.nanoTime
     val fn = new FunctionEvaluation {
-      def evaluate(x: Array[Double], g: Array[Double], n: Int, st: Double) = {
-        
+      def evaluate(x: Array[Double], g: Array[Double], n: Int, st: Double) = {        
         val Some(f) = getGradient(accessSeq)
         f
       } 

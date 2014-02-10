@@ -23,6 +23,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
   "--output-file" desc "Output classifications"
   "--induced-features-file" desc "Induced features"
   "--file-processing" flag "Use file-based pre-processing"
+  "--disk-cache"     desc  "Directory to place disk cache in"
   "--no-tags" flag "Do not attempt to process SGML/XML tags"
   "--train" flag "Training mode"
   "--psa" flag "Use PSA-based stochastic gradient descent"
