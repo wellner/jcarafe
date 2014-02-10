@@ -10,7 +10,7 @@ import scala.util.Random
 import org.mitre.jcarafe.crf.ObsSource
 import org.mitre.jcarafe.crf.StdModel
 import org.mitre.jcarafe.crf.Alphabet
-import org.mitre.jcarafe.crf.{ InstanceSequence, AbstractInstance, SeqGen, PsaLearner, CondLogLikelihoodLearner, InstSeq }
+import org.mitre.jcarafe.crf.{ InstanceSequence, AbstractInstance, SeqGen, PsaLearner, CondLogLikelihoodLearner, InstSeq, SourceSequence }
 import org.mitre.jcarafe.util._
 import org.mitre.jcarafe.util.SLabel
 import org.mitre.jcarafe.crf.IncrementalMurmurHash
@@ -25,13 +25,19 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
   import IncrementalMurmurHash._
 
   var instances: Option[InstanceSequence] = None
+  
+  private var sources: Option[seqGen.Seqs] = None
+  
+  def setSources = {
+    sources = Some(seqGen.createSourcesFromFiles(0))
+  }
 
   val decodedOutputStream = opts.outputFile map { f => new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(f)), "UTF-8") }
 
   def setInstances: Unit = { instances = Some(InstSeq(Random.shuffle(instances.get.iseq))) }
 
-  def addInstances(i: InstanceSequence) = instances = Some(i)
-
+  def addInstances(i: InstanceSequence) = { instances = Some(i) }
+  
   def addJInstance(l: String, fs: java.util.List[String]): Unit = throw new RuntimeException("Not yet implemented")
 
   def getConfusionMatrix(s: Int, pairs: Seq[(Int, Int)]): Array[Array[Int]] = {
@@ -53,6 +59,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
     } else new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
   }
 
+  /*
   def trainAndEvaluate(training: Seq[AbstractInstance], testing: Seq[AbstractInstance]): (Array[Array[Int]], Double) = {
     val trainer = new RuntimeMaxEntTrainer(opts) { override val sGen = seqGen }
     val trainInsts = InstSeq(training)
@@ -60,6 +67,21 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
     val decoder = RuntimeMaxEntDecoder(m)    
     val testInsts = InstSeq(testing)
     evaluate(decoder, Seq(testInsts))
+  }
+  * 
+  */
+  
+  def trainAndEvaluate(training: Seq[ObsSource[List[(FeatureId,Double)]]], testing: Seq[ObsSource[List[(FeatureId,Double)]]]) : (Array[Array[Int]], Double) = {
+    println("There are: " + training.length + " training instances and " + testing.length + " testing instances")
+    val trainer = new RuntimeMaxEntTrainer(opts)
+    seqGen.getLAlphabet.mp foreach { case (k,v) => trainer.sGen.lAlphabet update (k,v)} // set label alphabet
+    val trInsts = trainer.sGen.extractFeatures(new SourceSequence(training))
+    println("Number of states: " + trainer.sGen.getNumberOfStates)
+    trainer.sGen.frep.fMap.fixed_=(true) // fix the feature alphabet
+    val tstInsts = trainer.sGen.extractFeatures(new SourceSequence(testing))
+    val m = trainer.batchTrainToModel(trainer.sGen, trInsts)
+    val decoder = RuntimeMaxEntDecoder(m)    
+    evaluate(decoder, Seq(tstInsts))
   }
     
   def evaluate(decoder: RuntimeMaxEntDecoder, testInsts: Seq[InstanceSequence]) : (Array[Array[Int]], Double) = {
@@ -91,11 +113,14 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
   }
 
   def xValidate(n: Int): IndexedSeq[(Array[Array[Int]], Double)] = {
-    setInstances
-    val instanceVec = instances.get.iseq
-    val s = instanceVec.size
+    //setInstances
+    //val instanceVec = instances.get.iseq
+    //val s = instanceVec.size
+    //val folds = instanceVec.sliding(fSize, fSize).toIndexedSeq
+    val srcVec = sources.get(0).seq
+    val s = srcVec.size
     val fSize = if ((s % n) == 0) s / n else (s / n) + 1
-    val folds = instanceVec.sliding(fSize, fSize).toIndexedSeq
+    val folds = srcVec.sliding(fSize,fSize).toIndexedSeq
     val r =
       for (i <- 0 until n) yield {
         val testFold = folds(i)
@@ -105,7 +130,7 @@ class Evaluator(val opts: MEOptions, val seqGen: MaxEntTrainingSeqGen, val decod
     decodedOutputStream foreach { _.close }
     r
   }
-
+  
   def getLabel(i: Int, invMap: scala.collection.mutable.Map[Int, AbstractLabel]) = {
     val l = invMap(i).toString
     if (l.size > 13) l.substring(0, 13) else l

@@ -102,6 +102,7 @@ class FeatureId(val fnId: Long, val fclass: Long) {
   def this(s: String) = this(hash(s, 0), FeatureId.selfCode)
   def this(s: String, cl: String) = this(hash(s, 0), hash(cl, 0))
 }
+
 object FeatureId {
   val selfCode = hash("$=SELF=$", 0)
   val fMapping = new collection.mutable.HashMap[Long, String]()
@@ -545,9 +546,7 @@ class FileBasedMaxEntDecodeSeqGen(m: MaxEntModel, opts: Options) extends Decodin
 trait MaxEntSeqGenCore[Obs] extends SeqGen[Obs] {
 
   type DeserializationT = MaxEntDeserialization
-
-  def toSources(d: DeserializationT): Seqs = throw new RuntimeException("UNIMPLEMENTED")
-
+  
   def deserializeFromFile(file: String): DeserializationT = {
     new MaxEntDeserialization(new java.io.File(file))
   }
@@ -689,19 +688,48 @@ trait MaxEntSeqGen[Obs] extends MaxEntSeqGenCore[Obs] {
 
 trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
 
+  def toSources(d: DeserializationT): Seqs = {
+    val instr = d.is
+    var l = instr.readLine()
+    val tmpBuf = new scala.collection.mutable.ListBuffer[ObsSource[List[(FeatureId,Double)]]]
+    var counter = 0
+    while (l != null) {    
+    if (l.length > 2) { // just skip short/empty lines
+      val (line, comment) = l.split("#").toList match { case ln :: Nil => (ln, None) case ln :: comment => (ln, Some(comment.mkString("#"))) }
+      line.split(" ").toList match {
+        case first :: second :: rest =>
+          val (weight, label, features) =
+            if (numReg.findFirstIn(first).isDefined) (first.toDouble, second, rest)
+            else (1.0, first, (second :: rest))
+          val src = createSource(SLabel(label), (features map { el =>
+            el.split(":").toList match {
+              case a :: b :: Nil => (FeatureId(a), b.toDouble)
+              case a :: _ => (FeatureId(a), 1.0)
+              case Nil => throw new RuntimeException("Feature vector parse failed")
+            }
+          }), false)
+          tmpBuf append src
+        case _ => 
+      }
+    } else None
+    l = instr.readLine()
+    }
+    Seq(new SourceSequence(tmpBuf.toSeq))
+  }
+
   override def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
     sourcePairSeqs map extractFeatures
   }
 
   def extractFeatures(obs: ObsSource[List[(FeatureId, Double)]]): AbstractInstance = {
-    val inst = frep.createInstance(obs.label, obs.label)
+    val inst = frep.createMEInstance(obs.label, obs.label)
     addInFeatures(inst, obs)
     inst: AbstractInstance
   }
 
   def extractFeatures(dseq: SourceSequence[List[(FeatureId, Double)]]): InstanceSequence = {
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
-      val inst = frep.createInstance(dseq(i).label, dseq(i).label, i)
+      val inst = frep.createMEInstance(dseq(i).label, dseq(i).label, 1.0)
       addInFeatures(inst, dseq(i))
       inst: AbstractInstance
     }
@@ -926,9 +954,11 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
   }
 
   override def xValidate = {
-    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
+    //val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
     val evaluator = new Evaluator(opts, sGen, None)
-    evaluator.addInstances(seqs(0))
+    evaluator.setSources
+    //evaluator.addSources(srcs(0)
+    //evaluator.addInstances(seqs(0))
     evaluator.xValidateAndGenerateReport(opts.xValFolds.get.toInt, new java.io.File(opts.report.get))
   }
 }
