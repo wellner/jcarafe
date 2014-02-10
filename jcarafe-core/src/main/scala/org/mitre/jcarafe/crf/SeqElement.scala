@@ -13,7 +13,7 @@ import scala.collection.mutable.ArrayBuffer
  * Top-level abstract class for representing labeled elements in a sequence
  * @param label - the integer label for this sequence element
 */
-abstract class SeqElement(var label: Int) extends Serializable {
+abstract class SeqElement(var label: Int) {
   def getRange: Int
   def conditionalProb(i: Int): Double
   def setConditionalProb(i: Int, v: Double): Unit
@@ -28,7 +28,7 @@ abstract class SeqElement(var label: Int) extends Serializable {
  * @param segId - an integer, i, indicating its the ith segment in a sequence
  * @author Ben Wellner
 */
-abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) extends SeqElement(label) with Serializable {
+abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) extends SeqElement(label) {
   type FType <: FeatureCore
 
   var userFeatures: Set[FType] = Set() // ( we create a lot of these objects )
@@ -108,6 +108,31 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
     val fs = Array.tabulate(CrfInstance.maxSegSize + 1) { _ => new ArrayBuffer[Feature] }
     userVec foreach { ft => ft.getFeatures foreach { e => fs(ft.segsize) append e } }
     fs map (_.toArray)
+  }
+}
+
+/*
+ * Represents an instance with an associated set of features for use by decoders
+ * or trainers. Instances are compiled out with no mechanism for lazy evaluation.
+ * This has advantages when instances must be serialized as it avoids excessive 
+ * (global) state.
+ * @param lab - integer label.  By convention, -1 denotes UNCERTAINTY in label
+ * @param orig - original label (preserved for scoring and other reasons) 
+ * @param segId - an integer, i, indicating its the ith segment in a sequence
+ * @author Ben Wellner
+*/
+class CompiledCrfInstance(label: Int, orig: Int, segId: Int, val cv: Array[Array[Feature]]) extends AbstractInstance(label, orig, segId) {
+
+  type FType = AbstractValuedFeatureType
+  def getCompVec = cv
+  def getCompactVec = throw new RuntimeException("Unimplemented")  
+
+}
+
+object CompiledCrfInstance {
+  def apply(instance: AbstractInstance) : CompiledCrfInstance = {
+    val cv = instance.getCompVec
+    new CompiledCrfInstance(instance.label, instance.orig, instance.segId, cv)
   }
 }
 
