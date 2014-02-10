@@ -57,8 +57,6 @@ object InstSeq {
   kryo.register(classOf[CrfInstance])
   kryo.register(classOf[SourceSequence[String]])
   kryo.register(classOf[NonFactoredCrfInstance])
-  //kryo.register(classOf[Seq[NonFactoredCrfInstance]])
-  //kryo.register(classOf[Seq[CrfInstance]])
   
   class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     

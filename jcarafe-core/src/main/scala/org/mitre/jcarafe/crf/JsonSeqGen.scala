@@ -307,7 +307,14 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   private def addTokenDistAnnotation(atbl: Map[AbstractLabel, ListBuffer[Annotation]], cp: AbstractInstance, st: Int, en: Int) = {
     var annotTbl = atbl
-    val tokPosteriorMap = lAlphabet.mp.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
+    val tokPosteriorMap = 
+      if (opts.oneHot)
+        lAlphabet.mp.foldLeft(Map(): Map[String, String]) { 
+          case (ac, (lab, i)) =>
+            val prob = if (i == cp.label) 1.0 else 0.0
+            ac + (lab.labelString -> prob.toString) }
+      else 
+        lAlphabet.mp.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
     val tokPosteriors = new Annotation(st, en, false, Label("tok_posterior_dist", tokPosteriorMap), None)
     if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
     annotTbl(tokPosteriorAnnotationType) += tokPosteriors
