@@ -22,7 +22,7 @@ object JCarafeBuild extends Build {
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
-    version := "0.9.8.6.b-31",
+    version := "0.9.8.6.b-32",
     scalaVersion := "2.10.3",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),

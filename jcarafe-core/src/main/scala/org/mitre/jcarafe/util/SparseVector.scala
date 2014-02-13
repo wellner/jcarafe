@@ -85,7 +85,19 @@ object SparseVector {
   }
 }
 
-class SparseVectorAsMap(val size: Int, val umap: OpenIntDoubleHashMap) extends Serializable
+class SparseVectorAsMap(val size: Int, val umap: OpenIntDoubleHashMap) extends Serializable {
+
+  class ApplyFn(val fn: (Int, Double) => Unit) extends IntDoubleProcedure {
+    def apply(k: int, v: Double) = {
+      fn(k,v)
+      true
+    }
+  }
+
+  def foreach(fn: (Int,Double) => Unit) : Unit = {
+    umap.forEachPair(new ApplyFn(fn))
+  }
+}
 
 
 object TestSparseVec {
