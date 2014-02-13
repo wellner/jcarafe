@@ -20,13 +20,16 @@ object JCarafeBuild extends Build {
                          settings(projAssemblySettings: _*).
                          settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*) dependsOn(jcarafeCore)
 
+  val keyFile = new java.io.File("~/.ssh/id_rsa.pub")
+
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
     version := "0.9.8.6.b-32",
     scalaVersion := "2.10.3",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
-    resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
-    publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")),
+    //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
+    publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")), 
+    //publishTo := Some("maven-proxy-releases" at "http://maven-proxy.mitre.org/artifactory/libs-releases-local"),
     javacOptions ++= Seq("-source","1.7","-target","1.7")
   )
 
