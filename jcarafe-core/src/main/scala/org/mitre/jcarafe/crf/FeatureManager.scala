@@ -13,37 +13,7 @@ case object NNFeature extends FeatureCat
 case object MultiFeature extends FeatureCat
 case object StdFeature extends FeatureCat
 
-class BuiltFeatureStr(var value: Double, val sb: StringBuilder) {
-  def this(i: String) = this(1.0, new StringBuilder(i))
-  def this(i: String, v: Double) = this(v, new StringBuilder(i))
-  def this() = this(1.0, new StringBuilder)
-
-  def @@(l: Char) = {
-    sb append l
-    this
-  }
-
-  def @@(l: String) = {
-    sb append l
-    this
-  }
-
-  def @@@(l: List[String]) = {
-    l foreach { sb append _ }
-    this
-  }
-
-  def @@@(bf: BuiltFeatureStr) = {
-    sb append bf.sb
-    value = this.value * bf.value
-    this
-  }
-
-  lazy val get = sb.toString
-  override def toString = sb.toString
-}
-
-class BuiltFeature(var value: Double) {
+class BuiltFeature(var value: Double) extends Serializable {
   import IncrementalMurmurHash._
   def this() = this(1.0)
   var hv: Long = 0L // feature id hash value, built incrementally
@@ -143,7 +113,7 @@ class BuiltFeatureDebug(vl: Double) extends BuiltFeature(vl) {
   override def toString = sb.toString
 }
 
-object BuiltFeature {
+object BuiltFeature extends Serializable {
   var debug = false
 
   def getBf(): BuiltFeature = if (debug) new BuiltFeatureDebug() else new BuiltFeature()
@@ -197,7 +167,8 @@ object BuiltFeature {
  * @param edgeP   <code>Boolean</code> indicating <i>edge</i> features when true and <i>node</i> otherwise
  */
 class FeatureReturn(val features: List[BuiltFeature], var edgeP: Boolean, val self: Boolean = false,
-  var fcat: FeatureCat = StdFeature, var displaced: Boolean = false) {
+  var fcat: FeatureCat = StdFeature, var displaced: Boolean = false) extends Serializable {
+  
   def this(b: BuiltFeature, ep: Boolean) = this(List(b), ep)
   def this(b: BuiltFeature) = this(b, false)
   def this(v: Long) = this(BuiltFeature(v), false)
@@ -226,7 +197,7 @@ class FeatureReturn(val features: List[BuiltFeature], var edgeP: Boolean, val se
   override def toString = features.foldLeft("")(_ + " " + _)
 }
 
-object FeatureReturn {
+object FeatureReturn extends Serializable {
   def apply(ss: List[(String, Double)]) = {
     val bfs = ss map { case (k, v) => BuiltFeature(k, v) }
     new FeatureReturn(bfs, false)
@@ -278,7 +249,7 @@ object FeatureReturn {
  * the regular expression function that returns the feature name "EndIn-ed" (when its pattern is matched)
  * over the relative positions -2,-1,0,1,2.
  */
-abstract class FeatureManager[Obs](val iString: String) {
+abstract class FeatureManager[Obs](val iString: String) extends Serializable {
   def this() = this("")
 
   type Fn = (Int, SourceSequence[Obs], Int) => FeatureReturn
