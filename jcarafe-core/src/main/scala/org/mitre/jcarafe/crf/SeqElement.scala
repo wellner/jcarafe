@@ -204,7 +204,9 @@ class ObsSource[Obs](lab: Int, val obs: Obs, val beg: Boolean, var info: Option[
     else hash(st.substring(0, 5))
   var lexCodes: List[Long] = Nil // to optimize this
   lazy val posCode = info match { case Some(map) => map.get("pos") match { case Some(v) => hash(v) case None => 0L } case None => 0L }
-  lazy val infoCodes = info map { m => (m map { case (k, v) => mix(hash(v), hash(k))}).toArray }
+  // infoCodes will contain hashcodes for auxilliary token-level attributes (specified via lex/token encoded attribute value pairs)
+  // in some cases st and en offsets are included in this map; we don't want to generate codes for these
+  lazy val infoCodes = info map { m => ((m.filter{case (k,_) => k != "st" && k != "en"}) map { case (k, v) => mix(hash(v), hash(k))}).toArray }
   lazy val cPosCode = info match { case Some(map) => map.get("pos") match { case Some(v) => hash(v(0).toString) case None => 0L } case None => 0L }
   var preLabelCode = 0L
   def getRange = -1 // used when # of states/labels isn't stationary over data points

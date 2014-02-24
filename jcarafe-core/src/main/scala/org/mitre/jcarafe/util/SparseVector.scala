@@ -1,6 +1,7 @@
 package org.mitre.jcarafe.util
 
 import cern.colt.map.OpenIntDoubleHashMap
+import cern.colt.function.IntDoubleProcedure
 
 abstract class AbstractSparseVector {
   def add(sp: AbstractSparseVector) : AbstractSparseVector
@@ -88,7 +89,7 @@ object SparseVector {
 class SparseVectorAsMap(val size: Int, val umap: OpenIntDoubleHashMap) extends Serializable {
 
   class ApplyFn(val fn: (Int, Double) => Unit) extends IntDoubleProcedure {
-    def apply(k: int, v: Double) = {
+    def apply(k: Int, v: Double) = {
       fn(k,v)
       true
     }
