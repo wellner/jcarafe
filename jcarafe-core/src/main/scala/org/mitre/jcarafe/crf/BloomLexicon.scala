@@ -11,7 +11,7 @@ import org.mitre.jcarafe.util.FastLoops._
 /*
  * 
  */
-class BloomLexicon(val dir: Option[java.io.File]) {
+class BloomLexicon(val dir: Option[java.io.File]) extends Serializable {
   def this(d: String) = this(Some(new java.io.File(d)))
   def this(d: java.io.File) = this(Some(d))
   def this() = this(None)
@@ -49,7 +49,7 @@ class BloomLexicon(val dir: Option[java.io.File]) {
 
 }
 
-object BloomFilter {
+object BloomFilter extends Serializable {
   def apply(file: java.io.File) : BloomFilter = {
     val nelements = countEntriesInLexiconFile(file)
     val width = (-(nelements: Double) * math.log(0.001) / (math.log(2.0) * math.log(2.0))).toInt
@@ -82,7 +82,7 @@ object BloomFilter {
 
 }
 
-class BloomFilter(val size: Int, val width: Int) {
+class BloomFilter(val size: Int, val width: Int) extends Serializable {
   
   //val filter = new collection.mutable.BitSet
   val filter = new java.util.BitSet()
@@ -136,7 +136,7 @@ class BloomFilter(val size: Int, val width: Int) {
   }
 }
 
-class BloomFilterBuilder(val err: Double) {
+class BloomFilterBuilder(val err: Double) extends Serializable {
   var elements = Set[Long]()
   def add(el: Long) = elements += el
   def add(s: String) = {

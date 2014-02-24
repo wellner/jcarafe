@@ -7,7 +7,7 @@ package org.mitre.jcarafe.crf
 import org.mitre.jcarafe.util.Options
 import collection.mutable.HashMap
 
-class InducedFeatureMap(mfile: Option[java.io.File] = None) {
+class InducedFeatureMap(mfile: Option[java.io.File] = None) extends Serializable {
   var hmap : Option[HashMap[Long,Array[Double]]] = None
 
   var vecSize = 0

@@ -5,7 +5,7 @@
 package org.mitre.jcarafe.crf
 import scala.collection.mutable.HashMap
 
-class WordScores(val file: Option[java.io.File]) extends HashMap[Long,Double] {
+class WordScores(val file: Option[java.io.File]) extends HashMap[Long,Double] with Serializable {
   import org.mitre.jcarafe.crf.IncrementalMurmurHash._
   def this(d: String) = this(Some(new java.io.File(d)))
   def this() = this(None)

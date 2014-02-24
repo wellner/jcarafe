@@ -5,7 +5,7 @@
 package org.mitre.jcarafe.crf
 import scala.collection.mutable.HashMap
 
-class WordProperties(val file: Option[java.io.File]) {
+class WordProperties(val file: Option[java.io.File]) extends Serializable {
   import org.mitre.jcarafe.crf.IncrementalMurmurHash._
   
    

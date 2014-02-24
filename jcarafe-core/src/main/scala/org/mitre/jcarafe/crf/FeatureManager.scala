@@ -291,7 +291,7 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
    *                  feature functions in the manager.
    * @param   n       A feature name as <code>String</code>
    */
-  abstract class FeatureFn(var top: Boolean, val n: String) extends Fn {
+  abstract class FeatureFn(var top: Boolean, val n: String) extends Fn with Serializable {
     def this() = this(false, "")
     def this(s: String) = this(true, s)
 
@@ -353,13 +353,13 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
 
   }
 
-  abstract class StaticFeatureFn(t: Boolean, n: String) extends FeatureFn(t, n) {
+  abstract class StaticFeatureFn(t: Boolean, n: String) extends FeatureFn(t, n) with Serializable {
     def this() = this(false, "")
     def this(s: String) = this(true, s)
     fnBuf += (this: Fn)
   }
 
-  object FeatureFn {
+  object FeatureFn extends Serializable {
     def apply(s: String, f: FeatureFn, edgeP: Boolean, fcat: FeatureCat = StdFeature) = {
       f.top = false
       new FeatureFn(s) {
@@ -381,7 +381,7 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
    * A helper class for the feature specification DSL.  Maps a <code>Fn</code>
    * to a <code>FeatureFn</code>
    */
-  class ToFeatureFn(val n: String) {
+  class ToFeatureFn(val n: String) extends Serializable {
     def as(y: Fn) = new StaticFeatureFn(true, n) { def apply(s: Int, d: SourceSequence[Obs], p: Int) = y(s, d, p) }
   }
   implicit def conv(n: String) = new ToFeatureFn(n)
@@ -982,7 +982,7 @@ object FeatureManager {
 
 }
 
-object IncrementalMurmurHash {
+object IncrementalMurmurHash extends Serializable {
   val m = 0xc6a4a7935bd1e995L
   val r = 47
 
