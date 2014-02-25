@@ -1,19 +1,19 @@
 package org.mitre.jcarafe.scopetagger
 
-import org.mitre.jcarafe.crf.DynamicFeatureManager
+import org.mitre.jcarafe.crf.DynamicFeatureManagerBuilder
 import org.mitre.jcarafe.crf.SourceSequence
-import org.mitre.jcarafe.crf.FeatureReturn
+import org.mitre.jcarafe.crf.{FeatureReturn, FeatureFn}
 
-class ScopeFeatureManager(iString: String) extends DynamicFeatureManager[String](iString) {
+class ScopeFeatureManagerBuilder(iString: String) extends DynamicFeatureManagerBuilder[String](iString) {
 	  
-  override def simpleFnExpr : Parser[FeatureFn] = 
+  override def simpleFnExpr : Parser[FeatureFn[String]] = 
     	predicateExpr | prefFnExpr | sufFnExpr | wdFnExpr | caseLessFnExpr | lexFnExpr | 
     	downLexFnExpr | nodeFnExpr | edgeFnExpr | regexpFnExpr | allTagFnExpr | antiPrefFnExpr | antiSufFnExpr | attributeFnExpr |
     	distToLeftExpr | distToRightExpr | scopeFnExpr
     
-  def scopeFnExpr : Parser[FeatureFn] = relPos | intervening 
-  def relPos : Parser[FeatureFn] = "relPos" ^^ {_ => relativePosition _ }
-  def intervening : Parser[FeatureFn] = "interLex" ^^ {_ => interveningLex _}
+  def scopeFnExpr : Parser[FeatureFn[String]] = relPos | intervening 
+  def relPos : Parser[FeatureFn[String]] = "relPos" ^^ {_ => relativePosition _ }
+  def intervening : Parser[FeatureFn[String]] = "interLex" ^^ {_ => interveningLex _}
 
   def directionDistance(cur: Int, tar: Int) : (String,String) = {
     val diff = tar - cur

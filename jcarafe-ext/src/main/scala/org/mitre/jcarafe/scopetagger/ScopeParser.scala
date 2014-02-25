@@ -12,7 +12,7 @@ import org.mitre.jcarafe.crf.StdTrainer
 import org.mitre.jcarafe.crf.StdDecoder
 import org.mitre.jcarafe.crf.TrainingFactoredFeatureRep
 import org.mitre.jcarafe.crf.DecodingFactoredFeatureRep
-import org.mitre.jcarafe.crf.FeatureManager
+import org.mitre.jcarafe.crf.FeatureManagerBuilder
 import org.mitre.jcarafe.crf.BloomLexicon
 import org.mitre.jcarafe.crf.StandardSerializer
 import org.mitre.jcarafe.util.Annotation
@@ -51,9 +51,9 @@ class ScopeParser(opts: Options) extends StdTaggerTask(opts) {
 
   override def getTrainer() = {
     new StdTrainer(opts) {
-      val fspecStr = FeatureManager.getFeatureSpecString(opts.featureSpec.get)
-      val mgr = new ScopeFeatureManager(fspecStr)
-      mgr.lex match {case None => opts.lexDir match {case Some(d) => mgr.lex_=(Some(new BloomLexicon(d))) case None =>} case Some(_) => }
+      val fspecStr = FeatureManagerBuilder.getFeatureSpecString(opts.featureSpec.get)
+      val builder = new ScopeFeatureManagerBuilder(fspecStr)
+      val mgr = builder.getFeatureManager      
       val fr = new TrainingFactoredFeatureRep[String](mgr, opts)
       val sGen = new TrainingSeqGen[String] (fr, opts) with ScopeSeqGen
     }	
@@ -61,7 +61,8 @@ class ScopeParser(opts: Options) extends StdTaggerTask(opts) {
 
   override def getDecoder(modelFile: String, eval: Boolean, preModel: Boolean = false) : StdDecoder = {
     new StdDecoder(opts) {
-      val mgr = new ScopeFeatureManager(model.fspec)
+      val builder = new ScopeFeatureManagerBuilder(model.fspec)
+      val mgr = builder.getFeatureManager
       val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model)
       val eval = opts.evaluate.isDefined
       val sGen : FactoredDecodingSeqGen[String] = 
@@ -246,7 +247,8 @@ class ScopeDecoder(scopeModel: String, opts: Options) extends FactoredDecoder[St
   import StandardSerializer._
 
   val model = readModel(scopeModel)
-  val mgr = new ScopeFeatureManager(model.fspec)
+  val builder = new ScopeFeatureManagerBuilder(model.fspec)
+  val mgr = builder.getFeatureManager
   val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model)
   val sGen : FactoredDecodingSeqGen[String] = new FactoredDecodingSeqGen[String] (fr, model,opts) with ScopeJsonSeqGen with SeqGenScorer[String]
   setDecoder(true)

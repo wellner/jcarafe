@@ -555,6 +555,56 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   }
 }
 
+abstract class DirectTrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Options) extends SeqGen[Obs](opts) {
+
+  type FRepT = TrainingFactoredFeatureRep[Obs]
+  val frep: FRepT = fr
+
+  def this(opts: Options) = this(new TrainingFactoredFeatureRep[Obs](opts), opts)
+
+  def getNumberOfFeatures = frep.faMap.size
+  override def getNumberOfNeuralFeatures = frep.neuralFaMap.size
+
+  val boundaries = opts.boundaries
+  this.addBeginStates_=(!opts.noBegin)
+
+  def extractFeaturesDirect(dseq: SourceSequence[Obs]): Seq[AbstractInstance] = {
+    var sid = -1
+    val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+      if (dseq(i).beg) sid += 1
+      val inst = frep.createInstance(dseq(i), sid)
+      frep.applyFeatureFns(inst, dseq, i)
+      inst
+    }
+    iseq
+  }
+
+  def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
+    new MemoryInstanceSequence(extractFeaturesDirect(dseq), dseq.st, dseq.en)
+  }
+
+  override def countFeatureTypes(dseq: SourceSequence[Obs]): Unit = {
+    var sid = -1
+    var i = 0
+    while (i < dseq.length) {
+      if (dseq(i).beg) sid += 1
+      frep.countFeatureTypes(dseq, i)
+      i += 1
+    }
+  }
+
+  // note that this extraction is done over a document's worth of sequences
+  // relevant for document-level feature handling
+  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+    if (opts.randomFeatures || opts.randomSupportedFeatures) {
+      sourcePairSeqs foreach countFeatureTypes
+    }
+    frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
+    frep.resetDisplacement // reset the displaceable feature table
+    sourcePairSeqs map extractFeatures    
+  }
+}
+
 abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], opts: Options) extends SeqGen[Obs](opts) {
 
   type FRepT = NonFactoredFeatureRep[Obs]

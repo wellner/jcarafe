@@ -5,37 +5,39 @@
 package org.mitre.jcarafe.posttagger
 
 import scala.util.matching.Regex
-import org.mitre.jcarafe.crf.{DynamicFeatureManager,SourceSequence,FeatureReturn,IncrementalMurmurHash}
+import org.mitre.jcarafe.crf.{DynamicFeatureManagerBuilder,SourceSequence,FeatureReturn,IncrementalMurmurHash, FeatureFn}
 
 //import net.didion.jwnl.data.IndexWord
 //import net.didion.jwnl.data.Synset
 //
 //import net.didion.jwnl.data.POS
 
-class PostFeatureManager(istring: String) extends DynamicFeatureManager[Array[String]](istring) {
+class PostFeatureManagerBuilder(istring: String) extends DynamicFeatureManagerBuilder[Array[String]](istring) {
 
   import org.mitre.jcarafe.crf.IncrementalMurmurHash._
+  
+  type ArrStrFn = FeatureFn[Array[String]]
   // redefine a simpleFn to include postFnExprs
-  override def simpleFnExpr: Parser[FeatureFn] =
+  override def simpleFnExpr: Parser[ArrStrFn] =
     predicateExpr | prefFnExpr | sufFnExpr | wdFnExpr | lexFnExpr | nodeFnExpr | edgeFnExpr | regexpFnExpr | allTagFnExpr | antiPrefFnExpr | antiSufFnExpr | postFnExpr
 
-  //def postFnExpr : Parser[FeatureFn] = lengthE | allWds | wordnetSynset | regexpUtteranceE | utterLexE | sameUserE | lexStartE
-  def postFnExpr: Parser[FeatureFn] = lengthE | allWds | regexpUtteranceE | utterLexE | sameUserE | lexStartE | positionExpr | relPosExpr | allScores | allProps
-  def lengthE: Parser[FeatureFn] = "lengthFn" ^^ { _ => lengthFn _ }
-  def allWds: Parser[FeatureFn] = "allWordsFn" ^^ { _ => allWordsFn _ }
-  def allScores: Parser[FeatureFn] = "allScoresFn" ^^ { _ => allScoresFn _ }
-  def allProps: Parser[FeatureFn] = "allPropsFn" ^^ { _ => allPropsFn _ }
-  def utterLexE: Parser[FeatureFn] = "utterLexFn" ^^ { _ => utterLexFn(false) _ }
-  def sameUserE: Parser[FeatureFn] = "sameUserFn" ^^ { _ => sameUserFn _ }
-  def lexStartE: Parser[FeatureFn] = "lexStartFn" ^^ { _ => lexStartFn _ }
-  def positionExpr: Parser[FeatureFn] = "positionFn" ^^ { _ => posFn _ }
+  //def postFnExpr : Parser[ArrStrFn] = lengthE | allWds | wordnetSynset | regexpUtteranceE | utterLexE | sameUserE | lexStartE
+  def postFnExpr: Parser[ArrStrFn] = lengthE | allWds | regexpUtteranceE | utterLexE | sameUserE | lexStartE | positionExpr | relPosExpr | allScores | allProps
+  def lengthE: Parser[ArrStrFn] = "lengthFn" ^^ { _ => lengthFn _ }
+  def allWds: Parser[ArrStrFn] = "allWordsFn" ^^ { _ => allWordsFn _ }
+  def allScores: Parser[ArrStrFn] = "allScoresFn" ^^ { _ => allScoresFn _ }
+  def allProps: Parser[ArrStrFn] = "allPropsFn" ^^ { _ => allPropsFn _ }
+  def utterLexE: Parser[ArrStrFn] = "utterLexFn" ^^ { _ => utterLexFn(false) _ }
+  def sameUserE: Parser[ArrStrFn] = "sameUserFn" ^^ { _ => sameUserFn _ }
+  def lexStartE: Parser[ArrStrFn] = "lexStartFn" ^^ { _ => lexStartFn _ }
+  def positionExpr: Parser[ArrStrFn] = "positionFn" ^^ { _ => posFn _ }
 
-  def relPosExpr: Parser[FeatureFn] = "relPosFn" ^^ { _ => relPosFn _ }
+  def relPosExpr: Parser[ArrStrFn] = "relPosFn" ^^ { _ => relPosFn _ }
 
-  //def wordnetSynset : Parser[FeatureFn] = "wordnetFn" ^^ { _ => wordnetSynsetFn _}
-  //def regexE : Parser[FeatureFn] = "
+  //def wordnetSynset : Parser[ArrStrFn] = "wordnetFn" ^^ { _ => wordnetSynsetFn _}
+  //def regexE : Parser[ArrStrFn] = "
 
-  def regexpUtteranceE: Parser[FeatureFn] = "regexpUtteranceFn(" ~> fname ~ "," ~ """[^)]+""".r <~ ")" ^^ { case (fn ~ _ ~ e) => _regexpUtteranceFn(fn, e.r) _ }
+  def regexpUtteranceE: Parser[ArrStrFn] = "regexpUtteranceFn(" ~> fname ~ "," ~ """[^)]+""".r <~ ")" ^^ { case (fn ~ _ ~ e) => _regexpUtteranceFn(fn, e.r) _ }
 
   def lengthFn(s: Int, act_sarr: SourceSequence[Array[String]], pos: Int) = {
     val l = act_sarr(pos).obs.length

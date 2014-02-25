@@ -119,10 +119,10 @@ object BuiltFeature extends Serializable {
   def getBf(): BuiltFeature = if (debug) new BuiltFeatureDebug() else new BuiltFeature()
 
   def apply(): BuiltFeature = getBf()
-  
+
   // this essentially does a copy
-  def apply(bf: BuiltFeature) : BuiltFeature = {
-    apply(bf.get,bf.value)
+  def apply(bf: BuiltFeature): BuiltFeature = {
+    apply(bf.get, bf.value)
   }
 
   def apply(s: String): BuiltFeature = {
@@ -168,7 +168,7 @@ object BuiltFeature extends Serializable {
  */
 class FeatureReturn(val features: List[BuiltFeature], var edgeP: Boolean, val self: Boolean = false,
   var fcat: FeatureCat = StdFeature, var displaced: Boolean = false) extends Serializable {
-  
+
   def this(b: BuiltFeature, ep: Boolean) = this(List(b), ep)
   def this(b: BuiltFeature) = this(b, false)
   def this(v: Long) = this(BuiltFeature(v), false)
@@ -207,6 +207,230 @@ object FeatureReturn extends Serializable {
     val bfs = ss map { case (k, v) => BuiltFeature(k, v) }
     new FeatureReturn(bfs, false)
   }
+}
+
+class FeatureManager[Obs](
+  val iString: String,
+  val lex: Option[BloomLexicon],
+  val wdProps: Option[WordProperties],
+  val wdScores: Option[WordScores],
+  val inducedFeatureMap: Option[InducedFeatureMap],
+  val fnList: List[FeatureFn[Obs]]) extends Serializable
+  
+object FeatureFn {
+  
+  var fnId = 0
+  
+  def apply[Obs](f: (Int, SourceSequence[Obs], Int) => FeatureReturn) = {
+    fnId += 1
+    new FeatureFn[Obs]("fn_"+fnId) { def apply(s: Int, d: SourceSequence[Obs], p:Int) = f(s,d,p) }
+  }
+  
+  def apply[Obs](s: String, f: FeatureFn[Obs], edgeP: Boolean, fcat: FeatureCat = StdFeature) = {
+    new FeatureFn[Obs](s) {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = {
+        val r = f(s, d, p)
+        if (edgeP) r.setAsEdge()
+        else {
+          fcat match {case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti()}
+        }
+        r
+      }
+    }
+  }
+}  
+
+/**
+ * A feature function which subclasses <code>(Int,SourceSequence[Obs],Int) => FeatureReturn</code>.  Essentially,
+ * this defines a function that takes three arguments, returns a <code>FeatureReturn</code> and
+ * also has a string name.  Named feature functions are useful for tracing feature application
+ * and provide a means to compare feature functions.
+ * @param   top     <code>true</code> if this feature is to be registered in the list of
+ *                  feature functions in the manager.
+ * @param   n       A feature name as <code>String</code>
+ */
+abstract class FeatureFn[Obs](val n: String) extends Serializable {
+  def this() = this("")
+  
+  override def toString = n
+  
+  def apply(s: Int, d: SourceSequence[Obs], p: Int) : FeatureReturn
+  
+  val endCode: Long = IncrementalMurmurHash.hash("-END-", 0)
+  val stCode: Long = IncrementalMurmurHash.hash("-START-", 0)
+  val nullCode: Long = IncrementalMurmurHash.hash("-NULL-", 0)
+  val winCode: Long = IncrementalMurmurHash.hash("WIN+", 0)
+  val rngCode: Long = IncrementalMurmurHash.hash("Rng_", 0)
+
+  
+  def over(positions: Int*): FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>window<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = windowFn(rref, positions.toSeq)(s, d, p)
+    }
+  }
+  
+  def over(positions: Range): FeatureFn[Obs] = over(positions: _*)
+
+  def within(positions: Int*): FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>windowWithin<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = windowAnyFn(rref, positions.toSeq)(s, d, p)
+    }
+  }
+  def within(positions: Range): FeatureFn[Obs] = within(positions: _*)
+
+  def ngram(suc: Option[String], positions: Int*): FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>ngram<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = ngramFn(rref, positions.toSeq, suc.isDefined)(s, d, p)
+    }
+  }
+  def ngram(suc: Option[String], positions: Range): FeatureFn[Obs] = ngram(suc, positions: _*)
+
+  def displaced: FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>displaced<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = displacedFeatureFn(rref)(s, d, p)
+    }
+  }
+
+  def cross(other: FeatureFn[Obs]): FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>cross<<" + other.n + " >><<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = crossProduct(List(rref), List(other))(s, d, p)
+    }
+  }
+
+  def self(fname: String, positions: Int*): FeatureFn[Obs] = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>self<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = selfWinFn(rref, IncrementalMurmurHash.hash(fname, 0), positions.toSeq)(s, d, p)
+    }
+  }
+  def self(fname: String): FeatureFn[Obs] = self(fname, 0)
+  def self(fname: String, positions: Range): FeatureFn[Obs] = self(fname, positions: _*)
+
+  /**
+   * Computes a <code>FeatureReturn</code> with a single feature name/value pair
+   * that is constructed by applying supplied feature function, <code>fn</code>,
+   * to each position within the sequence at the specified sequence at relative offsets
+   * and conjoining the feature name results.  So, for example,
+   * <code>ngramFn((_wdFn _), Seq(-2,-1))(1,SourceSequence[Obs],5)</code> would generate a feature name
+   * that consists of the observation at position 3 conjoined with the observation
+   * at position 4 within the sequence <code>SourceSequence[Obs]</code>.
+   * @param  fn         A supplied feature function
+   * @param  positions  A sequence of <code>Int</code>s that specify relative positions to the current position
+   * @param  s          Segment length
+   * @param  sarr       SourceSequence of <code>ObsSource[Obs]</code> objects
+   * @param  pos        Current position within the sequence
+   * @return            Single conjunctive feature over relative positions.
+   */
+  def ngramFn(fn: FeatureFn[Obs], positions: Seq[Int], suc: Boolean)(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val maxLen = sarr.length
+    val fname = new BuiltFeature
+    var failed = false
+    positions foreach { p =>
+      val rp = pos + p
+      if ((rp >= 0) && (rp < maxLen)) {
+        val localPairs = fn(s, sarr, rp).features
+        if ((localPairs.size) < 1) if (!suc) failed = true else fname @@ nullCode
+        localPairs foreach { s => fname @@@ s @@ p }
+      } else if (rp == maxLen) fname @@ endCode
+      else if (rp == -1) fname @@ stCode
+    }
+    if (failed) new FeatureReturn else new FeatureReturn(fname)
+  }
+
+  /**
+   * Computes a <code>FeatureReturn</code> containing the set of feature name/value pairs
+   * derived from the <i>cross product</i> of feature name/value pairs that result from
+   * applying two sets of feature functions <code>fns1</code> and <code>fns2</code>. This provides
+   * a way to specify conjunctive features over the features computed by other feature functions.
+   * @param  fns1      A list of feature functions
+   * @param  fns2      A second list of feature functions
+   * @param  s         Segment length
+   * @param  sarr      SourceSequence of <code>ObsSource[Obs]</code> objects
+   * @param  pos       Current position within the sequence
+   * @return           FeatureReturn with cross product of features over the two function lists.
+   */
+  def crossProduct(fns1: List[FeatureFn[Obs]], fns2: List[FeatureFn[Obs]])(s: Int, sarr: SourceSequence[Obs], pos: Int): FeatureReturn = {
+    val npairs = new scala.collection.mutable.ListBuffer[BuiltFeature]
+    for (fn1 <- fns1; fn2 <- fns2) {
+      val fs1 = fn1(s, sarr, pos).features
+      val fs2 = fn2(s, sarr, pos).features
+      for (p1 <- fs1; p2 <- fs2)
+        npairs += BuiltFeature(p1) @@@ p2
+    }
+    new FeatureReturn(npairs.toList, false)
+  }
+  
+  /**
+   * Computes a <code>FeatureReturn</code> with a set of feature value pairs
+   * that are derived by applying supplied feature function, <code>fn</code>,
+   * to each position within the sequence at the specified sequence at relative offsets.
+   * @param  fn       A supplied feature function
+   * @param  window   A sequence of <code>Int</code>s that specify relative positions to the current position
+   * @param  s        Segment length
+   * @param  sarr     SourceSequence of <code>ObsSource[Obs]</code> objects
+   * @param  pos      Current position within the sequence
+   * @return          Set of features from applying <code>fn> to <code>window</code>
+   */
+  def windowFn(fn: FeatureFn[Obs], window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val l1 = sarr.length
+    window.foldLeft(new FeatureReturn) { (ac, rp) =>
+      val cp = if (rp >= 0) pos + rp else pos - s + rp
+      if ((cp >= 0) && (cp < l1)) {
+        (fn(s, sarr, cp).update2(winCode, rp)) join ac
+      } else ac
+    }
+  }
+
+  def windowAnyFn(fn: FeatureFn[Obs], window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val l1 = sarr.length
+    window.foldLeft(new FeatureReturn) { (ac, rp) =>
+      val cp = if (rp >= 0) pos + rp else pos - s + rp
+      if ((cp >= 0) && (cp < l1))
+        (fn(s, sarr, cp) updateSI window update rngCode) join ac
+      else ac
+    }
+  }
+
+  def selfWinFn(fn: FeatureFn[Obs], name: Long, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = { 
+    throw new RuntimeException("Self window features now unsupported")
+    /*
+    inducedFeatureMap match { // if we have a map, now generate
+      case Some(imap) =>
+        val newSelfFs =
+          if (inducingNewMap) { // might be inducing new self-features with an exsting inducedFeatureMap
+            val fres = fn(s, sarr, pos).features
+            new FeatureReturn(fres, false, true)
+          } else new FeatureReturn
+        val l1 = sarr.length
+        window.foldLeft(newSelfFs) { (ac, rp) =>
+          val cp = if (rp >= 0) pos + rp else pos - s + rp
+          if ((cp >= 0) && (cp < l1)) {
+            (genSelfFeatures(fn, name, imap, s, sarr, cp).update2(winCode, rp)) join ac
+          } else ac
+        }
+      case None =>
+        if (CrfInstance.training) new FeatureReturn
+        else {
+          // when decoding, if we have a selfFn, we should add the generated features to those that will be 'self-learned'
+          val fres = fn(s, sarr, pos).features
+          new FeatureReturn(fres, false, true)
+        }
+    }
+    */
+  }
+
+  def displacedFeatureFn(fn: FeatureFn[Obs])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val fr = fn(s, sarr, pos)
+    fr.displaced_=(true)
+    fr
+  }
+
+
 }
 
 /**
@@ -249,10 +473,23 @@ object FeatureReturn extends Serializable {
  * the regular expression function that returns the feature name "EndIn-ed" (when its pattern is matched)
  * over the relative positions -2,-1,0,1,2.
  */
-abstract class FeatureManager[Obs](val iString: String) extends Serializable {
-  def this() = this("")
+abstract class FeatureManagerBuilder[Obs](
+  val lex: Option[BloomLexicon],
+  val wdProps: Option[WordProperties],
+  val wdScores: Option[WordScores],
+  val inducedFeatureMap: Option[InducedFeatureMap],
+  val iString: String,
+  val inducingNewMap: Boolean) extends Serializable {
 
   type Fn = (Int, SourceSequence[Obs], Int) => FeatureReturn
+
+  def getFeatureManager: FeatureManager[Obs] = {
+    val fns = buildFeatureFns
+    val nfsn = fns map {f => FeatureFn(f.apply)} // does this get rid of the dynamic scope ....
+    new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, nfsn)
+  }
+
+  def buildFeatureFns : List[FeatureFn[Obs]]
 
   /*
    * Especially dense features can cause numerical problems with long sequences.
@@ -260,154 +497,19 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
    */
   val denseFeatureWt = 1.0
 
-  /**
-   * An optional lexicon of tokens that map to categories/features
-   */
-  var lex: Option[BloomLexicon] = None
-
-  /**
-   * Optional listing of properties for each word
-   */
-  var wdProps: Option[WordProperties] = None
-
-  /**
-   * Optional frequency-based word scores
-   */
-  var wdScores: Option[WordScores] = None
-
-  /**
-   * Optional frequency-based word scores
-   */
-  var inducedFeatureMap: Option[InducedFeatureMap] = None
-
-  var inducingNewMap: Boolean = false
-
-  /**
-   * A feature function which subclasses <code>(Int,SourceSequence[Obs],Int) => FeatureReturn</code>.  Essentially,
-   * this defines a function that takes three arguments, returns a <code>FeatureReturn</code> and
-   * also has a string name.  Named feature functions are useful for tracing feature application
-   * and provide a means to compare feature functions.
-   * @param   top     <code>true</code> if this feature is to be registered in the list of
-   *                  feature functions in the manager.
-   * @param   n       A feature name as <code>String</code>
-   */
-  abstract class FeatureFn(var top: Boolean, val n: String) extends Fn with Serializable {
-    def this() = this(false, "")
-    def this(s: String) = this(true, s)
-
-    override def toString = n
-
-    def over(positions: Int*): FeatureFn = {
-      this.top = false
-      val rref = this
-      new FeatureFn(n + ">>window<<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = windowFn(rref, positions.toSeq)(s, d, p)
-      }
-    }
-    def over(positions: Range): FeatureFn = over(positions: _*)
-
-    def within(positions: Int*): FeatureFn = {
-      this.top = false
-      val rref = this
-      new FeatureFn(n + ">>windowWithin<<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = windowAnyFn(rref, positions.toSeq)(s, d, p)
-      }
-    }
-    def within(positions: Range): FeatureFn = within(positions: _*)
-
-    def ngram(suc: Option[String], positions: Int*): FeatureFn = {
-      this.top = false
-      val rref = this
-      new FeatureFn(n + ">>ngram<<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = ngramFn(rref, positions.toSeq, suc.isDefined)(s, d, p)
-      }
-    }
-    def ngram(suc: Option[String], positions: Range): FeatureFn = ngram(suc, positions: _*)
-
-    def displaced: FeatureFn = {
-      this.top = false
-      val rref = this
-      new FeatureFn(n + ">>displaced<<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = displacedFeatureFn(rref)(s, d, p)
-      }
-    }
-
-    def cross(other: FeatureFn): FeatureFn = {
-      this.top = false
-      val rref = this
-      other.top = false
-      new FeatureFn(n + ">>cross<<" + other.n + " >><<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = crossProduct(List(rref), List(other))(s, d, p)
-      }
-    }
-
-    def self(fname: String, positions: Int*): FeatureFn = {
-      this.top = false
-      val rref = this
-      new FeatureFn(n + ">>self<<") {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = selfWinFn(rref, IncrementalMurmurHash.hash(fname, 0), positions.toSeq)(s, d, p)
-      }
-    }
-    def self(fname: String): FeatureFn = self(fname, 0)
-    def self(fname: String, positions: Range): FeatureFn = self(fname, positions: _*)
-
-  }
-
-  abstract class StaticFeatureFn(t: Boolean, n: String) extends FeatureFn(t, n) with Serializable {
-    def this() = this(false, "")
-    def this(s: String) = this(true, s)
-    fnBuf += (this: Fn)
-  }
-
-  object FeatureFn extends Serializable {
-    def apply(s: String, f: FeatureFn, edgeP: Boolean, fcat: FeatureCat = StdFeature) = {
-      f.top = false
-      new FeatureFn(s) {
-        def apply(s: Int, d: SourceSequence[Obs], p: Int) = {
-          val r = f(s, d, p)
-          if (edgeP) r.setAsEdge()
-          else {
-            fcat match { case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti() case _ => }
-          }
-          r
-        }
-      }
-    }
-  }
 
   def reset: Unit = {} // no-op by default, but can be used to for FeatureManager subclasses that hold global state per sequence
 
-  /**
-   * A helper class for the feature specification DSL.  Maps a <code>Fn</code>
-   * to a <code>FeatureFn</code>
-   */
-  class ToFeatureFn(val n: String) extends Serializable {
-    def as(y: Fn) = new StaticFeatureFn(true, n) { def apply(s: Int, d: SourceSequence[Obs], p: Int) = y(s, d, p) }
-  }
-  implicit def conv(n: String) = new ToFeatureFn(n)
-  implicit def upgrad(f: Fn) = new FeatureFn { def apply(s: Int, d: SourceSequence[Obs], p: Int) = f(s, d, p) }
   implicit def toBuiltFeature(s: String) = BuiltFeature(s)
 
   type FnList = List[Fn] // may make this a set, so abstract type
-
-  /**
-   * A list buffer of feature functions that will be added to the list of functions to apply.
-   * Functions can be placed within within the class body if they are instances of
-   * <code>FeatureFn</code> and accordingly are <i>named</i>.
-   */
-  val fnBuf = new scala.collection.mutable.ListBuffer[FeatureFn]
-
-  /**
-   * Returns a list of functions that from <code>fnBuf</code>
-   * @return   Returns the full list of functions to apply.
-   */
-  def fnList: FnList = fnBuf.toList filter { _.top }
 
   /**
    * Value for <code>_wdFn _</code>
    * @see #_wdFn(Int,SourceSequence[Obs],Int)
    */
   val wdFn = _wdFn _
+  //val wdFn = new FeatureFn[Obs]("wdFn") { def apply(s: Int, sarr: SourceSequence[Obs], pos: Int) = new FeatureReturn(sarr(pos).code)}
   val nodeFn = _nodeFn _
   val edgeFn = _edgeFn _
   val regexpFn: (String, Regex) => Fn = { (fn, r) => _regexpFn(fn, r) _ }
@@ -421,14 +523,9 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
   val edgePrFr = new FeatureReturn(":E::", true)
 
   // for efficiency, pre-hash these
-  val winCode: Long = IncrementalMurmurHash.hash("WIN+", 0)
-  val rngCode: Long = IncrementalMurmurHash.hash("Rng_", 0)
-  val endCode: Long = IncrementalMurmurHash.hash("-END-", 0)
-  val stCode: Long = IncrementalMurmurHash.hash("-START-", 0)
   val numCode: Long = IncrementalMurmurHash.hash("-NUMBER-", 0)
 
   val selfWdCode: Long = IncrementalMurmurHash.hash("-selfWd-", 0)
-  val nullCode: Long = IncrementalMurmurHash.hash("-NULL-", 0)
   val wdScoreCode: Long = IncrementalMurmurHash.hash(":wdScore:", 0)
 
   /**
@@ -438,9 +535,9 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
    * @param  pos      Current position within the sequence
    * @return    A <code>FeatureReturn</code> with the observation feature as a hashcode
    */
-  def _wdFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = new FeatureReturn(sarr(pos).code) 
+  def _wdFn(s: Int, sarr: SourceSequence[Obs], pos: Int) = new FeatureReturn(sarr(pos).code)
 
-    /**
+  /**
    * Computes a feature as the hashed conjunction of ALL labels produced from pre-models
    * @param  s        Segment length
    * @param  sarr     SourceSequence of <code>ObsSource[Obs]</code> objects
@@ -451,7 +548,7 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
     val pc = sarr(pos).preLabelCode
     if (pc != 0L) new FeatureReturn(pc) else new FeatureReturn
   }
-  
+
   val numRegex = """[0-9,.]*[0-9]+$""".r
 
   def wdFnNorm(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
@@ -564,8 +661,8 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
     } else new FeatureReturn
   }
 
-  def predicateFn(name: String, fns: FnList)(s: Int, sarr: SourceSequence[Obs], pos: Int) =
-    if (fns exists { (fn: Fn) => fn(s, sarr, pos).features.size > 1 })
+  def predicateFn(name: String, fns: List[FeatureFn[Obs]])(s: Int, sarr: SourceSequence[Obs], pos: Int) =
+    if (fns exists { (fn: FeatureFn[Obs]) => fn(s, sarr, pos).features.size > 1 })
       new FeatureReturn(name)
     else new FeatureReturn
 
@@ -630,8 +727,11 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
 
   def weightedAttributes(s: Int, sarr: SourceSequence[Obs], pos: Int) = sarr(pos).info match {
     case Some(i) =>
-      FeatureReturn((i.foldLeft(Nil: List[(String, Double)]) { case (ac, vs) => vs match { 
-        case (k, v) => (k, (try { v.toDouble } catch { case _:Throwable => 1.0 })) :: ac } }))
+      FeatureReturn((i.foldLeft(Nil: List[(String, Double)]) {
+        case (ac, vs) => vs match {
+          case (k, v) => (k, (try { v.toDouble } catch { case _: Throwable => 1.0 })) :: ac
+        }
+      }))
     case None => new FeatureReturn
   }
 
@@ -731,116 +831,8 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
     } else new FeatureReturn
   }
 
-  def selfWinFn(fn: Fn, name: Long, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    inducedFeatureMap match { // if we have a map, now generate
-      case Some(imap) =>
-        val newSelfFs =
-          if (inducingNewMap) { // might be inducing new self-features with an exsting inducedFeatureMap
-            val fres = fn(s, sarr, pos).features
-            new FeatureReturn(fres, false, true)
-          } else new FeatureReturn
-        val l1 = sarr.length
-        window.foldLeft(newSelfFs) { (ac, rp) =>
-          val cp = if (rp >= 0) pos + rp else pos - s + rp
-          if ((cp >= 0) && (cp < l1)) {
-            (genSelfFeatures(fn, name, imap, s, sarr, cp).update2(winCode, rp)) join ac
-          } else ac
-        }
-      case None =>
-        if (CrfInstance.training) new FeatureReturn
-        else {
-          // when decoding, if we have a selfFn, we should add the generated features to those that will be 'self-learned'
-          val fres = fn(s, sarr, pos).features
-          new FeatureReturn(fres, false, true)
-        }
-    }
-  }
-
-  /**
-   * Computes a <code>FeatureReturn</code> with a set of feature value pairs
-   * that are derived by applying supplied feature function, <code>fn</code>,
-   * to each position within the sequence at the specified sequence at relative offsets.
-   * @param  fn       A supplied feature function
-   * @param  window   A sequence of <code>Int</code>s that specify relative positions to the current position
-   * @param  s        Segment length
-   * @param  sarr     SourceSequence of <code>ObsSource[Obs]</code> objects
-   * @param  pos      Current position within the sequence
-   * @return          Set of features from applying <code>fn> to <code>window</code>
-   */
-  def windowFn(fn: Fn, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    val l1 = sarr.length
-    window.foldLeft(new FeatureReturn) { (ac, rp) =>
-      val cp = if (rp >= 0) pos + rp else pos - s + rp
-      if ((cp >= 0) && (cp < l1)) {
-        (fn(s, sarr, cp).update2(winCode, rp)) join ac
-      } else ac
-    }
-  }
-
-  def windowAnyFn(fn: Fn, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    val l1 = sarr.length
-    window.foldLeft(new FeatureReturn) { (ac, rp) =>
-      val cp = if (rp >= 0) pos + rp else pos - s + rp
-      if ((cp >= 0) && (cp < l1))
-        (fn(s, sarr, cp) updateSI window update rngCode) join ac
-      else ac
-    }
-  }
-
-  /**
-   * Computes a <code>FeatureReturn</code> with a single feature name/value pair
-   * that is constructed by applying supplied feature function, <code>fn</code>,
-   * to each position within the sequence at the specified sequence at relative offsets
-   * and conjoining the feature name results.  So, for example,
-   * <code>ngramFn((_wdFn _), Seq(-2,-1))(1,SourceSequence[Obs],5)</code> would generate a feature name
-   * that consists of the observation at position 3 conjoined with the observation
-   * at position 4 within the sequence <code>SourceSequence[Obs]</code>.
-   * @param  fn         A supplied feature function
-   * @param  positions  A sequence of <code>Int</code>s that specify relative positions to the current position
-   * @param  s          Segment length
-   * @param  sarr       SourceSequence of <code>ObsSource[Obs]</code> objects
-   * @param  pos        Current position within the sequence
-   * @return            Single conjunctive feature over relative positions.
-   */
-  def ngramFn(fn: Fn, positions: Seq[Int], suc: Boolean)(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    val maxLen = sarr.length
-    val fname = new BuiltFeature
-    var failed = false
-    positions foreach { p =>
-      val rp = pos + p
-      if ((rp >= 0) && (rp < maxLen)) {
-        val localPairs = fn(s, sarr, rp).features
-        if ((localPairs.size) < 1) if (!suc) failed = true else fname @@ nullCode
-        localPairs foreach { s => fname @@@ s @@ p }
-      } else if (rp == maxLen) fname @@ endCode
-      else if (rp == -1) fname @@ stCode
-    }
-    if (failed) new FeatureReturn else new FeatureReturn(fname)
-  }
-
-  /**
-   * Computes a <code>FeatureReturn</code> containing the set of feature name/value pairs
-   * derived from the <i>cross product</i> of feature name/value pairs that result from
-   * applying two sets of feature functions <code>fns1</code> and <code>fns2</code>. This provides
-   * a way to specify conjunctive features over the features computed by other feature functions.
-   * @param  fns1      A list of feature functions
-   * @param  fns2      A second list of feature functions
-   * @param  s         Segment length
-   * @param  sarr      SourceSequence of <code>ObsSource[Obs]</code> objects
-   * @param  pos       Current position within the sequence
-   * @return           FeatureReturn with cross product of features over the two function lists.
-   */
-  def crossProduct(fns1: FnList, fns2: FnList)(s: Int, sarr: SourceSequence[Obs], pos: Int): FeatureReturn = {
-    val npairs = new scala.collection.mutable.ListBuffer[BuiltFeature]
-    for (fn1 <- fns1; fn2 <- fns2) {
-      val fs1 = fn1(s, sarr, pos).features
-      val fs2 = fn2(s, sarr, pos).features
-      for (p1 <- fs1; p2 <- fs2)
-        npairs += BuiltFeature(p1) @@@ p2
-    }
-    new FeatureReturn(npairs.toList, false)
-  }
-
+  
+  
   def nearestLeft(att: String, vl: String, cp: Int, sarr: SourceSequence[Obs]): Int = {
     var i = cp
     var done = false
@@ -894,15 +886,9 @@ abstract class FeatureManager[Obs](val iString: String) extends Serializable {
     new FeatureReturn(fs)
   }
 
-  def displacedFeatureFn(fn: Fn)(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    val fr = fn(s, sarr, pos)
-    fr.displaced_=(true)
-    fr
-  }
-
 }
 
-object FeatureManager {
+object FeatureManagerBuilder {
   import scala.io.Source
   val utf8Codec = scala.io.Codec("utf-8")
 
@@ -912,27 +898,13 @@ object FeatureManager {
    * Build and set the lexicon if it has been provided and hasn't already been
    * created.
    */
-  def setLexicon[Obs](opts: Options, mgr: FeatureManager[Obs]) = {
-    mgr.lex match { 
-      case None => opts.lexDir match { case Some(d) => mgr.lex_=(Some(new BloomLexicon(d))) case None => } 
-      case Some(_) =>  }
-  }
+  def getLexicon(opts: Options) = opts.lexDir map { d => new BloomLexicon(d) }
 
-  def setWordProperties[Obs](opts: Options, mgr: FeatureManager[Obs]) = {
-    mgr.wdProps match {
-      case None => opts.wordPropFile match { case Some(f) => mgr.wdProps_=(Some(new WordProperties(f))) case None => } case Some(_) =>
-    }
-    mgr.wdScores match {
-      case None => opts.wordScoreFile match { case Some(f) => mgr.wdScores_=(Some(new WordScores(f))) case None => } case Some(_) =>
-    }
-  }
+  def getWordProperties(opts: Options) = opts.wordPropFile map { f => new WordProperties(f) }
 
-  def setInducedFeatureMap[Obs](opts: Options, mgr: FeatureManager[Obs]): Unit = {
-    mgr.inducedFeatureMap match {
-      case None => mgr.inducedFeatureMap_=(opts.weightedFeatureMap map { InducedFeatureMap(_) })
-      case Some(fm) => println("Induced feature map already 'set' (contains " + fm.hmap.size + " entires)")
-    }
-  }
+  def getWordScores(opts: Options) = opts.wordScoreFile map { f => new WordScores(f) }
+
+  def getInducedFeatureMap(opts: Options) = { opts.weightedFeatureMap map { InducedFeatureMap(_) } }
 
   def getFeatureSpecString(f: String) = {
     val sbuf = new StringBuffer
@@ -940,46 +912,70 @@ object FeatureManager {
     sbuf.toString
   }
 
-  def getMgrTrain[Obs](opts: Options): DynamicFeatureManager[Obs] = {
-    val dm = new DynamicFeatureManager[Obs](getFeatureSpecString(opts.featureSpec.get))
-    setLexicon(opts, dm)
-    setWordProperties(opts, dm)
-    setInducedFeatureMap(opts, dm)
-    dm
+  def getMgrTrain[Obs](opts: Options): FeatureManager[Obs] = {
+    val lexicon = getLexicon(opts)
+    val wdProps = getWordProperties(opts)
+    val wdScores = getWordScores(opts)
+    val imap = getInducedFeatureMap(opts)
+    val fspec = getFeatureSpecString(opts.featureSpec.get)
+    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, fspec)
+    dm.getFeatureManager
   }
 
-  def getMgrDecode[Obs](opts: Options, model: Model, pre: Boolean): DynamicFeatureManager[Obs] = {
-    val dm = new DynamicFeatureManager[Obs](model.fspec)
-    if (!pre) { // don't override these using command-line options if this is a "pre-model"
-      setLexicon(opts, dm)
-      setWordProperties(opts, dm)
-      setInducedFeatureMap(opts, dm)
-    }
-    dm
+  def getMgrDecode[Obs](opts: Options, model: StdModel, pre: Boolean): FeatureManager[Obs] = {
+    val lexicon = if (model.lex.isDefined) model.lex else if (!pre) getLexicon(opts) else None
+    val wdProps = if (model.wdProps.isDefined) model.wdProps else if (!pre) getWordProperties(opts) else None
+    val wdScores = if (model.wdScores.isDefined) model.wdScores else if (!pre) getWordScores(opts) else None
+    val imap = if (model.inducedFs.isDefined) model.inducedFs else if (!pre) getInducedFeatureMap(opts) else None
+    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, model.fspec)
+    dm.getFeatureManager
   }
 
-  def createForSelfTraining[Obs](opts: Options, model: Model): DynamicFeatureManager[Obs] = {
+  def createForSelfTraining[Obs](opts: Options, model: Model): FeatureManager[Obs] = {
     // use provided feature spec, if it's given
     // this is done so that additional self-features can be added to the feature spec without having to re-train underlying model
-    val dm = new DynamicFeatureManager[Obs](opts.featureSpec match { case Some(fs) => getFeatureSpecString(fs) case None => model.fspec })
-    setLexicon(opts, dm)
-    setWordProperties(opts, dm)
-    dm.inducingNewMap_=(true)
-    dm
+    val lexicon = getLexicon(opts)
+    val wdProps = getWordProperties(opts)
+    val wdScores = getWordScores(opts)
+    val imap = getInducedFeatureMap(opts)
+    val fspec = opts.featureSpec match { case Some(fs) => getFeatureSpecString(fs) case None => model.fspec }
+    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, fspec, inducingNewMap = true)
+    dm.getFeatureManager
   }
 
   def apply[Obs](opts: Options): FeatureManager[Obs] = {
     opts.featureSpec match {
       case Some(m) => getMgrTrain[Obs](opts)
       case None =>
-        val m = new DynamicFeatureManager[Obs](defaultSpec)
-        setLexicon(opts, m);
-        m
+        val lexicon = getLexicon(opts)
+        val m = new DynamicFeatureManagerBuilder[Obs](lexicon, None, None, None, defaultSpec)
+        m.getFeatureManager
     }
   }
 
-  def apply[Obs](opts: Options, m: Model, pre: Boolean = false): FeatureManager[Obs] = getMgrDecode[Obs](opts, m, pre)
+  def apply[Obs](opts: Options, m: StdModel, pre: Boolean = false): FeatureManager[Obs] = getMgrDecode[Obs](opts, m, pre)
 
+}
+
+class StaticFeatureManagerBuilder[Obs](
+    val staticName: String,
+  l: Option[BloomLexicon],
+  wdP: Option[WordProperties],
+  wdS: Option[WordScores],
+  iMap: Option[InducedFeatureMap],  
+  induceMap: Boolean) extends FeatureManagerBuilder[Obs](l, wdP, wdS, iMap, staticName, induceMap) {
+  
+  def this(s: String) = this(s, None, None, None, None, false)
+  
+  def buildFeatureFns = {
+    List(FeatureFn(wdFn),
+        FeatureFn(lexFn),
+        FeatureFn(wdFn).ngram(None,(-1 to 0)),
+        FeatureFn(lexFn).over((-1 to 1)),
+        FeatureFn(wdFn).over((-2 to 2)),
+        FeatureFn(wordPropertiesFn(false)) over (-2 to 2)
+        )
+  }
 }
 
 object IncrementalMurmurHash extends Serializable {
@@ -1006,8 +1002,8 @@ object IncrementalMurmurHash extends Serializable {
     h ^= k
     h
   }
-  
-  def mix(s: String, k: Long) : Long = mix(hash(s),k)
+
+  def mix(s: String, k: Long): Long = mix(hash(s), k)
 
   def hash(data: String): Long = hash(data, 0)
 

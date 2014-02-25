@@ -13,13 +13,23 @@ import org.mitre.jcarafe.util._
 /*
  * A DynamicFeatureManager is able to load feature extraction functions
  * at <i>runtime</i> by reading from a feature extraction specification file.
- * This allows the same piece of software to accomodate very different tagging
+ * This allows the same piece of software to accommodate very different tagging
  * and sequence labeling tasks.  Crucially, it allows users to customize
  * feature extraction functionality without needing to recompile.
+ * The initialize() method must be called to create the feature extraction functions
+ * from the provided spec. 
  * 
  * @author Ben Wellner
 */
-class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iString) with RegexParsers {
+class DynamicFeatureManagerBuilder[Obs](
+    lex: Option[BloomLexicon], 
+    wdProps: Option[WordProperties],
+    wdScores: Option[WordScores],
+    inducedFeatureMap: Option[InducedFeatureMap],
+    iString: String,
+    inducingNewMap: Boolean = false) extends FeatureManagerBuilder[Obs](lex, wdProps, wdScores, inducedFeatureMap, iString, inducingNewMap) with RegexParsers {
+  
+  def this(s: String) = this(None, None, None, None, s)
 
   var ii = 0
   def genSym = {
@@ -27,15 +37,16 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
     ii += 1
     r
   }
-  parseString(iString)
   
-  def topExprs : Parser[List[FeatureFn]] = repsep(topExpr,"""[;\r\n]+""".r) ~ ";" ^^ {case (e~_) => e filter {_.isDefined} map {_.get}}
+  def buildFeatureFns = parseString(iString)  
   
-  def topExpr : Parser[Option[FeatureFn]] = topExpr0 | topExpr1 | topExpr2
+  def topExprs : Parser[List[FeatureFn[Obs]]] = repsep(topExpr,"""[;\r\n]+""".r) ~ ";" ^^ {case (e~_) => e filter {_.isDefined} map {_.get}}
   
-  def topExpr0 : Parser[Option[FeatureFn]] = comment ^^ {_ => None}
+  def topExpr : Parser[Option[FeatureFn[Obs]]] = topExpr0 | topExpr1 | topExpr2
+  
+  def topExpr0 : Parser[Option[FeatureFn[Obs]]] = comment ^^ {_ => None}
 
-  def topExpr1 : Parser[Option[FeatureFn]] = 
+  def topExpr1 : Parser[Option[FeatureFn[Obs]]] = 
     fname ~ ("as" | ":") ~ fullExpr ~ opt("TRANSITION"|"NEURAL"|"MULTI") ~ opt(comment) ^^ 
     {case (l~_~f~t~_) => 
       val fFun = t match {case Some("TRANSITION") => FeatureFn(l,f,true) 
@@ -45,15 +56,15 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
       Some(fFun)
       }
   
-  def topExpr2 : Parser[Option[FeatureFn]] = 
+  def topExpr2 : Parser[Option[FeatureFn[Obs]]] = 
     fullExpr ~ opt("TRANSITION"|"NEURAL"|"MULTI") ~ opt(comment) ^^ 
     {case (f~t~_) =>
       val l = genSym
       val fFun = t match {
-      	case Some("TRANSITION") => FeatureFn(l,f,true) 
-      	case Some("NEURAL") => FeatureFn(l,f,false,NNFeature) 
-      	case Some("MULTI") => FeatureFn(l,f,false,MultiFeature)
-      	case _ => FeatureFn(l,f,false)}
+      	case Some("TRANSITION") => FeatureFn[Obs](l,f,true) 
+      	case Some("NEURAL") => FeatureFn[Obs](l,f,false,NNFeature) 
+      	case Some("MULTI") => FeatureFn[Obs](l,f,false,MultiFeature)
+      	case _ => FeatureFn[Obs](l,f,false)}
       Some(fFun)
       }  
   
@@ -61,14 +72,14 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
 
   def fname : Parser[String] = """[A-z0-9_\.:-]+""".r
   
-  def fullExpr : Parser[FeatureFn] = 
+  def fullExpr : Parser[FeatureFn[Obs]] = 
     (cfnExpr ~ ("cross"|"X") ~ fullExpr) ^^ {case (l~_~r) => l.cross(r)} |
     (simpleFnExpr ~ ("cross"|"X") ~ fullExpr) ^^ {case (l~_~r) => l.cross(r)} | 
     ("(" ~ cfnExpr ~ ")" ~ ("cross"|"X") ~ "(" ~ fullExpr ~ ")") ^^ {case (_~l~_~_~_~r~_) => l.cross(r)} |
     ("(" ~ simpleFnExpr ~ ")" ~ ("cross"|"X") ~ "(" ~ fullExpr ~ ")") ^^ {case (_~l~_~_~_~r~_) => l.cross(r)} | 
     cfnExpr
   
-  def cfnExpr : Parser[FeatureFn] =  
+  def cfnExpr : Parser[FeatureFn[Obs]] =  
     (simpleFnExpr ~ ("ngram"|"N-") ~ rangeExpr ~ opt("SUCCEED")) ^^ {case (l~_~r~o) => l.ngram(o,r:_*)} |
     (simpleFnExpr ~ ("within"|"W") ~ rangeExpr) ^^ {case (l~_~r) => l.within(r:_*)} |
     (simpleFnExpr ~ ("over"|"@") ~ rangeExpr)   ^^ {case (l~_~r) => l.over(r:_*)} |
@@ -82,51 +93,51 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
 												      case Some(s) => l.self(r,s:_*) }} |
     simpleFnExpr
   
-  def simpleFnExpr : Parser[FeatureFn] = 
+  def simpleFnExpr : Parser[FeatureFn[Obs]] = 
     predicateExpr | prefFnExpr | sufFnExpr | wdFnExpr | caseLessFnExpr | lexFnExpr | wdPropFnExpr | downWdPropFnExpr | wdScoreFnExpr |
     downLexFnExpr | nodeFnExpr | edgeFnExpr | regexpFnExpr | allTagFnExpr | antiPrefFnExpr | antiSufFnExpr | attributeFnExpr |
     weightedAttrExpr | distToLeftExpr | distToRightExpr | nodeFnSemiExpr | edgeFnSemiExpr | phraseFnExpr | semiAttributeFnExpr | phraseWdsExpr |
     prefNGramExpr | sufNGramExpr | sentPosExpr | wdLenExpr | wdFnNormExpr | wdPropPrefixFnExpr | posFnExpr 
   
-  def wdFnExpr : Parser[FeatureFn]           = "wdFn" ^^ {_ => wdFn}
-  def wdFnNormExpr : Parser[FeatureFn]       = "wdNormFn" ^^ {_ => wdFnNorm _}
-  def caseLessFnExpr : Parser[FeatureFn]     = "caselessWdFn" ^^ {_ => caselessWdFn}
-  def posFnExpr: Parser[FeatureFn]           = "preLabFn" ^^ {_ => _preLabFn _}
-  def lexFnExpr : Parser[FeatureFn]          = "lexFn" ^^ {_ => lexFn}
-  def downLexFnExpr : Parser[FeatureFn]      = "downLexFn" ^^ {_ => downLexFn}
-  def wdPropFnExpr : Parser[FeatureFn]       = "wdPropFn" ^^ {_ => wordPropertiesFn(false) _ }
-  def wdPropPrefixFnExpr : Parser[FeatureFn] = "wdPropPrefixFn(" ~> intVal <~ ")" ^^ {v => wordPropertiesPrefixesFn(v,false) _ }
-  def downWdPropFnExpr : Parser[FeatureFn]   = "downWdPropFn" ^^ {_ => wordPropertiesFn(true) _ }
-  def wdScoreFnExpr : Parser[FeatureFn]      = "wdScoreFn" ^^ {_ => wordScoresFn _ }
-  def nodeFnExpr : Parser[FeatureFn]         = "nodeFn" ^^ {_ => nodeFn}
-  def nodeFnSemiExpr : Parser[FeatureFn]     = "semiNodeFn" ^^ {_ => _nodeFnSemi _}
-  def edgeFnSemiExpr : Parser[FeatureFn]     = "semiEdgeFn" ^^ {_ => _edgeFnSemi _}
-  def semiAttributeFnExpr: Parser[FeatureFn] = "semiAttrFn(" ~> fname <~ ")" ^^ {v => _phraseAttributeFn(v) _}
-  def phraseFnExpr : Parser[FeatureFn]       = "phraseFn" ^^ {_ => phraseFn _}
-  def phraseWdsExpr : Parser[FeatureFn]      = "phraseWds" ^^ {_ => phraseWds _}
-  def edgeFnExpr : Parser[FeatureFn]         = "edgeFn" ^^ {_ => edgeFn}
-  def allTagFnExpr : Parser[FeatureFn]       = "allTagFn" ^^ {_ => allTagFn _}
-  def weightedAttrExpr : Parser[FeatureFn]   = "weightedAttrs" ^^ {_ => weightedAttributes _}
-  def distToLeftExpr : Parser[FeatureFn]     = "distToLeft(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => distanceToLeft(a,v) _ }
-  def distToRightExpr : Parser[FeatureFn]    = "distToRight(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => distanceToRight(a,v) _ }
-  def sentPosExpr : Parser[FeatureFn]        = "sentPos" ^^ {_ => sentPosition _}
+  def wdFnExpr : Parser[FeatureFn[Obs]]           = "wdFn" ^^ {_ => FeatureFn(wdFn)}
+  def wdFnNormExpr : Parser[FeatureFn[Obs]]       = "wdNormFn" ^^ {_ => FeatureFn(wdFnNorm _)}
+  def caseLessFnExpr : Parser[FeatureFn[Obs]]     = "caselessWdFn" ^^ {_ => FeatureFn(caselessWdFn)}
+  def posFnExpr: Parser[FeatureFn[Obs]]           = "preLabFn" ^^ {_ => FeatureFn(_preLabFn _)}
+  def lexFnExpr : Parser[FeatureFn[Obs]]          = "lexFn" ^^ {_ => FeatureFn(lexFn)}
+  def downLexFnExpr : Parser[FeatureFn[Obs]]      = "downLexFn" ^^ {_ => FeatureFn(downLexFn)}
+  def wdPropFnExpr : Parser[FeatureFn[Obs]]       = "wdPropFn" ^^ {_ => FeatureFn(wordPropertiesFn(false) _) }
+  def wdPropPrefixFnExpr : Parser[FeatureFn[Obs]] = "wdPropPrefixFn(" ~> intVal <~ ")" ^^ {v => FeatureFn(wordPropertiesPrefixesFn(v,false) _) }
+  def downWdPropFnExpr : Parser[FeatureFn[Obs]]   = "downWdPropFn" ^^ {_ => FeatureFn(wordPropertiesFn(true) _) }
+  def wdScoreFnExpr : Parser[FeatureFn[Obs]]      = "wdScoreFn" ^^ {_ => FeatureFn(wordScoresFn _) }
+  def nodeFnExpr : Parser[FeatureFn[Obs]]         = "nodeFn" ^^ {_ => FeatureFn(nodeFn)}
+  def nodeFnSemiExpr : Parser[FeatureFn[Obs]]     = "semiNodeFn" ^^ {_ => FeatureFn(_nodeFnSemi _)}
+  def edgeFnSemiExpr : Parser[FeatureFn[Obs]]     = "semiEdgeFn" ^^ {_ => FeatureFn(_edgeFnSemi _)}
+  def semiAttributeFnExpr: Parser[FeatureFn[Obs]] = "semiAttrFn(" ~> fname <~ ")" ^^ {v => FeatureFn(_phraseAttributeFn(v) _)}
+  def phraseFnExpr : Parser[FeatureFn[Obs]]       = "phraseFn" ^^ {_ => FeatureFn(phraseFn _)}
+  def phraseWdsExpr : Parser[FeatureFn[Obs]]      = "phraseWds" ^^ {_ => FeatureFn(phraseWds _)}
+  def edgeFnExpr : Parser[FeatureFn[Obs]]         = "edgeFn" ^^ {_ => FeatureFn(edgeFn)}
+  def allTagFnExpr : Parser[FeatureFn[Obs]]       = "allTagFn" ^^ {_ => FeatureFn(allTagFn _)}
+  def weightedAttrExpr : Parser[FeatureFn[Obs]]   = "weightedAttrs" ^^ {_ => FeatureFn(weightedAttributes _)}
+  def distToLeftExpr : Parser[FeatureFn[Obs]]     = "distToLeft(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => FeatureFn(distanceToLeft(a,v) _) }
+  def distToRightExpr : Parser[FeatureFn[Obs]]    = "distToRight(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => FeatureFn(distanceToRight(a,v) _) }
+  def sentPosExpr : Parser[FeatureFn[Obs]]        = "sentPos" ^^ {_ => FeatureFn(sentPosition _)}
   
-  def prefFnExpr : Parser[FeatureFn]         = "prefixFn(" ~> intVal <~ ")" ^^ { v => prefixFn(v) _}
+  def prefFnExpr : Parser[FeatureFn[Obs]]         = "prefixFn(" ~> intVal <~ ")" ^^ { v => FeatureFn(prefixFn(v) _)}
 
-  def attributeFnExpr : Parser[FeatureFn]    = "attributeFn(" ~> fname <~ ")" ^^ {v => attributeFn(v) _}
-  def sufFnExpr : Parser[FeatureFn]          = "suffixFn(" ~> intVal <~ ")" ^^ { v => suffixFn(v) _}
-  def antiPrefFnExpr : Parser[FeatureFn]     = "antiPrefixFn(" ~> intVal <~ ")" ^^ { v => antiPrefixFn(v) _}
-  def antiSufFnExpr : Parser[FeatureFn]      = "antiSuffixFn(" ~> intVal <~ ")" ^^ { v => antiSuffixFn(v) _}
-  def prefNGramExpr : Parser[FeatureFn]      = "prefNGrams(" ~> intVal ~ "," ~ intVal <~ ")" ^^ {case (s~_~r) => prefNgrams(s,r) _ }
-  def sufNGramExpr : Parser[FeatureFn]       = "sufNGrams(" ~> intVal ~ "," ~ intVal <~ ")" ^^ {case (s~_~r) => sufNgrams(s,r) _ }
-  def wdLenExpr : Parser[FeatureFn]          = "wdLen" ^^ {_ => wdLen _}
+  def attributeFnExpr : Parser[FeatureFn[Obs]]    = "attributeFn(" ~> fname <~ ")" ^^ {v => FeatureFn(attributeFn(v) _)}
+  def sufFnExpr : Parser[FeatureFn[Obs]]          = "suffixFn(" ~> intVal <~ ")" ^^ { v => FeatureFn(suffixFn(v) _)}
+  def antiPrefFnExpr : Parser[FeatureFn[Obs]]     = "antiPrefixFn(" ~> intVal <~ ")" ^^ { v => FeatureFn(antiPrefixFn(v) _)}
+  def antiSufFnExpr : Parser[FeatureFn[Obs]]      = "antiSuffixFn(" ~> intVal <~ ")" ^^ { v => FeatureFn(antiSuffixFn(v) _)}
+  def prefNGramExpr : Parser[FeatureFn[Obs]]      = "prefNGrams(" ~> intVal ~ "," ~ intVal <~ ")" ^^ {case (s~_~r) => FeatureFn(prefNgrams(s,r) _) }
+  def sufNGramExpr : Parser[FeatureFn[Obs]]       = "sufNGrams(" ~> intVal ~ "," ~ intVal <~ ")" ^^ {case (s~_~r) => FeatureFn(sufNgrams(s,r) _) }
+  def wdLenExpr : Parser[FeatureFn[Obs]]          = "wdLen" ^^ {_ => FeatureFn(wdLen _)}
 
-  def regexpFnExpr : Parser[FeatureFn]       = "regexpFn(" ~> fname ~ "," ~ """(\\\)|[^\)])+""".r <~ ")" ^^ 
+  def regexpFnExpr : Parser[FeatureFn[Obs]]       = "regexpFn(" ~> fname ~ "," ~ """(\\\)|[^\)])+""".r <~ ")" ^^ 
                                             {case (fn~_~e) => 
 					      val parenMap = """\\\)""".r // use to map escaped parens to actual parens
 					      val ne = parenMap.replaceAllIn(e,{_ => ")"})
-					      _regexpFn(fn,ne.r) _}
-  def predicateExpr : Parser[FeatureFn]      = "predicateFn(" ~ fname ~ "," ~ repsep(simpleFnExpr,",") ~ ")" ^^ {case (_~fn~_~fs~_) => predicateFn(fn,fs) _}
+					      FeatureFn(_regexpFn(fn,ne.r) _)}
+  def predicateExpr : Parser[FeatureFn[Obs]]      = "predicateFn(" ~ fname ~ "," ~ repsep(simpleFnExpr,",") ~ ")" ^^ {case (_~fn~_~fs~_) => FeatureFn(predicateFn(fn,fs) _)}
   
   def rangeExpr : Parser[Seq[Int]] = basRangeExpr | toRangeExpr
   def basRangeExpr : Parser[Seq[Int]] = "(" ~> repsep(intVal,",") <~ ")" ^^ {_.toSeq}
@@ -136,10 +147,10 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
   def falseVal : Parser[Boolean] = "false" ^^ {_ => false}
   def boolVal : Parser[Boolean] = trueVal | falseVal
 
-  def parseIt(r: java.io.Reader) : List[FeatureFn] = { 
+  def parseIt(r: java.io.Reader) : List[FeatureFn[Obs]] = { 
     val res = parseAll(topExprs,new PagedSeqReader(PagedSeq.fromReader(r)))
     if (res.successful) res.get else throw new RuntimeException("Feature Specification File failed to Parse") }
-  def parseString(s: String) : Unit = parseIt(new java.io.StringReader(s)) foreach {f => fnBuf += f}
+  def parseString(s: String) : List[FeatureFn[Obs]] = parseIt(new java.io.StringReader(s))
   
 }
 
@@ -150,19 +161,19 @@ class DynamicFeatureManager[Obs](iString: String) extends FeatureManager[Obs](iS
  * re-mapped labels.
  * <i>Design note: This could be a trait also</i>
  */
-class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureManager[Obs](iString) {
+class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureManagerBuilder[Obs](None,None,None,None,iString) {
   
-  override def simpleFnExpr : Parser[FeatureFn] = 
+  override def simpleFnExpr : Parser[FeatureFn[Obs]] = 
     predicateExpr | prefFnExpr | sufFnExpr | wdFnExpr | lexFnExpr | nodeFnExpr | edgeFnExpr | regexpFnExpr | allTagFnExpr | antiPrefFnExpr | antiSufFnExpr | recodeFnExpr
   
-  def recodeFnExpr : Parser[FeatureFn] = betweenPrevExpr | betweenSubExpr | distancePrevious | distanceSubsequent 
+  def recodeFnExpr : Parser[FeatureFn[Obs]] = betweenPrevExpr | betweenSubExpr | distancePrevious | distanceSubsequent 
   
-  def betweenPrevExpr : Parser[FeatureFn] = "betweenPrevious(" ~> cfnExpr <~ ")" ^^ {fn => betweenPrevFn(fn) _}
-  def betweenSubExpr : Parser[FeatureFn] = "betweenSubsequent(" ~> cfnExpr <~ ")" ^^ {fn => betweenSubsequentFn(fn) _}
-  def distancePrevious : Parser[FeatureFn] = "distancePrevious" ^^ { _ => distancePrev _}
-  def distanceSubsequent : Parser[FeatureFn] = "distanceSubsequent" ^^ { _ => distancePrev _}
+  def betweenPrevExpr : Parser[FeatureFn[Obs]] = "betweenPrevious(" ~> cfnExpr <~ ")" ^^ {fn => FeatureFn(betweenPrevFn(fn) _)}
+  def betweenSubExpr : Parser[FeatureFn[Obs]] = "betweenSubsequent(" ~> cfnExpr <~ ")" ^^ {fn => FeatureFn(betweenSubsequentFn(fn) _)}
+  def distancePrevious : Parser[FeatureFn[Obs]] = "distancePrevious" ^^ { _ => FeatureFn(distancePrev _)}
+  def distanceSubsequent : Parser[FeatureFn[Obs]] = "distanceSubsequent" ^^ { _ => FeatureFn(distancePrev _)}
     
-  override def windowFn(fn:Fn, window:Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = 
+  def windowFn(fn:FeatureFn[Obs], window:Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = 
     sarr.parentSeq match {
       case Some(pSeq) =>
         val st = sarr(pos).start
@@ -175,7 +186,7 @@ class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureMa
         else ac}
       case None => new FeatureReturn
     }	
-  override def windowAnyFn(fn:Fn, window:Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+  def windowAnyFn(fn:FeatureFn[Obs], window:Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
     val pref = "DWIN@"+window.toString
     sarr.parentSeq match {
       case Some(pSeq) =>
@@ -191,7 +202,7 @@ class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureMa
     }
   }
   
-  def betweenPrevFn(fn: Fn)(s: Int, act_sarr:SourceSequence[Obs], pos:Int) =
+  def betweenPrevFn(fn: FeatureFn[Obs])(s: Int, act_sarr:SourceSequence[Obs], pos:Int) =
     act_sarr.parentSeq match {
       case Some(sarr) =>
         if (pos > 0) {
@@ -221,7 +232,7 @@ class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureMa
       case None => new FeatureReturn
       }
     
-  def betweenSubsequentFn(fn: Fn)(s: Int, act_sarr:SourceSequence[Obs], pos:Int) =
+  def betweenSubsequentFn(fn: FeatureFn[Obs])(s: Int, act_sarr:SourceSequence[Obs], pos:Int) =
     act_sarr.parentSeq match {
       case Some(sarr) =>
         if (pos < (act_sarr.length -1)) {
@@ -244,25 +255,5 @@ class DynamicRecodeFeatureManager[Obs](iString: String) extends DynamicFeatureMa
       case None => new FeatureReturn
     }
 
-  override def ngramFn(fn:Fn, positions: Seq[Int], suc: Boolean)(s: Int, act_sarr:SourceSequence[Obs], pos:Int) = 
-    act_sarr.parentSeq match {
-      case Some(sarr) =>
-        val st = act_sarr(pos).start
-        val en = act_sarr(pos).end
-        val maxLen = sarr.length
-        val fname = new BuiltFeature
-        var failed = false
-        positions foreach {p =>
-          val rp = if (p >= 0) en + p else st + p
-          if ((rp >= 0) && (rp < maxLen)) {
-        	val localPairs = fn(s,sarr,rp).features
-        	if ((localPairs.size) < 1) failed = true
-        	localPairs foreach {s => fname @@ s.toString; fname @@ '@'; fname @@ p.toString}}
-          else if (rp == maxLen) fname @@ "-END-"
-          else if (rp == -1) fname @@ "-START-" }
-        if (failed) new FeatureReturn else new FeatureReturn(fname)
-      case None =>
-        // in this case, we're passing in the parent sequence, so call the super ngramFn that operates over the original sequence
-        super.ngramFn(fn,positions,suc)(s, act_sarr, pos)
-    }	    
+ 	    
 }

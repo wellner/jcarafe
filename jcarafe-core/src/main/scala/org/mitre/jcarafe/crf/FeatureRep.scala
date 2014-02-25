@@ -405,7 +405,7 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
 */
 class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, model: StdModel, preDecoder: Boolean = false) extends FactoredFeatureRep[Obs]((model.segSize > 1)) {
 
-  def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManager[Obs](opts, m, pre), opts, m)
+  def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManagerBuilder[Obs](opts, m, pre), opts, m)
 
   var randomModel = (model.isInstanceOf[RandomStdModel])
   CrfInstance.randomFeatures = randomModel
@@ -415,14 +415,6 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     model.deriveFaMap
   }
 
-  mgr.lex_=(if (mgr.lex.isEmpty) model.lex else mgr.lex)
-  mgr.wdProps_=(if (mgr.wdProps.isEmpty) model.wdProps else mgr.wdProps)
-  mgr.wdScores_=(if (mgr.wdScores.isEmpty) model.wdScores else mgr.wdScores)
-  mgr.inducedFeatureMap_=(model.inducedFs match {
-    case Some(m) =>
-      println("got induced feature set: " + m.hmap.get.size); Some(m)
-    case None => InducedFeatureMap()
-  })
   maxSegSize_=(model.segSize - 1)
 
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double, supporting: Boolean, fcat: FeatureCat): Unit =
@@ -492,7 +484,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
 
 class SelfInducibleDecodingFactoredFeatureRep[Obs](mgr: FeatureManager[Obs], opts: Options, model: StdModel)
   extends DecodingFactoredFeatureRep[Obs](mgr, opts, model) {
-  def this(opts: Options, m: StdModel) = this(FeatureManager.createForSelfTraining[Obs](opts, m), opts, m)
+  def this(opts: Options, m: StdModel) = this(FeatureManagerBuilder.createForSelfTraining[Obs](opts, m), opts, m)
 
   override def createInstance(l: Int, o: Int, sId: Int) = new SelfInducibleCrfInstance(l, o, sId)
   override def createInstance(l: Int, o: Int) = new SelfInducibleCrfInstance(l, o, -1)
@@ -513,13 +505,14 @@ class SelfInducibleDecodingFactoredFeatureRep[Obs](mgr: FeatureManager[Obs], opt
  * @author Ben Wellner
 */
 class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, var supporting: Boolean, semi: Boolean)
-  extends FactoredFeatureRep[Obs](semi) {
+  extends FactoredFeatureRep[Obs](semi) with Serializable {
 
-  def this(opts: Options, supporting: Boolean, semi: Boolean) = this(FeatureManager[Obs](opts), opts, supporting, semi)
+  def this(opts: Options, supporting: Boolean, semi: Boolean) = this(FeatureManagerBuilder[Obs](opts), opts, supporting, semi)
   def this(mgr: FeatureManager[Obs], opts: Options) = this(mgr, opts, false, opts.semiCrf)
   def this(opts: Options) = this(opts, false, opts.semiCrf)
 
   val random = opts.randomFeatures
+  var numLabels = 0 // CrfInstance.numLabels
 
   var featureTypeSet: Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
   lazy val numFeatureTypes = {
@@ -532,7 +525,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
 
   lazy val numRandomFeatures =
     if (opts.numRandomFeatures > 10) opts.numRandomFeatures
-    else PrimeNumbers.getLargerPrime((numFeatureTypes * CrfInstance.numLabels * opts.randomFeatureCoefficient).toInt)
+    else PrimeNumbers.getLargerPrime((numFeatureTypes * numLabels * opts.randomFeatureCoefficient).toInt)
 
   val initialModel = opts.initialModel match { case Some(mfile) => Some(StandardSerializer.readModel(mfile)) case None => None }
   lazy val faMap: LongAlphabet = initialModel match {
@@ -626,7 +619,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       }
     if (sz > maxSegSize) {
       maxSegSize = sz
-      CrfInstance.maxSegSize = sz
+      //CrfInstance.maxSegSize = sz
     }
     sz
   }
@@ -674,7 +667,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
           val fresult: FeatureReturn = fn(d, dseq, pos)
           if (!fresult.edgeP || (pos > 0)) {
             fresult.features foreach { f =>
-              addFeatureRange(d, inst, fresult.edgeP, CrfInstance.numLabels, f.get, f.value, fresult.fcat)
+              addFeatureRange(d, inst, fresult.edgeP, numLabels, f.get, f.value, fresult.fcat)
             }
           }
         }
