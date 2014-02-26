@@ -232,7 +232,7 @@ object FeatureFn {
         val r = f(s, d, p)
         if (edgeP) r.setAsEdge()
         else {
-          fcat match {case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti()}
+          fcat match {case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti() case _ => }
         }
         r
       }
