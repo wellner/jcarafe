@@ -485,8 +485,7 @@ abstract class FeatureManagerBuilder[Obs](
 
   def getFeatureManager: FeatureManager[Obs] = {
     val fns = buildFeatureFns
-    val nfsn = fns map {f => FeatureFn(f.apply)} // does this get rid of the dynamic scope ....
-    new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, nfsn)
+    new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, fns)
   }
 
   def buildFeatureFns : List[FeatureFn[Obs]]
