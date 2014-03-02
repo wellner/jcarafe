@@ -516,6 +516,32 @@ abstract class StochasticCrf(lambdas: Array[Double],
     }
     Some(totalLL)
   }
+  
+  def gradNorm = {
+    var s = 0.0
+    gradient foreach {case (i,v) => s += v.g * v.g}
+    math.sqrt(s)
+  }
+  
+  def printGradient = {
+    println("Sparse Gradient:")
+    gradient foreach {case (i,v) => println(i.toString + " => " + v.g)}
+  }
+  
+}
+
+class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0), nls, nfs, 1, 0.0, 0, 0) with Serializable {
+  var localParams : Array[Double] = Array() // ugly way to do this
+  override def getLambdas = localParams
+  
+  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+    new CoreModel(getLambdas, nls, nfs)
+  }
+  
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Array[Double]) = {
+    val ll = gradOfSeq(s.iseq)
+    (ll,gradient)
+  }
 }
 
 class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, new Options, 0, 0) with Serializable {
@@ -527,6 +553,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     new CoreModel(getLambdas, nls, nfs)
   }
     
+  
   def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
     val mn = new OpenIntDoubleHashMap
     var s = 0
@@ -535,10 +562,9 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
       if (inv) mn.put(k, (v.e - v.g)) 
       else mn.put(k,(v.g - v.e))}
     new SparseVectorAsMap(s, mn)
-  }
-    
+  }  
   
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, SparseVectorAsMap) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true) : (Double, SparseVectorAsMap) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
@@ -548,7 +574,6 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     gradient.clear // clear the 
       if (sl > 0) {
         reset(iseq.length)
-        gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
         ll = forwardPass(iseq)
         val pzx = vecSum(curA)
@@ -556,7 +581,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
         ll -= math.log(zx)
         for (k <- 0 until iseq.length) ll -= math.log(scale(k))
         for ((k, cell) <- gradient) {
-          cell.g_=(cell.g - (cell.e / zx))
+          cell.e_=(cell.e / zx) // normalize expectation and hold in expectation cell - will take difference with constraints in getSimpleGradient method
           val cabs = math.abs(cell.g)
           if (cabs > gradNormalizer) { gradNormalizer = cabs }
         }       

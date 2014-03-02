@@ -1,11 +1,14 @@
 package org.mitre.jcarafe.optimize
 
-import org.scalatest.Spec
+import org.scalatest.FlatSpec
+import org.scalatest.junit.JUnitRunner
+import org.junit.runner.RunWith
 
-class ConvexOptimizerSpec extends Spec {
+@RunWith(classOf[JUnitRunner])
+class ConvexOptimizerSpec extends FlatSpec {
 
-  describe("Optimizer test 1") {
-    it("Quadratic test") {
+  "Optimizer test 1" should
+    "Pass quadratic test" in {
       val t = 3
       val fn = new FunctionEvaluation {
         def evaluate(x: Array[Double], gradient: Array[Double], n: Int, step: Double) : Double = {
@@ -21,9 +24,7 @@ class ConvexOptimizerSpec extends Spec {
       val optimizer = new LbfgsOptimizer(sol, g, fn, p)
       val res = optimizer.optimize()
       println("-- Result: " + res)
-      println("-- Mean Test Solution: " + sol(0))
-      
-    }
-  }
+      println("-- Mean Test Solution: " + sol(0))      
+    }  
   
 }

@@ -45,7 +45,8 @@ object JCarafeBuild extends Build {
     libraryDependencies ++= Seq(
       "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
       "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
-      "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
+      "junit" % "junit" % "4.8.1" % "test",
+      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "com.twitter" % "chill_2.10" % "0.3.1"
     )
   )
