@@ -216,29 +216,29 @@ class FeatureManager[Obs](
   val wdScores: Option[WordScores],
   val inducedFeatureMap: Option[InducedFeatureMap],
   val fnList: List[FeatureFn[Obs]]) extends Serializable
-  
+
 object FeatureFn {
-  
+
   var fnId = 0
-  
+
   def apply[Obs](f: (Int, SourceSequence[Obs], Int) => FeatureReturn) = {
     fnId += 1
-    new FeatureFn[Obs]("fn_"+fnId) { def apply(s: Int, d: SourceSequence[Obs], p:Int) = f(s,d,p) }
+    new FeatureFn[Obs]("fn_" + fnId) { def apply(s: Int, d: SourceSequence[Obs], p: Int) = f(s, d, p) }
   }
-  
+
   def apply[Obs](s: String, f: FeatureFn[Obs], edgeP: Boolean, fcat: FeatureCat = StdFeature) = {
     new FeatureFn[Obs](s) {
       def apply(s: Int, d: SourceSequence[Obs], p: Int) = {
         val r = f(s, d, p)
         if (edgeP) r.setAsEdge()
         else {
-          fcat match {case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti() case _ => }
+          fcat match { case NNFeature => r.setAsNeural() case MultiFeature => r.setAsMulti() case _ => }
         }
         r
       }
     }
   }
-}  
+}
 
 /**
  * A feature function which subclasses <code>(Int,SourceSequence[Obs],Int) => FeatureReturn</code>.  Essentially,
@@ -251,25 +251,24 @@ object FeatureFn {
  */
 abstract class FeatureFn[Obs](val n: String) extends Serializable {
   def this() = this("")
-  
+
   override def toString = n
-  
-  def apply(s: Int, d: SourceSequence[Obs], p: Int) : FeatureReturn
-  
+
+  def apply(s: Int, d: SourceSequence[Obs], p: Int): FeatureReturn
+
   val endCode: Long = IncrementalMurmurHash.hash("-END-", 0)
   val stCode: Long = IncrementalMurmurHash.hash("-START-", 0)
   val nullCode: Long = IncrementalMurmurHash.hash("-NULL-", 0)
   val winCode: Long = IncrementalMurmurHash.hash("WIN+", 0)
   val rngCode: Long = IncrementalMurmurHash.hash("Rng_", 0)
 
-  
   def over(positions: Int*): FeatureFn[Obs] = {
     val rref = this
     new FeatureFn[Obs](n + ">>window<<") {
       def apply(s: Int, d: SourceSequence[Obs], p: Int) = windowFn(rref, positions.toSeq)(s, d, p)
     }
   }
-  
+
   def over(positions: Range): FeatureFn[Obs] = over(positions: _*)
 
   def within(positions: Int*): FeatureFn[Obs] = {
@@ -364,7 +363,7 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
     }
     new FeatureReturn(npairs.toList, false)
   }
-  
+
   /**
    * Computes a <code>FeatureReturn</code> with a set of feature value pairs
    * that are derived by applying supplied feature function, <code>fn</code>,
@@ -396,7 +395,7 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
     }
   }
 
-  def selfWinFn(fn: FeatureFn[Obs], name: Long, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = { 
+  def selfWinFn(fn: FeatureFn[Obs], name: Long, window: Seq[Int])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
     throw new RuntimeException("Self window features now unsupported")
     /*
     inducedFeatureMap match { // if we have a map, now generate
@@ -429,7 +428,6 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
     fr.displaced_=(true)
     fr
   }
-
 
 }
 
@@ -488,14 +486,13 @@ abstract class FeatureManagerBuilder[Obs](
     new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, fns)
   }
 
-  def buildFeatureFns : List[FeatureFn[Obs]]
+  def buildFeatureFns: List[FeatureFn[Obs]]
 
   /*
    * Especially dense features can cause numerical problems with long sequences.
    * A smaller weight for these features will help avoid overflow
    */
   val denseFeatureWt = 1.0
-
 
   def reset: Unit = {} // no-op by default, but can be used to for FeatureManager subclasses that hold global state per sequence
 
@@ -830,8 +827,6 @@ abstract class FeatureManagerBuilder[Obs](
     } else new FeatureReturn
   }
 
-  
-  
   def nearestLeft(att: String, vl: String, cp: Int, sarr: SourceSequence[Obs]): Int = {
     var i = cp
     var done = false
@@ -957,23 +952,40 @@ object FeatureManagerBuilder {
 }
 
 class StaticFeatureManagerBuilder[Obs](
-    val staticName: String,
-  l: Option[BloomLexicon],
-  wdP: Option[WordProperties],
-  wdS: Option[WordScores],
-  iMap: Option[InducedFeatureMap],  
-  induceMap: Boolean) extends FeatureManagerBuilder[Obs](l, wdP, wdS, iMap, staticName, induceMap) {
-  
-  def this(s: String) = this(s, None, None, None, None, false)
-  
-  def buildFeatureFns = {
-    List(FeatureFn(wdFn),
-        FeatureFn(lexFn),
-        FeatureFn(wdFn).ngram(None,(-1 to 0)),
-        FeatureFn(lexFn).over((-1 to 1)),
-        FeatureFn(wdFn).over((-2 to 2)),
-        FeatureFn(wordPropertiesFn(false)) over (-2 to 2)
-        )
+  val staticName: String,
+  l: Option[BloomLexicon] = None,
+  wdP: Option[WordProperties] = None,
+  wdS: Option[WordScores] = None,
+  iMap: Option[InducedFeatureMap] = None,
+  induceMap: Boolean = false) extends FeatureManagerBuilder[Obs](l, wdP, wdS, iMap, staticName, induceMap) {
+
+  def buildFeatureFns(knownFset: String = "default") = {
+    knownFset match {
+      case "default" =>
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(wdFn),
+          FeatureFn(lexFn),
+          FeatureFn(wdFn).ngram(None, (-1 to 0)),
+          FeatureFn(lexFn).over((-1 to 1)),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(wordPropertiesFn(false)) over (-2 to 2))
+      case "wd-only" =>
+        List(
+            FeatureFn(nodeFn),
+            FeatureFn(edgeFn),
+            FeatureFn(wdFn)
+            )
+      case "wd-and-context" =>
+        List(
+            FeatureFn(nodeFn),
+            FeatureFn(edgeFn),
+            FeatureFn(wdFn),
+            FeatureFn(wdFn) over (-2 to 2)
+            )
+    }
+
   }
 }
 

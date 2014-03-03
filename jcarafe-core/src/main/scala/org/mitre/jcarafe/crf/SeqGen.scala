@@ -542,7 +542,9 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   // relevant for document-level feature handling
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
     CrfInstance.numLabels_=(lAlphabet.size)
-    if (opts.randomFeatures || opts.randomSupportedFeatures) {
+    if ((opts.randomFeatures || opts.randomSupportedFeatures) && (opts.numRandomFeatures < 10)) {
+      // in this case, we'd like to use random/hashed features, but should count the number of feature types
+      // over the training set 
       sourcePairSeqs foreach countFeatureTypes
     }
     frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
@@ -596,7 +598,7 @@ abstract class DirectTrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], op
   // note that this extraction is done over a document's worth of sequences
   // relevant for document-level feature handling
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
-    if (opts.randomFeatures || opts.randomSupportedFeatures) {
+    if ((opts.randomFeatures || opts.randomSupportedFeatures) && (opts.numRandomFeatures < 10) ) {
       sourcePairSeqs foreach countFeatureTypes
     }
     frep.otherIndex_=(otherIndex match { case Some(v) => v case None => -1 }) // book-keeping to tell FeatureRep
