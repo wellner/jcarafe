@@ -5,7 +5,7 @@
 package org.mitre.jcarafe.crf
 import collection.mutable.HashSet
 import collection.mutable.HashMap
-import org.mitre.jcarafe.util.{Options, SparseVector, SparseVectorAsMap}
+import org.mitre.jcarafe.util.{ Options, SparseVector, SparseVectorAsMap }
 import cern.colt.map.OpenIntDoubleHashMap
 
 trait Trainable[T] extends Serializable {
@@ -17,8 +17,8 @@ trait Trainable[T] extends Serializable {
   def initialize(): Unit
 
   def getCoreModel(): CoreModel
-  
-  def getLambdas : Array[Double] = lambdas
+
+  def getLambdas: Array[Double] = lambdas
 
   def train(accessSeq: AccessSeq[T], num: Int = 200, mi: Option[(CoreModel, Int) => Unit] = None): CoreModel
 
@@ -63,7 +63,7 @@ trait AccessSeq[T] extends Serializable {
   def length: Int
   def repermute(): Unit
   def splitAccessor(n: Int): Seq[AccessSeq[T]]
-  def getAllSplits(n: Int) : Seq[(AccessSeq[T],AccessSeq[T])]
+  def getAllSplits(n: Int): Seq[(AccessSeq[T], AccessSeq[T])]
   def accessSingleInstance(i: Int): T
 }
 
@@ -106,7 +106,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
       new MemoryAccessSeq(seqs.slice(j * ns, seqs.length min ((j + 1) * ns)))
     }
   }
-  def getAllSplits(n: Int) : Seq[(MemoryAccessSeq, MemoryAccessSeq)] = {
+  def getAllSplits(n: Int): Seq[(MemoryAccessSeq, MemoryAccessSeq)] = {
     val folds = splitAccessor(n)
     for (i <- 0 until n) yield {
       val tst = folds(i)
@@ -141,8 +141,8 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
   def this(nls: Int, nfs: Int) = this(nls, nfs, 1)
 
   def getCoreModel() = new CoreModel(getLambdas, numParams, nls, nNfs, nGates)
-  
-  def resetParameters() : Unit = {
+
+  def resetParameters(): Unit = {
     val params = getLambdas
     val l = params.length
     var i = 0; while (i < l) {
@@ -150,7 +150,6 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
       i += 1
     }
   }
-  
 
   /**
    * When set to <code>true</code>, the Crf will allow the state-space to be dynamically
@@ -341,7 +340,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
           gradient(inst.fid) -= inst.value
           seqLogLi += params(inst.fid) * inst.value
         }
-        if (inst.prv < 0) 
+        if (inst.prv < 0)
           featureExpectations(inst.fid) += newA(inst.cur) * beta(i)(inst.cur) * inst.value
         else featureExpectations(inst.fid) += curA(inst.prv) * ri(0)(inst.cur) * mi(0)(inst.prv)(inst.cur) * beta(i)(inst.cur) * inst.value
         k += 1
@@ -364,7 +363,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
     for (k <- 0 until iseq.length) sll -= math.log(scale(k))
     var i = 0
     while (i < nfs) {
-      gradient(i) += featureExpectations(i) / zx  
+      gradient(i) += featureExpectations(i) / zx
       i += 1
     }
     sll
@@ -392,7 +391,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
  * @param gPrior    The Gaussian prior variance used as a regularizer
  * @param nNfs      Number of neural gate input features (for NeuralCrf)
  * @param nGates    Number of neural gates per label (for NeuralCrf)
-* 
+ *
  */
 abstract class StochasticCrf(lambdas: Array[Double],
   nls: Int,
@@ -420,14 +419,14 @@ abstract class StochasticCrf(lambdas: Array[Double],
   val eta = initialLearningRate
   val gradient: HashMap[Int, DoubleCell] = new HashMap[Int, DoubleCell]()
   var curPos: Int = 0
-  
-  override def resetParameters() : Unit = {
+
+  override def resetParameters(): Unit = {
     super.resetParameters()
     var i = 0; while (i < nfs) {
       etas(i) = initialLearningRate
       i += 1
     }
-  } 
+  }
 
   // used for parallel training methods
   def setNewParams(ls: Array[Double]) = Array.copy(ls, 0, lambdas, 0, nfs)
@@ -446,7 +445,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
       Array.copy(curA, 0, tmp, 0, curNls)
       Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
-      
+
       var k = 0
       val nfeas = instFeatures(0).length
       val instFeatures0 = instFeatures(0)
@@ -489,10 +488,10 @@ abstract class StochasticCrf(lambdas: Array[Double],
         reset(iseq.length)
         gradient.foreach { case (k, v) => v.e_=(0.0) } // reset expectations to zero
         backwardPass(iseq)
-        var sll = forwardPass(iseq)        
+        var sll = forwardPass(iseq)
         val pzx = vecSum(curA)
         val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
-        sll -= math.log(zx)        
+        sll -= math.log(zx)
         for (k <- 0 until iseq.length) sll -= math.log(scale(k))
         for ((k, cell) <- gradient) {
           cell.g_=(cell.g - (cell.e / zx))
@@ -516,86 +515,80 @@ abstract class StochasticCrf(lambdas: Array[Double],
     }
     Some(totalLL)
   }
-  
+
   def gradNorm = {
     var s = 0.0
-    gradient foreach {case (i,v) => s += v.g * v.g}
+    gradient foreach { case (i, v) => s += v.g * v.g }
     math.sqrt(s)
   }
-  
+
   def printGradient = {
     println("Sparse Gradient:")
-    gradient foreach {case (i,v) => println(i.toString + " => " + v.g)}
+    gradient foreach { case (i, v) => println(i.toString + " => " + v.g) }
   }
-  
+
 }
 
 class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0), nls, nfs, 1, 0.0, 0, 0) with Serializable {
-  var localParams : Array[Double] = Array() // ugly way to do this
+  var localParams: Array[Double] = Array() // ugly way to do this
   override def getLambdas = localParams
-  
-  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+
+  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel, Int) => Unit] = None): CoreModel = {
     new CoreModel(getLambdas, nls, nfs)
   }
-  
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Array[Double]) = {
+
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]): (Double, Array[Double]) = {
     localParams = curLambdas
     val ll = gradOfSeq(s.iseq)
-    (ll,gradient)
+    (ll, gradient)
   }
 }
 
 class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, new Options, 0, 0) with Serializable {
-  
-  var localParams : Array[Double] = Array() // ugly way to do this
+
+  var localParams: Array[Double] = Array() // ugly way to do this
   override def getLambdas = localParams
-  
-  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
+  private var gradNormalizer = 0.0
+
+  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel, Int) => Unit] = None): CoreModel = {
     new CoreModel(getLambdas, nls, nfs)
   }
-    
-  
-  def getSimpleGradient(gr: collection.mutable.Map[Int,DoubleCell], inv: Boolean = true) : SparseVectorAsMap = {
+
+  def getSimpleGradient(gr: collection.mutable.Map[Int, DoubleCell], inv: Boolean = true, gboundary: Boolean = false): SparseVectorAsMap = {
     val mn = new OpenIntDoubleHashMap
     var s = 0
-    gr foreach {case (k,v) => 
-      s += 1;
-      if (inv) mn.put(k, (v.e - v.g)) 
-      else mn.put(k,(v.g - v.e))}
+    val params = getLambdas
+    gr foreach {
+      case (k, v) =>
+        s += 1;
+        val gComp = if (inv) ((v.e - v.g) - (params(k) * invSigSqr)) else ((v.g - v.e) - (params(k) * invSigSqr))
+        // enforce upper and lower limits on gComp to avoid very large parameter updates 
+        val aComp = if (gboundary) (if (gComp > 100.0) 100.0 else if (gComp < -100.0) -100.0 else gComp) else gComp
+        mn.put(k, aComp)
+    }
     new SparseVectorAsMap(s, mn)
-  }  
-  
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true) : (Double, SparseVectorAsMap) = {
+  }
+
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
-    var gradNormalizer = 0.0
     var ll = 0.0
     val params = getLambdas
     gradient.clear // clear the 
-      if (sl > 0) {
-        reset(iseq.length)
-        backwardPass(iseq)
-        ll = forwardPass(iseq)
-        val pzx = vecSum(curA)
-        val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
-        ll -= math.log(zx)
-        for (k <- 0 until iseq.length) ll -= math.log(scale(k))
-        for ((k, cell) <- gradient) {
-          cell.e_=(cell.e / zx) // normalize expectation and hold in expectation cell - will take difference with constraints in getSimpleGradient method
-          val cabs = math.abs(cell.g)
-          if (cabs > gradNormalizer) { gradNormalizer = cabs }
-        }       
-      }
-    if (gradNormalizer > 50.0) {
-      val nn = 50.0 / gradNormalizer
-      for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - params(k) * invSigSqr)
-    } else {
+    if (sl > 0) {
+      reset(iseq.length)
+      backwardPass(iseq)
+      ll = forwardPass(iseq)
+      val pzx = vecSum(curA)
+      val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
+      ll -= math.log(zx)
+      for (k <- 0 until iseq.length) ll -= math.log(scale(k))
       for ((k, cell) <- gradient) {
-        cell.g_=(cell.g - params(k) * invSigSqr)
+        cell.e_=(cell.e / zx) // normalize expectation and hold in expectation cell - will take difference with constraints in getSimpleGradient method          
       }
     }
-    (-ll,getSimpleGradient(gradient,true)) // get negative LL and inverted gradient for LBFGS optimization
+    (-ll, getSimpleGradient(gradient, inv, gboundary)) // get negative LL and inverted gradient for LBFGS optimization
   }
 }
 
@@ -668,7 +661,7 @@ object Crf {
     var i = 0
     val tlen = t.length
     while (i < tlen) {
-      setMatrix(t(i),v)
+      setMatrix(t(i), v)
       i += 1
     }
   }
