@@ -243,7 +243,7 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
       val ffx = fx.get
       if (params.verbose) {
         val k1 = k+1
-        println(f"Obj = $ffx%10.6f  (Iter = $k1%d)")
+        println(f"Obj = $ffx%10.6f  (Iter = $k1%d) ... gnorm = $gnorm%10.6f")
       }
       if (continue && params.past <= k) {
         improvementRate = (pf(k % params.past) - ffx) / ffx

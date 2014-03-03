@@ -539,6 +539,7 @@ class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0),
   }
   
   def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]) : (Double, Array[Double]) = {
+    localParams = curLambdas
     val ll = gradOfSeq(s.iseq)
     (ll,gradient)
   }
