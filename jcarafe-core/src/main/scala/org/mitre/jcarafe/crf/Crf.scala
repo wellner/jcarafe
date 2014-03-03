@@ -504,9 +504,11 @@ abstract class StochasticCrf(lambdas: Array[Double],
     curPos += asize
     // normalization here will prevent gradient components from having a value greater than 100.0
     // Such values in the gradient are problematic in subsequent numerical calculations
+    
     if (gradNormalizer > 50.0) {
       numGradIssues += 1
       val nn = 50.0 / gradNormalizer
+      //val nn = 1.0
       for ((k, cell) <- gradient) cell.g_=((cell.g * nn) - params(k) * invSigSqr)
     } else {
       for ((k, cell) <- gradient) {
@@ -544,7 +546,8 @@ class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0),
   }
 }
 
-class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, new Options, 0, 0) with Serializable {
+class SparseStatelessCrf(nls: Int, nfs: Int, opts: Options = new Options) 
+extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializable {
 
   var localParams: Array[Double] = Array() // ugly way to do this
   override def getLambdas = localParams
@@ -561,7 +564,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     gr foreach {
       case (k, v) =>
         s += 1;
-        val gComp = if (inv) ((v.e - v.g) + (params(k) * invSigSqr)) else ((v.g - v.e) - (params(k) * invSigSqr))
+        val gComp = if (inv) (v.e - v.g) else (v.g - v.e)
         // enforce upper and lower limits on gComp to avoid very large parameter updates 
         val aComp = if (gboundary) (if (gComp > 100.0) 100.0 else if (gComp < -100.0) -100.0 else gComp) else gComp
         mn.put(k, aComp)
@@ -589,6 +592,19 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
       }
     }
     (-ll, getSimpleGradient(gradient, inv, gboundary)) // get negative LL and inverted gradient for LBFGS optimization
+  }
+  
+  def getRegularization = {
+    val params = getLambdas
+    val gradPenalty = Array.fill(nfs)(0.0)
+    var penalty = 0.0
+    var i = 0; while (i < nfs) {
+      val p = params(i)
+      penalty += (p * p * invSigSqr / 2.0 )
+      gradPenalty(i) = params(i) * invSigSqr
+      i += 1 
+    }    
+    (penalty,gradPenalty)
   }
 }
 
