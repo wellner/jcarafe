@@ -952,12 +952,17 @@ object FeatureManagerBuilder {
 }
 
 class StaticFeatureManagerBuilder[Obs](
-  val staticName: String,
+  val staticName: String = "default",
   l: Option[BloomLexicon] = None,
   wdP: Option[WordProperties] = None,
   wdS: Option[WordScores] = None,
   iMap: Option[InducedFeatureMap] = None,
   induceMap: Boolean = false) extends FeatureManagerBuilder[Obs](l, wdP, wdS, iMap, staticName, induceMap) {
+  
+  override def getFeatureManager = {
+    val fns = buildFeatureFns(staticName)
+    new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, fns)
+  }
 
   def buildFeatureFns(knownFset: String = "default") = {
     knownFset match {
