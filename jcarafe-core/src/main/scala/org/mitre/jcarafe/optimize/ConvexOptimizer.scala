@@ -345,14 +345,11 @@ class BackTrackingLineSearch(n: Int, val evaluator: FunctionEvaluation, val para
     while (continue) {
       vecCopy(x, xp)
       vecAdd(x, s, stp.get)
-      if (params.veryVerbose) {
-        println("^^^ Calling evaluate within line search object: " + this.hashCode())
-        println("Current function input:")
-        printVec(x)
-      }
       f set evaluator.evaluate(x, g, n, stp.get)
       if (params.veryVerbose) {
         println("Function value: " + f.get)
+        println("Gradient: ")
+        printVec(g)
       }
       cnt += 1
       if (f.get > fInit + stp.get * dgTest) 

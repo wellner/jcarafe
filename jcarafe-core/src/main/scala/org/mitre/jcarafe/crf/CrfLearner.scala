@@ -22,6 +22,8 @@ trait CrfLearner {
 }
 
 trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
+  
+  var veryVerbose = false
 
   def train(accessSeq: AccessSeq[T], max_iters: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None): CoreModel = {
     var iter = 0
@@ -40,6 +42,7 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
     val p = new Params
     p.maxIters_=(max_iters)
     p.verbose_=(true)
+    p.veryVerbose_=(veryVerbose)
     val optimizer = new LbfgsOptimizer(lambdas,gradient,fn,p)
     val result = optimizer.optimize()
     println("\n...L-BFGS optimization complete; status: " + result.status)
