@@ -213,10 +213,15 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
     
     fx.set(evaluator.evaluate(x, g, n, 0.0))
     pf(0) = fx.get
-    vecCopyNegate(d, g)
-    println("*****\nInitial function value = " + fx.get)
+    vecCopyNegate(d, g)    
     var xnorm = vec2norm(x)
     var gnorm = vec2norm(g)
+    println("*****\nInitial function value = " + fx.get + " gnorm = " + gnorm)
+    if (params.veryVerbose) {
+      println("Initial Gradient:")
+      printVec(g)
+      println
+    }
     var k = 0
     var end = 0
     if (xnorm < 1.0) xnorm = 1.0
