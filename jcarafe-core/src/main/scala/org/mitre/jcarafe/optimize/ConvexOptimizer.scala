@@ -250,6 +250,12 @@ class LbfgsOptimizer(val x: Array[Double], val g: Array[Double], val evaluator: 
         val k1 = k+1
         println(f"Obj = $ffx%10.6f  (Iter = $k1%d) ... gnorm = $gnorm%10.6f")
       }
+      if (params.veryVerbose) {
+        println("Gradient:")
+        printVec(g)
+        println("Parameters:")
+        printVec(x)
+      }
       if (continue && params.past <= k) {
         improvementRate = (pf(k % params.past) - ffx) / ffx
         if (improvementRate < params.delta) {
