@@ -41,7 +41,7 @@ class DynamicFeatureManagerBuilder[Obs](
     r
   }
   
-  def buildFeatureFns = parseString(iString)  
+  def buildFeatureFns(s: String = "default") = parseString(iString)  
   
   def topExprs : Parser[List[FeatureFn[Obs]]] = repsep(topExpr,"""[;\r\n]+""".r) ~ ";" ^^ {case (e~_) => e filter {_.isDefined} map {_.get}}
   
