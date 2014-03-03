@@ -561,7 +561,7 @@ class SparseStatelessCrf(nls: Int, nfs: Int) extends StochasticCrf(Array.fill(0)
     gr foreach {
       case (k, v) =>
         s += 1;
-        val gComp = if (inv) ((v.e - v.g) - (params(k) * invSigSqr)) else ((v.g - v.e) - (params(k) * invSigSqr))
+        val gComp = if (inv) ((v.e - v.g) + (params(k) * invSigSqr)) else ((v.g - v.e) - (params(k) * invSigSqr))
         // enforce upper and lower limits on gComp to avoid very large parameter updates 
         val aComp = if (gboundary) (if (gComp > 100.0) 100.0 else if (gComp < -100.0) -100.0 else gComp) else gComp
         mn.put(k, aComp)
