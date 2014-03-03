@@ -482,11 +482,11 @@ abstract class FeatureManagerBuilder[Obs](
   type Fn = (Int, SourceSequence[Obs], Int) => FeatureReturn
 
   def getFeatureManager: FeatureManager[Obs] = {
-    val fns = buildFeatureFns
+    val fns = buildFeatureFns()
     new FeatureManager[Obs](iString, lex, wdProps, wdScores, inducedFeatureMap, fns)
   }
 
-  def buildFeatureFns: List[FeatureFn[Obs]]
+  def buildFeatureFns(s: String = "default"): List[FeatureFn[Obs]]
 
   /*
    * Especially dense features can cause numerical problems with long sequences.
