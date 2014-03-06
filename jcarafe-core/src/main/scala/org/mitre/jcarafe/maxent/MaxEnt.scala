@@ -47,7 +47,7 @@ class MaxEntOptionHandler(argv: Array[String]) extends BaseOptionHandler(argv, f
 }
 
 class MaxEntDeserialization(val is: BufferedReader) extends Deserialization {
-  def this(f: File) = this(new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(f)))))
+  def this(f: File) = this(new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(f)),"UTF-8")))
   def this(s: String) = this(new BufferedReader(new StringReader(s)))
   type T = BufferedReader
   def getSlice(s: Int, e: Int) = throw new RuntimeException("UNSUPPORTED")
