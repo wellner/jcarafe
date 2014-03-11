@@ -50,7 +50,8 @@ class JavaSerializationSpec extends FlatSpec {
 object RunSerializationTest extends JavaSerializationSpec {
     
   def main(args: Array[String]): Unit = {
-    val cc = new FeatureManagerBuilder[String](None, None, None, None, "-DEFAULT-STATIC-", false) {
+    
+    val cc = new StaticFeatureManagerBuilder[String]() {
       def buildFeatureFns = {
         List(FeatureFn(wdFn),
         FeatureFn(lexFn),
@@ -75,5 +76,6 @@ object RunSerializationTest extends JavaSerializationSpec {
       val obj = deserialize[FeatureManager[String]]
       println("got obj back: " + obj)
     } catch { case e: Throwable => e.printStackTrace() }
+    
   }
 }

@@ -10,7 +10,7 @@ import scala.collection.immutable.Stack
 import org.mitre.jcarafe.util._
 import cern.colt.map.OpenLongIntHashMap;
 import cern.colt.map.OpenLongObjectHashMap;
-
+import scala.reflect._
 abstract class FeatureCore {
   def getName: String
   def value: Double
@@ -57,7 +57,7 @@ class NBinFeature(override val value: Double, prv: Int, cur: Int, fid: Int, nfid
  * @param - fixed whether the alphabet is fixed or not
  * @author Ben Wellner
  */
-class Alphabet[A](var fixed: Boolean) extends Serializable {
+class Alphabet[A: ClassTag](var fixed: Boolean) extends Serializable {
   
   val mp = new HashMap[A, Int]
   
@@ -82,9 +82,34 @@ class Alphabet[A](var fixed: Boolean) extends Serializable {
     (h /: mp) { case (ha, (k, v)) => ha += (v -> k); ha }
   }
   def contains(e: A) = mp.contains(e)
+  
+  def convert[B: ClassTag](it: Iterable[B]) : Array[B] = it.toArray
+  
+  def ++(other: Alphabet[A]) : Alphabet[A] = {
+    val (startAlphabet,current) = 
+      if (this.size > other.size) (mp,true) else if (other.size > this.size) (other.mp, false)
+      else {
+        val thisKeys = convert[A](this.mp.keys)        
+        val otherKeys = convert[A](other.mp.keys)
+        var i = 0
+        var cont = true
+        var current = true
+        while ((i < 0) && cont) {
+          if (thisKeys(i).hashCode() < otherKeys(i).hashCode()) {cont = false} else if (thisKeys(i).hashCode() > otherKeys(i).hashCode()) {cont = false; current = false} 
+          i += 1
+        }
+        if (current) (mp,true) else (other.mp,false) 
+      }
+    val nextAlphabet = new Alphabet {
+      override val mp = startAlphabet.clone()      
+    }
+    val otherAlpha = if (current) other else this
+    otherAlpha.mp foreach {case (k,v) => nextAlphabet.update(k)}
+    nextAlphabet
+  }
 }
 
-class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) extends Alphabet[A](fixed) {
+class AlphabetWithSpecialCases[A: ClassTag](fixed: Boolean, specialCase: (A => Boolean)) extends Alphabet[A](fixed) {
   override def update(e: A): Int =
     if (!specialCase(e)) {
       super.update(e)
@@ -96,7 +121,35 @@ class AlphabetWithSpecialCases[A](fixed: Boolean, specialCase: (A => Boolean)) e
 class LongAlphabet(var fixed: Boolean) extends Serializable {
   def this() = this(false)
   var size = 0
-  private val iMap = new OpenLongIntHashMap()
+  private val iMap : cern.colt.map.AbstractLongIntMap = new OpenLongIntHashMap()
+  
+  /*
+   * Method adds together two LongAlphabets for use in parallel/distributed approach to gathering
+   * Alphabet.
+   */
+  def ++(other: LongAlphabet) = {
+    val (startMap,currentMap) = 
+      if (this.size > other.size) (this.iMap,true) else if (other.size > this.size) (other.iMap,false)
+      else {
+        var useCurrent = true
+        var cont = true
+        var i = 0
+        while (cont && (i < this.size)) {
+          val thisKey = this.iMap.keyOf(i)
+          val thatKey = other.iMap.keyOf(i)
+          if (thisKey < thatKey) cont = false else if (thatKey < thisKey) {cont = false; useCurrent = false}
+          i += 1
+        }
+        if (useCurrent) (this.iMap,useCurrent) else (other.iMap, useCurrent)
+      }
+    val nextAlphabet = new LongAlphabet(false) {
+      private val iMap = startMap.copy()      
+    }
+    val otherAlpha = if (currentMap) other else this
+    otherAlpha foreach {case (k,v) => nextAlphabet.update(k)}
+    nextAlphabet
+  }
+  
   def update(k: Long): Int = {
     val r = iMap.get(k)
     val contains = iMap.containsKey(k)
@@ -125,7 +178,7 @@ class LongAlphabet(var fixed: Boolean) extends Serializable {
     foreach {case (k,v) => mm += (v -> k)}
     mm
   }
-  def getUnderlyingMap: OpenLongIntHashMap = iMap
+  def getUnderlyingMap: cern.colt.map.AbstractLongIntMap = iMap
   def add(k: Long, v: Int) = {
     iMap.put(k, v)
     size = math.max(v, size)
@@ -152,6 +205,8 @@ object FeatureHashMixer {
 class RandomLongAlphabet(sz: Int) extends LongAlphabet(true) {
   import IncrementalMurmurHash._
 
+  def compose(other: RandomLongAlphabet) : RandomLongAlphabet = { this }      
+  
   size = sz
   @inline
   final override def update(k: Long): Int = {

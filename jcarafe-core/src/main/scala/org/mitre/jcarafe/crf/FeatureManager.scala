@@ -887,6 +887,8 @@ object FeatureManagerBuilder {
   val utf8Codec = scala.io.Codec("utf-8")
 
   val defaultSpec = """wdFn as wdFn; lexFn as lexFn; unkFn as nodeFn; edgeFn as edgeFn;"""
+    
+  def isDynamic(s: String) = s.split(';').length > 1 
 
   /**
    * Build and set the lexicon if it has been provided and hasn't already been
@@ -905,6 +907,17 @@ object FeatureManagerBuilder {
     Source.fromFile(new java.io.File(f)).getLines() foreach { sbuf.append(_) }
     sbuf.toString
   }
+  
+  def getMgr[Obs](fspec: String, l: Option[BloomLexicon], wdP: Option[WordProperties] = None, wdS: Option[WordScores] = None, iMap: Option[InducedFeatureMap] = None,
+      inducing: Boolean = false) : FeatureManager[Obs] = {
+    if (isDynamic(fspec)) {
+      val dm = new DynamicFeatureManagerBuilder[Obs](l, wdP, wdS, iMap, fspec, inducing)
+      dm.getFeatureManager  
+    } else {
+      val sm = new StaticFeatureManagerBuilder[Obs](fspec, l, wdP, wdS, iMap)
+      sm.getFeatureManager
+    }
+  }
 
   def getMgrTrain[Obs](opts: Options): FeatureManager[Obs] = {
     val lexicon = getLexicon(opts)
@@ -912,8 +925,7 @@ object FeatureManagerBuilder {
     val wdScores = getWordScores(opts)
     val imap = getInducedFeatureMap(opts)
     val fspec = getFeatureSpecString(opts.featureSpec.get)
-    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, fspec)
-    dm.getFeatureManager
+    getMgr(fspec, lexicon, wdProps, wdScores, imap)
   }
 
   def getMgrDecode[Obs](opts: Options, model: StdModel, pre: Boolean): FeatureManager[Obs] = {
@@ -921,8 +933,7 @@ object FeatureManagerBuilder {
     val wdProps = if (model.wdProps.isDefined) model.wdProps else if (!pre) getWordProperties(opts) else None
     val wdScores = if (model.wdScores.isDefined) model.wdScores else if (!pre) getWordScores(opts) else None
     val imap = if (model.inducedFs.isDefined) model.inducedFs else if (!pre) getInducedFeatureMap(opts) else None
-    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, model.fspec)
-    dm.getFeatureManager
+    getMgr(model.fspec, lexicon, wdProps, wdScores, imap)    
   }
 
   def createForSelfTraining[Obs](opts: Options, model: Model): FeatureManager[Obs] = {
@@ -933,8 +944,7 @@ object FeatureManagerBuilder {
     val wdScores = getWordScores(opts)
     val imap = getInducedFeatureMap(opts)
     val fspec = opts.featureSpec match { case Some(fs) => getFeatureSpecString(fs) case None => model.fspec }
-    val dm = new DynamicFeatureManagerBuilder[Obs](lexicon, wdProps, wdScores, imap, fspec, inducingNewMap = true)
-    dm.getFeatureManager
+    getMgr(fspec, lexicon, wdProps, wdScores, imap, true)
   }
 
   def apply[Obs](opts: Options): FeatureManager[Obs] = {
@@ -989,6 +999,8 @@ class StaticFeatureManagerBuilder[Obs](
             FeatureFn(wdFn),
             FeatureFn(wdFn) over (-2 to 2)
             )
+      case a =>
+        throw new RuntimeException("Unknown static (pre-defined) feature set: " + a)
     }
 
   }
