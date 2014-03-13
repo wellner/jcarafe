@@ -286,6 +286,12 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
     }
   }
   def ngram(suc: Option[String], positions: Range): FeatureFn[Obs] = ngram(suc, positions: _*)
+  def ngram(positions: Seq[Int]) = {
+    val rref = this
+    new FeatureFn[Obs](n + ">>ngram<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = ngramFn(rref, positions, false)(s, d, p)
+    }
+  }
 
   def displaced: FeatureFn[Obs] = {
     val rref = this
@@ -986,6 +992,32 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(lexFn).over((-1 to 1)),
           FeatureFn(wdFn).over((-2 to 2)),
           FeatureFn(wordPropertiesFn(false)) over (-2 to 2))
+      case "en-pos" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(wdFn),
+          FeatureFn(lexFn),          
+          FeatureFn(lexFn).over((-1 to 1)),
+          FeatureFn(wdFn).over((-3 to 3)),
+          FeatureFn(wordPropertiesFn(false)) over (-2 to 2),
+          FeatureFn(wdFn).ngram(Seq(-1,1)),
+          FeatureFn(wdFn).ngram(Seq(-1,0)),
+          FeatureFn(wdFn).ngram(Seq(-2,-1)),
+          FeatureFn(wdFn).ngram(Seq(1,2)),
+          FeatureFn(wdFn).ngram(Seq(-2,-1,0)),
+          FeatureFn(caselessWdFn).over(-2 to 2),
+          FeatureFn(prefixFn(5)).over(-2 to 2),
+          FeatureFn(suffixFn(5)).over(-2 to 2),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
+            )
       case "wd-only" =>
         List(
             FeatureFn(nodeFn),
