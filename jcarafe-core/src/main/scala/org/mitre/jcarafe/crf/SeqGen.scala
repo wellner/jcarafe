@@ -538,6 +538,8 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     }
   }
 
+  
+
   // note that this extraction is done over a document's worth of sequences
   // relevant for document-level feature handling
   def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {

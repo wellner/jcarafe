@@ -696,21 +696,27 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     }
   }
 
-  def countFeatureTypes(dseq: SourceSequence[Obs], pos: Int) = {
+  def countFeatureTypes(dseq: SourceSequence[Obs], pos: Int) = 
+    featureTypeSet ++= getFeatureTypesAtPosition(dseq,pos)
+
+  def getFeatureTypesAtPosition(dseq: SourceSequence[Obs], pos: Int) = {
     val upTo = (maxSegSize min pos)
     val yp = dseq(pos).label
+    var localSet = Set[Long]()
     for (d <- 0 to upTo) {
       val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
       mgr.fnList foreach { fn =>
         val fresult: FeatureReturn = fn(d, dseq, pos)
         if (!fresult.edgeP || (pos > 0)) {
           fresult.features foreach { f =>
-            featureTypeSet += f.get
+            localSet += f.get
           }
         }
       }
     }
+    localSet
   }
+
   // For handling learning with unlabeled elements we need to do:
   //   Set this up so that if the label is -1, we add in all possible labels as if it were an unsupported feature type
   def applyFeatureFns(inst: CrfInstance, dseq: SourceSequence[Obs], pos: Int, static: Boolean = false): Unit = {
