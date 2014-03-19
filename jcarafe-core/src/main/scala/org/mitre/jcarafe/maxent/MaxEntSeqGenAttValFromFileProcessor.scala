@@ -1,6 +1,6 @@
 package org.mitre.jcarafe.maxent
 
-import org.mitre.jcarafe.crf.{ InstanceSequence, TextSeqGen, TrainingSeqGen, CrfInstance, MemoryInstanceSequence, SeqGen }
+import org.mitre.jcarafe.crf.{ InstanceSequence, TextSeqGen, TrainingSeqGen, CrfInstance, MemoryInstanceSequence, SourceSequence, SeqGen }
 import org.mitre.jcarafe.util.SLabel
 import java.io.File
 
@@ -18,11 +18,33 @@ trait MaxEntSeqGenAttValFromFileProcessor extends MaxEntSeqGen[List[(FeatureId, 
   }
 
   def mapToMaxEntInstance(lab: String, fs: Seq[InstanceSequence], fileName: String) = {
-    val meFs: Map[String,Double] = gatherFeatures(fs)
-    val src = createSource(SLabel(lab), meFs.toList map { case (fn,v) => (new FeatureId(fn), v) })
+    val src = mapToMaxEntSource(lab, fs)    
     val inst = frep.createMEInstance(src.label, src.label, fileName)
     addInFeatures(inst, src)
     inst
+  }
+
+  def mapToMaxEntSource(lab: String, fs: Seq[InstanceSequence]) = {
+    val meFs: Map[String,Double] = gatherFeatures(fs)
+    createSource(SLabel(lab), meFs.toList map { case (fn,v) => (new FeatureId(fn), v) })
+  }
+
+  override def createSourcesFromFiles: Seq[Seqs] = {
+    opts.inputDir match {
+      case Some(dirStr) =>
+        val dir = new File(dirStr)
+        val dirFiles = dir.listFiles
+        val categoryDirs = dirFiles filter { _.isDirectory }
+        if (categoryDirs.size == 0) { throw new RuntimeException("Expected sub-directories for cross-validation") }
+        else {
+          val srcs = categoryDirs flatMap { catDir =>
+            val dirName = catDir.getName
+            catDir.listFiles.toSeq map { f: File => mapToMaxEntSource(dirName, subSeqGen.createSeqsWithInput(subSeqGen.deserializeFromFile(f))) }
+          }
+          Seq(Seq(new SourceSequence(srcs)))
+        }
+      case None => throw new RuntimeException("Must specify an input DIRECTORY with file-processing mode")
+    }
   }
 
   override def createSeqsFromFiles: Seq[InstanceSequence] = {

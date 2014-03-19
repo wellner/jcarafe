@@ -28,7 +28,7 @@ object JCarafeBuild extends Build {
     scalaVersion := "2.10.3",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
-    publishTo := Some(Resolver.sftp("Chatter Maven Repo", "beijing.mitre.org", "/afs/rcf/project/chatter/repo")), 
+    publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
     //publishTo := Some("maven-proxy-releases" at "http://maven-proxy.mitre.org/artifactory/libs-releases-local"),
     javacOptions ++= Seq("-source","1.7","-target","1.7")
   )
