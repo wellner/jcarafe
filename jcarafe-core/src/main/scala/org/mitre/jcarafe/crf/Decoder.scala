@@ -75,7 +75,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     decodeDeserializationToAnnotations(dobj)
   }
 
-  def decodeSeqsToAnnotations(str: String, seqs: Seq[SourceSequence[Obs]]): Array[Annotation] = {
+  def decodeSeqsToAnnotations(str: String, seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]]): Array[Annotation] = {
     val dobj = sGen.deserializeFromString(str)
     val iseqs = seqs map sGen.extractFeatures
     iseqs foreach viterbiDecoder.assignBestSequence
@@ -85,19 +85,19 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     lbuf.toArray
   }
 
-  def decodeSeqsToString(str: String, seqs: Seq[SourceSequence[Obs]]): String = {
+  def decodeSeqsToString(str: String, seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]]): String = {
     val dobj = sGen.deserializeFromString(str)
     val iseqs = seqs map sGen.extractFeatures
     iseqs foreach viterbiDecoder.assignBestSequence
     sGen.seqsToString(dobj, iseqs)
   }
 
-  def decodeToFile(s: Seq[SourceSequence[Obs]], f: java.io.File, ofile: Option[java.io.File]) = {
+  def decodeToFile(s: collection.immutable.IndexedSeq[SourceSequence[Obs]], f: java.io.File, ofile: Option[java.io.File]) = {
     val deser = sGen.deserializeFromFile(f)
     applyDecoder(s, deser, viterbiDecoder, ofile match { case Some(ofile) => Some(ofile.toString) case None => None })
   }
 
-  def decodeSources(exceptions: Set[String], id: String, s: Seq[SourceSequence[Obs]]) = decodeSeqsToSources(exceptions, id, s, viterbiDecoder)
+  def decodeSources(exceptions: Set[String], id: String, s: collection.immutable.IndexedSeq[SourceSequence[Obs]]) = decodeSeqsToSources(exceptions, id, s, viterbiDecoder)
   def decodeToSources(exceptions: Set[String], id: String, f: java.io.File) = decodeSeqsToSourcesFromFile(exceptions, id, f, viterbiDecoder)
   def decodeToSources(exceptions: Set[String], id: String) = decodeSeqsToSourcesFromFiles(exceptions, id, viterbiDecoder)
   def decodeToSources(exceptions: Set[String], id: String, s: String) = decodeSeqsToSourcesFromString(exceptions, id, s, viterbiDecoder)
@@ -106,7 +106,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def cleanUp(): Unit = {
   }
 
-  private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
+  private def applyToSeqsInParallel(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
     val parSeq = seqs.par
     val res = parSeq map { seq =>
       val iseq = sGen.extractFeatures(seq)
@@ -116,7 +116,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     res.seq
   }
 
-  private def applyToSeqs(seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
+  private def applyToSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Seq[InstanceSequence] = {
     seqs map { s =>
       val iseq = sGen.extractFeatures(s)
       decoder.assignBestSequence(iseq)
@@ -124,7 +124,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     }
   }
 
-  private def applyToSeqsStreamingParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
+  private def applyToSeqsStreamingParallel(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
     outFile foreach { f =>
       val ostr = new java.io.FileOutputStream(f)
       val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
@@ -152,7 +152,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     }
   }
 
-  private def applyToSeqsInParallel(seqs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
+  private def applyToSeqsInParallel(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
     if (seqs.length < granularity) {
       val iseqs = applyToSeqsInParallel(seqs, decoder)
       opts.evaluate match {
@@ -181,7 +181,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     }
   }
 
-  def applyDecoder(srcs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
+  def applyDecoder(srcs: collection.immutable.IndexedSeq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]): Unit = {
     opts.evaluate match {
       case Some(_) =>
         val nsrcs = sGen.toSources(dobj)
@@ -202,7 +202,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     sGen.seqsToWriter(dobj, seqs, writer, false) // write but do not close the stream writer
   }
 
-  private def applyDecoderParallel(srcs: Seq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
+  private def applyDecoderParallel(srcs: collection.immutable.IndexedSeq[SourceSequence[Obs]], dobj: sGen.DeserializationT, decoder: DecodingAlgorithm, outFile: Option[String]) = {
     val nsrcs = sGen.toSources(dobj)
     (nsrcs.toList zip srcs.toList) foreach { case (tseq, seq) => seq.updateLabels(tseq) }
     applyToSeqsInParallel(srcs, dobj, decoder, outFile)
@@ -263,7 +263,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
    * This method facilitates basic pipelining of decoders. It may be more generally useful and so isn't 
    * in a separate trait (yet?)
   */
-  def decodeSeqsToSources(exceptions: Set[String], id: String, seqs: Seq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Unit = {
+  def decodeSeqsToSources(exceptions: Set[String], id: String, seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]], decoder: DecodingAlgorithm): Unit = {
     val iseqs = if (true) applyToSeqsInParallel(seqs, decoder) else applyToSeqs(seqs, decoder)
     for (i <- 0 until seqs.length) {
       val lSeq = iseqs(i).iseq
@@ -283,7 +283,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
   def decodeSeqsToSourcesFromFiles(exceptions: Set[String], id: String, decoder: DecodingAlgorithm): sGen.Seqs = {
     val srcs = sGen.createSourcesFromFiles
     srcs foreach { src => decodeSeqsToSources(exceptions, id, src, decoder) }
-    srcs.flatten
+    srcs.flatten.toVector
   }
 
   def decodeSeqsToSourcesFromDeserialization(exceptions: Set[String], id: String, d: sGen.DeserializationT, decoder: DecodingAlgorithm): sGen.Seqs = {

@@ -77,7 +77,7 @@ trait DirectSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       }
       sourceBuffer append (new SourceSequence(tmpBuf.toIndexedSeq))
     }
-    sourceBuffer.toSeq
+    sourceBuffer.toVector
   }
   val nlSep = System.getProperty("line.separator")
   

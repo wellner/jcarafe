@@ -66,7 +66,7 @@ trait XmlSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConve
           getSequence(a.child)}}
   
   private def sourceSeqsOfDeserialized(tlists: NodeSeq) : Seqs = 
-    tlists flatMap {(ns:Node) =>
+    tlists.toVector flatMap {(ns:Node) =>
       ns match {
         case Elem(_,l,_,_,c @ _*) if boundaries.labelMatch(l) =>
           List(createSourceSequence(getSequence(c)))

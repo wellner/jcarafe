@@ -130,7 +130,7 @@ class MaxEntFeatureType(val fid: Int) extends FeatureType(0L, false, 0)
  */
 trait MaxEntCore {
 
-  private def denseDotProduct(offset: Int, lab: Int, denseVec: Array[Double], sparseFeatures: Array[CompactFeature]) = {
+  private def denseDotProduct(offset: Int, lab: Int, denseVec: collection.mutable.IndexedSeq[Double], sparseFeatures: Array[CompactFeature]) = {
     var r = 0.0
     var i = 0
     val sl = sparseFeatures.length
@@ -147,7 +147,7 @@ trait MaxEntCore {
    * Gets the normalized scores for each class outcome for a particular instance given the current
    * parameters, <i>lambdas</i>, and the features associated with the instance, <i>sparseFeatures</i>
    */
-  def classScoresNormalized(nls: Int, predNFS: Int, lambdas: Array[Double], sparseFeatures: Array[CompactFeature]) = {
+  def classScoresNormalized(nls: Int, predNFS: Int, lambdas: collection.mutable.IndexedSeq[Double], sparseFeatures: Array[CompactFeature]) = {
     val unScores = for (i <- 0 until nls) yield { denseDotProduct(i * predNFS, i, lambdas, sparseFeatures) }
     var sum = 0.0
     val mx = unScores.foldLeft(-scala.Double.MaxValue) { (ac, v) => if (v > ac) v else ac }
@@ -159,13 +159,13 @@ trait MaxEntCore {
   }
 }
 
-class DenseMaxEntWorker(override val lambdas: Array[Double], nls: Int, nfs: Int, gPrior: Double)
+class DenseMaxEntWorker(override val lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, gPrior: Double)
   extends MaxEnt(nls, nfs, gPrior) with DenseWorker
 
 class DenseParallelMaxEnt(numPs: Int, nls: Int, nfs: Int, gPrior: Double) extends MaxEnt(nls, nfs, gPrior)
   with ParCrf[DenseMaxEntWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(lambdas: Array[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) =
+  def getWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) =
     new DenseMaxEntWorker(lambdas, nls, nfs, gPrior)
 
   override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(numPs, seqAccessor)
@@ -350,7 +350,7 @@ abstract class SparseMaxEnt(nls: Int, nfs: Int, opts: Options) extends Stochasti
   }
 }
 
-class MaxEntMemoryAccessSeq(iseqs: Seq[InstanceSequence]) extends MemoryAccessSeq(iseqs) {
+class MaxEntMemoryAccessSeq(iseqs: collection.immutable.IndexedSeq[InstanceSequence]) extends MemoryAccessSeq(iseqs) {
 
   override def accessSingleInstance(i: Int): AbstractInstance = apply(0)(i)
   override def length = apply(0).length // length of the single sequence
@@ -359,7 +359,7 @@ class MaxEntMemoryAccessSeq(iseqs: Seq[InstanceSequence]) extends MemoryAccessSe
     val seq = seqs(0)
     val ns = if ((seq.length % n) == 0) seq.length / n else (seq.length / n) + 1
     for (j <- 0 until n) yield {
-      new MaxEntMemoryAccessSeq(Seq(InstSeq(seq.iseq.slice(j * ns, (seq.length min ((j + 1) * ns))))))
+      new MaxEntMemoryAccessSeq(Vector(InstSeq(seq.iseq.slice(j * ns, (seq.length min ((j + 1) * ns))))))
     }
   }
 }
@@ -379,7 +379,7 @@ class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) wit
   /**
    * Each instance is assigned the label with the highest class probability
    */
-  def assignBestSequence(iseq: Seq[AbstractInstance]) = { iseq foreach classifyInstance; 0.0 }
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = { iseq foreach classifyInstance; 0.0 }
 
   def classifyInstance(el: AbstractInstance): Int = {
     val scores = classScoresNormalized(crf.nls, predNFS, crf.params, el.getCompactVec)
@@ -661,10 +661,10 @@ trait MaxEntSeqGen[Obs] extends MaxEntSeqGenCore[Obs] {
     }
   }
 
-  override def createSeqsFromFiles: Seq[InstanceSequence] = createInstancesDirectly
+  override def createSeqsFromFiles: collection.immutable.IndexedSeq[InstanceSequence] = createInstancesDirectly
   protected def toInstances(d: DeserializationT): InstanceSequence
 
-  protected def createInstancesDirectly: Seq[InstanceSequence] = {
+  protected def createInstancesDirectly: collection.immutable.IndexedSeq[InstanceSequence] = {
     opts.inputDir match {
       case Some(dirStr) =>
         val pat = opts.inputFilter match {
@@ -673,13 +673,13 @@ trait MaxEntSeqGen[Obs] extends MaxEntSeqGenCore[Obs] {
           case None => new scala.util.matching.Regex(".*")
         }
         val dir = new File(dirStr)
-        dir.listFiles.toSeq filter
+        dir.listFiles.toVector filter
           { f: File => pat.findFirstIn(f.toString) match { case Some(_) => true case None => false } } map
           { f: File => toInstances(deserializeFromFile(f)) }
       case None =>
         opts.inputFile match {
           case Some(f) =>
-            Seq(toInstances(deserializeFromFile(f)))
+            Vector(toInstances(deserializeFromFile(f)))
           case None =>
             throw new RuntimeException("Expecting input file")
         }
@@ -715,10 +715,10 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     } else None
     l = instr.readLine()
     }
-    Seq(new SourceSequence(tmpBuf.toSeq))
+    Vector(new SourceSequence(tmpBuf.toSeq))
   }
 
-  override def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  override def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     sourcePairSeqs map extractFeatures
   }
 
@@ -807,7 +807,7 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     } else None
   }
 
-  def toAbstractInstanceSeq(inReader: DeserializationT, quiet: Boolean = false): Seq[AbstractInstance] = {
+  def toAbstractInstanceSeq(inReader: DeserializationT, quiet: Boolean = false): collection.immutable.IndexedSeq[AbstractInstance] = {
     val instr = inReader.is
     var l = instr.readLine()
     val tmpBuf = new scala.collection.mutable.ListBuffer[MaxEntInstance]
@@ -864,7 +864,7 @@ class DiskBasedMaxEntTrainer(opts: MEOptions) extends MaxEntTrainer(opts) with L
     writeModel(m, new java.io.File(opts.model.get))
   }
 
-  override def trainModel(m: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = trainModelWithDiskAccess(m)
+  override def trainModel(m: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = trainModelWithDiskAccess(m)
 
   override def train = {
     sGen.createInstancesOnDisk // build instances and cache to disk
@@ -901,7 +901,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
   def this() = this(new MEOptions(Array(), new MaxEntOptionHandler(Array())))
   type TrSeqGen = MaxEntTrainingSeqGen
   val sGen: TrSeqGen = if (opts.fileBased) new FileBasedMaxEntTrainingSeqGen(opts) else new MaxEntTrainingSeqGen(opts)
-  override def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
+  override def trainModel(me: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     if (opts.dumpInstances.isDefined) {
       val ofile = new java.io.FileWriter(opts.dumpInstances.get)
       seqs foreach { iseq =>
@@ -949,7 +949,7 @@ class MaxEntTrainer(override val opts: MEOptions) extends Trainer[List[(FeatureI
   }
 
   override def train = {
-    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
+    val seqs: collection.immutable.IndexedSeq[InstanceSequence] = sGen.createSeqsFromFiles
     val me = getMeEstimator
     trainModel(me, seqs)
   }
@@ -1184,12 +1184,12 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
     seqTbl map { case (k, v) => v }
   }
 
-  def trainModelToString(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence]): String = {
+  def trainModelToString(me: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence]): String = {
     val m = train(me, seqs)
     new String(serializeAsBytes(m))
   }
 
-  def train(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence]): MaxEntModel = {
+  def train(me: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence]): MaxEntModel = {
     seqs foreach { iseq => iseq.iseq foreach { ai => ai.label = ai.orig } } // make sure the label is set ot original label here
     val accessSeq = new MaxEntMemoryAccessSeq(seqs)
     val coreModel = me.train(accessSeq, opts.maxIters)
@@ -1203,16 +1203,16 @@ class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntT
   def batchTrainToModel(obsSeq: Seq[ObsSource[List[(FeatureId, Double)]]]): MaxEntModel = {
     val seqs = sGen.extractFeatures(new SourceSequence[List[(FeatureId, Double)]](obsSeq))
     val me = new MaxEnt(sGen.getNumberOfStates, sGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
-    train(me, Seq(seqs))
+    train(me, Vector(seqs))
   }
 
   def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence): MaxEntModel = {
     val me = new MaxEnt(seqGen.getNumberOfStates, seqGen.getNumberOfFeatures, gp) with CondLogLikelihoodLearner[AbstractInstance]
-    train(me, Seq(instSeq))
+    train(me, Vector(instSeq))
   }
 
   def batchTrainToModel(seqGen: MaxEntTrainingSeqGen, instSeq: InstanceSequence, me: Crf with CrfLearner): MaxEntModel = {
-    train(me, Seq(instSeq))
+    train(me, Vector(instSeq))
   }
 
   def addInstance(id: Int, l: String, fs: java.util.List[String]): Unit =

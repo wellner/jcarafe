@@ -100,7 +100,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
         sourceBuffer += new SourceSequence(seq)
       }
     }
-    sourceBuffer.toSeq
+    sourceBuffer.toVector
   }
 
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT =

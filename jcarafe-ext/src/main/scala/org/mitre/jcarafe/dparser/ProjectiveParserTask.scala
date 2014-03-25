@@ -11,7 +11,7 @@ trait ProjectiveMstCrfTraining[O] extends Trainer[O] {
   
   val modelIterate: Option[(CoreModel,Int) => Unit] = None // override this to provide means to generate models on each training iteration
   
-  def trainingRoutine(seqs: Seq[InstanceSequence]) = {
+  def trainingRoutine(seqs: collection.immutable.IndexedSeq[InstanceSequence]) = {
     println("Processed " + seqs.length + " sentences . . . beginning parameter estimation..\n")
     println("Number of features = " + sGen.getNumberOfFeatures)
     val mstCrf =
@@ -24,7 +24,7 @@ trait ProjectiveMstCrfTraining[O] extends Trainer[O] {
     trainModel(mstCrf,seqs,modelIterate)
   }
   
-  def xValidateFromSeqs(seqs: Seq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
+  def xValidateFromSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
 }
 
 class ProjectiveDependencyParser(argv: Array[String]) extends TaggerTask[String](argv) {

@@ -156,7 +156,7 @@ object TestGradients {
     println("Cgrad 1")
     cgrad foreach {v => print(" " + v)}
     println
-    val seqAccessor = new org.mitre.jcarafe.crf.MemoryAccessSeq(Seq(new org.mitre.jcarafe.crf.MemoryInstanceSequence(instances)))
+    val seqAccessor = new org.mitre.jcarafe.crf.MemoryAccessSeq(Vector(new org.mitre.jcarafe.crf.MemoryInstanceSequence(instances)))
     
     
     val gg = control.getGradient(false, seqAccessor)

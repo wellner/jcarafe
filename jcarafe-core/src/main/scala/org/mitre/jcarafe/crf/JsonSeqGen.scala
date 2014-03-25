@@ -285,7 +285,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       }
     val tokLists = segment(List(List()), zones.sortWith(_ < _), toks)
 
-    tokLists.reverse map { el: List[Annotation] =>
+    tokLists.reverse.toVector map { el: List[Annotation] =>
       val sss = seqOfTokArr(el.toArray).toSeq
       createSourceSequence(sss)
     }

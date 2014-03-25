@@ -7,7 +7,7 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
   
   def this(nls: Int, nfs: Int, ss: Int, gPrior: Double) = this(Array.fill(nfs)(0.0),nls,nfs,ss,gPrior)
   
-  override protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+  override protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
@@ -55,7 +55,7 @@ abstract class KLDivMinimizingStochasticCrf(
     nGates: Int = 0
     ) extends StochasticCrf(nls, nfs, segSize, opts, nNfs, nGates) {
   
-  override protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+  override protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {

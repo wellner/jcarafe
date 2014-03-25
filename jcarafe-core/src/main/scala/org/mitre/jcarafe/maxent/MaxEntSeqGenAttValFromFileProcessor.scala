@@ -25,7 +25,7 @@ trait MaxEntSeqGenAttValFromFileProcessor extends MaxEntSeqGen[List[(FeatureId, 
     inst
   }
 
-  override def createSeqsFromFiles: Seq[InstanceSequence] = {
+  override def createSeqsFromFiles: collection.immutable.IndexedSeq[InstanceSequence] = {
     
     opts.inputDir match {
       case Some(dirStr) =>
@@ -33,16 +33,16 @@ trait MaxEntSeqGenAttValFromFileProcessor extends MaxEntSeqGen[List[(FeatureId, 
         val dirFiles = dir.listFiles
         val categoryDirs = dirFiles filter { _.isDirectory }
         if (categoryDirs.size == 0) {
-          val ais = dirFiles map { f: File =>
+          val ais = dirFiles.toVector map { f: File =>
             mapToMaxEntInstance("UNK", subSeqGen.createSeqsWithInput(subSeqGen.deserializeFromFile(f)), f.getName)
           }
-          Seq(new MemoryInstanceSequence(ais))
+          Vector(new MemoryInstanceSequence(ais))
         } else {
-          val ais = categoryDirs flatMap { catDir =>
+          val ais = categoryDirs.toVector flatMap { catDir =>
             val dirName = catDir.getName
             catDir.listFiles.toSeq map { f: File => mapToMaxEntInstance(dirName, subSeqGen.createSeqsWithInput(subSeqGen.deserializeFromFile(f)), f.getName) }
           }
-          Seq(new MemoryInstanceSequence(ais))
+          Vector(new MemoryInstanceSequence(ais))
         }
       case None => throw new RuntimeException("Must specify an input DIRECTORY with file-processing mode")
     }

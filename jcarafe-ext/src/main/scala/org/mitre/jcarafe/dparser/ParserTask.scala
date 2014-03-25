@@ -10,14 +10,14 @@ import org.mitre.jcarafe.util.Options
 
 trait MstCrfTraining[O] extends Trainer[O] {
   
-  def trainingRoutine(seqs: Seq[InstanceSequence]) = {
+  def trainingRoutine(seqs: collection.immutable.IndexedSeq[InstanceSequence]) = {
     println("Processed " + seqs.length + " sentences . . . beginning parameter estimation..\n")
     println("Number of features = " + sGen.getNumberOfFeatures)
     val mstCrf = new MstCrf(sGen.getNumberOfFeatures, opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
     trainModel(mstCrf,seqs)
   }
   
-  def xValidateFromSeqs(seqs: Seq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
+  def xValidateFromSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[O]]) = throw new RuntimeException("xvalidate not implemented for MstCrfTraining (yet)")
 }
 
 abstract class NonFactoredMstTrainer[O](adj: Boolean, o: Options) extends GenericNonFactoredTrainer[O](adj,o) with MstCrfTraining[O] 

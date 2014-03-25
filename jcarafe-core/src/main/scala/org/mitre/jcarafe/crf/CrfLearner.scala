@@ -8,7 +8,7 @@ import org.mitre.jcarafe.util.FastLoops._
 
 trait CrfLearner {
 
-  def print_zero_wt_feature_cnt(weights: Array[Double], num_features: Int) = {
+  def print_zero_wt_feature_cnt(weights: collection.mutable.IndexedSeq[Double], num_features: Int) = {
     var num_zero_wt_features = 0
     var num_non_zero_wt_features = 0
     var index = 0
@@ -43,7 +43,7 @@ trait CondLogLikelihoodLearner[T] extends DenseTrainable[T] with CrfLearner {
     p.maxIters_=(max_iters)
     p.verbose_=(true)
     p.veryVerbose_=(veryVerbose)
-    val optimizer = new LbfgsOptimizer(lambdas,gradient,fn,p)
+    val optimizer = new LbfgsOptimizer(lambdas.toArray,gradient,fn,p)
     val result = optimizer.optimize()
     println("\n...L-BFGS optimization complete; status: " + result.status)
     println("...Negative log-likelihood: \t" + result.objective)
@@ -121,7 +121,7 @@ trait SgdLearner[T] extends SparseTrainable[T] with CrfLearner {
       }
     }
     if (!quiet) println("\n...Training completed in " + ((System.nanoTime - t_s) / 1000000000.0) + " seconds")
-    print_zero_wt_feature_cnt(lambdas, numParams)
+    print_zero_wt_feature_cnt(lambdas.toArray, numParams)
     getCoreModel()
     //new CoreModel(lambdas,numParams,nls,nNumParams,nGates)
   }

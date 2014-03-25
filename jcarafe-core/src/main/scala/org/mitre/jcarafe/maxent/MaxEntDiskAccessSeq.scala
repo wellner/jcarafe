@@ -7,7 +7,7 @@ package org.mitre.jcarafe.maxent
 import org.mitre.jcarafe.crf.{MemoryAccessSeq, AccessSeq, AbstractInstance}
 
 
-class MaxEntDiskAccessSeq(val diskCache: String, val st: Int, val en: Int) extends MaxEntMemoryAccessSeq(Seq()) {
+class MaxEntDiskAccessSeq(val diskCache: String, val st: Int, val en: Int) extends MaxEntMemoryAccessSeq(Vector()) {
   
   override def accessSingleInstance(i: Int) = {
     MESerializations.readInstance(new java.io.File(diskCache+"/"+i.toString))

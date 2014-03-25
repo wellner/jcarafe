@@ -3,13 +3,13 @@
  */
 
 package org.mitre.jcarafe.crf
-import collection.mutable.HashSet
-import collection.mutable.HashMap
+import collection.mutable.{ HashSet, HashMap, IndexedSeq }
 import org.mitre.jcarafe.util.{ Options, SparseVector, SparseVectorAsMap }
+
 import cern.colt.map.OpenIntDoubleHashMap
 
 trait Trainable[T] extends Serializable {
-  val lambdas: Array[Double]
+  val lambdas: IndexedSeq[Double]
   val numParams: Int
 
   def getGradient(instAccessor: AccessSeq[T]): Option[Double]
@@ -18,7 +18,7 @@ trait Trainable[T] extends Serializable {
 
   def getCoreModel(): CoreModel
 
-  def getLambdas: Array[Double] = lambdas
+  def getLambdas: IndexedSeq[Double] = lambdas
 
   def train(accessSeq: AccessSeq[T], num: Int = 200, mi: Option[(CoreModel, Int) => Unit] = None): CoreModel
 
@@ -47,7 +47,7 @@ trait SparseTrainable[T] extends Trainable[T] with Serializable {
   val pAlpha: Double
 }
 
-class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) extends Serializable {
+class CoreModel(val params: IndexedSeq[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) extends Serializable {
   def print() = {
     println("NLS: => " + nls)
     println("NFS: => " + nfs)
@@ -59,7 +59,7 @@ class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs:
 }
 
 trait AccessSeq[T] extends Serializable {
-  def apply(i: Int): Seq[T]
+  def apply(i: Int): collection.immutable.IndexedSeq[T]
   def length: Int
   def repermute(): Unit
   def splitAccessor(n: Int): Seq[AccessSeq[T]]
@@ -68,7 +68,7 @@ trait AccessSeq[T] extends Serializable {
 }
 
 //class CachedAccessSeq(fs: Array[String]) extends AccessSeq
-class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) extends AccessSeq[AbstractInstance] {
+class MemoryAccessSeq(iseqs: collection.immutable.IndexedSeq[InstanceSequence], seed: Option[Int] = None) extends AccessSeq[AbstractInstance] {
   var seqs = iseqs //permuteSeq(iseqs.filter{s => s.length > 0})
   def getSeqs = iseqs
   def apply(i: Int) = seqs(i).iseq
@@ -93,7 +93,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
     }
   }
 
-  private def permuteSeq(s: Seq[InstanceSequence]): IndexedSeq[InstanceSequence] = {
+  private def permuteSeq(s: collection.immutable.IndexedSeq[InstanceSequence]): collection.immutable.IndexedSeq[InstanceSequence] = {
     val nseqs = s.toArray
     permuteArray(nseqs)
     nseqs.toIndexedSeq
@@ -114,7 +114,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
       for (j <- 0 until n; if (j != i)) {
         instBuf ++= folds(j).getSeqs
       }
-      (new MemoryAccessSeq(instBuf.toSeq), tst)
+      (new MemoryAccessSeq(instBuf.toIndexedSeq), tst)
     }
   }
 }
@@ -131,7 +131,7 @@ class MemoryAccessSeq(iseqs: Seq[InstanceSequence], seed: Option[Int] = None) ex
  * @param nNfs      Number of neural gate input features (for NeuralCrf)
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
-abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
+abstract class Crf(val lambdas: IndexedSeq[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
   extends Trainable[AbstractInstance] with Serializable {
 
   val numParams = nfs
@@ -146,7 +146,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
     val params = getLambdas
     val l = params.length
     var i = 0; while (i < l) {
-      params(i) = 0.0
+      params.update(i,0.0)
       i += 1
     }
   }
@@ -279,7 +279,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
     }
   }
 
-  protected def forwardPass(iseq: Seq[AbstractInstance]): Double
+  protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]): Double
   def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double]
 
   def train(seqAccessor: AccessSeq[AbstractInstance]): CoreModel = train(seqAccessor, 300, None)
@@ -296,7 +296,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
  * @param nNfs      Number of neural gate input features (for NeuralCrf)
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
-abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int, nGates: Int)
+abstract class DenseCrf(lambdas: IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int, nGates: Int)
   extends Crf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
 
   def this(core: CoreModel) = this(core.params, core.nls, core.nfs, 1, 1E200, core.nNfs, core.nGates)
@@ -320,7 +320,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
     llMod
   }
 
-  protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+  protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     val params = getLambdas
     var seqLogLi = 0.0
     var i = 0
@@ -352,7 +352,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
     seqLogLi
   }
 
-  def gradOfSeq(iseq: Seq[AbstractInstance]): Double = {
+  def gradOfSeq(iseq: collection.immutable.IndexedSeq[AbstractInstance]): Double = {
     reset(false, iseq.length)
     var xx = 0
     while (xx < nfs) { featureExpectations(xx) = 0.0; xx += 1 }
@@ -393,7 +393,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  *
  */
-abstract class StochasticCrf(lambdas: Array[Double],
+abstract class StochasticCrf(lambdas: IndexedSeq[Double],
   nls: Int,
   nfs: Int,
   segSize: Int,
@@ -434,7 +434,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
   // used for parallel training methods
   def setNewEtas(es: Array[Double]) = Array.copy(es, 0, etas, 0, nfs)
 
-  protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+  protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     val params = getLambdas
@@ -532,14 +532,14 @@ abstract class StochasticCrf(lambdas: Array[Double],
 }
 
 class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0), nls, nfs, 1, 0.0, 0, 0) with Serializable {
-  var localParams: Array[Double] = Array() // ugly way to do this
+  var localParams: IndexedSeq[Double] = Array[Double]() // ugly way to do this
   override def getLambdas = localParams
 
   def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel, Int) => Unit] = None): CoreModel = {
     new CoreModel(getLambdas, nls, nfs)
   }
 
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]): (Double, Array[Double]) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: IndexedSeq[Double]): (Double, Array[Double]) = {
     localParams = curLambdas
     val ll = gradOfSeq(s.iseq)
     (ll, gradient)
@@ -549,7 +549,7 @@ class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0),
 class SparseStatelessCrf(nls: Int, nfs: Int, opts: Options = new Options) 
 extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializable {
 
-  var localParams: Array[Double] = Array() // ugly way to do this
+  var localParams: IndexedSeq[Double] = Array[Double]() // unfortunate way to have to do this
   override def getLambdas = localParams
   private var gradNormalizer = 0.0
 
@@ -572,7 +572,7 @@ extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializ
     new SparseVectorAsMap(s, mn)
   }
 
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: IndexedSeq[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
@@ -688,7 +688,7 @@ object Crf {
    * @param ri - scores for just current state/position
    * @param mi - scores for currentstate and previous
    */
-  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: Array[Double]) = {
+  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: IndexedSeq[Double]) = {
     setMatrix(ri)
     setTensor(mi)
     val dlen = inst_features.length

@@ -11,7 +11,7 @@ object Viterbi {
 }
 
 abstract class DecodingAlgorithm(val crf: CoreModel) {
-  def assignBestSequence(iseq:Seq[AbstractInstance]) : Double
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double
   def getCopyOf : DecodingAlgorithm
   def assignBestSequence(instSeq: InstanceSequence) : Unit = {
     val sp = assignBestSequence(instSeq.iseq)
@@ -158,7 +158,7 @@ class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePos
   }
   */
   
-  def assignBestSequence(iseq:Seq[AbstractInstance]) : Double = {
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
     //if (dynamic) resize(iseq.length)
     val sl = iseq.length
     if (sl > 0) {

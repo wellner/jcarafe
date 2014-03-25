@@ -105,7 +105,7 @@ trait AntecedentSeqGen extends SeqGen[Array[PostTok]] with XmlConversions {
         case Tag(t,false) => {tbuf += createSource(ILabel(state),tokBuf.toArray, curAtts); tokBuf.clear; state = 0}
         case _ => 
       }
-    List(new SourceSequence(tbuf.toSeq))
+    Vector(new SourceSequence(tbuf.toVector))
   }
       
 }

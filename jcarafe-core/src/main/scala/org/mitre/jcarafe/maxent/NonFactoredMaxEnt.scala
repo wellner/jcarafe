@@ -8,7 +8,7 @@ import org.mitre.jcarafe.util._
 
 trait NonFactoredMaxEntCore {
   
-  def classScoresNormalizedNF(nls: Int, nfs:Int, lambdas:Array[Double], sparseFeatures: Seq[Feature]) = {
+  def classScoresNormalizedNF(nls: Int, nfs:Int, lambdas:collection.mutable.IndexedSeq[Double], sparseFeatures: Seq[Feature]) = {
     val unScores = Array.fill(nls)(0.0)
     sparseFeatures foreach {f => unScores(f.cur) += f.value * lambdas(f.fid)}
     var sum = 0.0
@@ -98,7 +98,7 @@ abstract class NonFactoredRankTrainingSeqGen(opts: Options) extends SeqGen[Array
       InstSeq(iseq)
   }
   
-  override def extractFeatures (sourcePairSeqs: Seqs) : Seq[InstanceSequence] = {
+  override def extractFeatures (sourcePairSeqs: Seqs) : collection.immutable.IndexedSeq[InstanceSequence] = {
     sourcePairSeqs map extractFeatures
   }
   
@@ -124,13 +124,13 @@ extends DecodingSeqGen[Array[RankReadInst]](m:Model,opts) with NonFactoredSeqGen
 	   InstSeq(iseq)
   }
   
-  override def extractFeatures (sourcePairSeqs: Seqs) : Seq[InstanceSequence] = 
+  override def extractFeatures (sourcePairSeqs: Seqs) : collection.immutable.IndexedSeq[InstanceSequence] = 
     sourcePairSeqs map {dseq => extractFeatures(dseq) }
 }
 
 class NonFactoredMaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) with NonFactoredMaxEntCore {
   def getCopyOf = new NonFactoredMaxEntDecodingAlgorithm(crf)
-  def assignBestSequence(iseq:Seq[AbstractInstance]) = {
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     iseq foreach {el =>
       val scores = classScoresNormalizedNF(el.getRange, crf.nfs , crf.params, el.getCompVec(0))
       val scoresZipped = scores.toList.zipWithIndex
@@ -229,7 +229,7 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
     type TrSeqGen = NonFactoredRankTrainingSeqGen
     val sGen = new NonFactoredRankTrainingSeqGen(opts) with MaxEntSeqGenGeneral
    	  
-    def trainModel(me: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
+    def trainModel(me: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel,Int) => Unit] = None) = {
         val accessSeq = new MemoryAccessSeq(seqs)	
    	    val coreModel = me.train(accessSeq)
    	    val m = new NonFactoredModel(sGen.getModelName,sGen.getLexicon, sGen.getWordProps ,1,coreModel,sGen.faMap,sGen.getNumberOfStates)
@@ -237,7 +237,7 @@ class NonFactoredMaxEntClassifier(argv: Array[String]) {
       }
     
     override def train() = {
-      val seqs : Seq[InstanceSequence] = sGen.createSeqsFromFiles  // this has to happen before generating CRF
+      val seqs : collection.immutable.IndexedSeq[InstanceSequence] = sGen.createSeqsFromFiles  // this has to happen before generating CRF
       val me = new NonFactoredMaxEnt(2,sGen.faMap.size,opts.gaussian) with CondLogLikelihoodLearner[AbstractInstance]
       trainModel(me, seqs) 
     }

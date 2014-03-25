@@ -10,7 +10,7 @@ import org.mitre.jcarafe.util._
 
 abstract class InstanceSequence(val st: Int, val en: Int) {
   var seqPosteriorProbability = 0.0
-  def iseq: Seq[AbstractInstance]
+  def iseq: collection.immutable.IndexedSeq[AbstractInstance]
   def length: Int
   def print() =
     iseq foreach { ai =>
@@ -21,27 +21,27 @@ abstract class InstanceSequence(val st: Int, val en: Int) {
     }
 }
 
-class MemoryInstanceSequence(val internalSeq: Seq[AbstractInstance], st: Int, en: Int) extends InstanceSequence(st, en) {
-  def this(iseq: Seq[AbstractInstance]) = this(iseq, -1, -1)
+class MemoryInstanceSequence(val internalSeq: collection.immutable.IndexedSeq[AbstractInstance], st: Int, en: Int) extends InstanceSequence(st, en) {
+  def this(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = this(iseq, -1, -1)
   def length = iseq.length
   def iseq = internalSeq
 }
 
 abstract class DiskInstanceSequence(val fp: java.io.File, st: Int, en: Int, val len: Int) extends InstanceSequence(st, en) {
 
-  def iseq: Seq[AbstractInstance]
+  def iseq: collection.immutable.IndexedSeq[AbstractInstance]
   def length: Int = len
 }
 
 
 class FactoredCachedSourceSequence[T](val sGen: TrainingSeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
-  def iseq: Seq[AbstractInstance] = sGen.extractFeaturesDirect(src)
+  def iseq: collection.immutable.IndexedSeq[AbstractInstance] = sGen.extractFeaturesDirect(src)
   override lazy val length = iseq.length
 }
 
 class NonFactoredCachedSourceSequence[T](val sGen: SeqGen[T], val src: SourceSequence[T], st: Int, en: Int) extends InstanceSequence(st, en) {
 
-  def iseq: Seq[AbstractInstance] = sGen.extractFeatures(src).iseq
+  def iseq: collection.immutable.IndexedSeq[AbstractInstance] = sGen.extractFeatures(src).iseq
   def length: Int = iseq.length
 }
 
@@ -60,10 +60,10 @@ object InstSeq {
   
   class NonFactoredCrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     
-    def iseq: Seq[AbstractInstance] = {
+    def iseq: collection.immutable.IndexedSeq[AbstractInstance] = {
       val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
       val kInput = new Input(is)
-      val o = kryo.readObject(kInput, classOf[Seq[NonFactoredCrfInstance]])
+      val o = kryo.readObject(kInput, classOf[collection.immutable.IndexedSeq[NonFactoredCrfInstance]])
       is.close()
       kInput.close()
       o
@@ -72,7 +72,7 @@ object InstSeq {
 
   class RawInstanceSequenceStringObs(val sGen: TrainingSeqGen[String], fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     // serialize just the plain 
-    def iseq: Seq[AbstractInstance] = {
+    def iseq: collection.immutable.IndexedSeq[AbstractInstance] = {
       val kInput = new Input(new java.io.BufferedInputStream(new java.io.FileInputStream(fp)))    
       val src = kryo.readObject(kInput, classOf[SourceSequence[String]])
       kInput.close
@@ -83,10 +83,10 @@ object InstSeq {
 
   class CrfDiskInstanceSequence(fp: java.io.File, st: Int, en: Int, ln: Int) extends DiskInstanceSequence(fp, st, en, ln) {
     
-    def iseq: Seq[AbstractInstance] = {
+    def iseq: collection.immutable.IndexedSeq[AbstractInstance] = {
       val is = new java.io.BufferedInputStream(new java.io.FileInputStream(fp))
       val kInput = new Input(is)
-      val ss = kryo.readObject(kInput, classOf[Seq[CrfInstance]])
+      val ss = kryo.readObject(kInput, classOf[collection.immutable.IndexedSeq[CrfInstance]])
       kInput.close()
       ss
     }
@@ -136,7 +136,7 @@ object InstSeq {
       case None => new FactoredCachedSourceSequence(sg, ss, st, en)
     }
   }
-  def apply(s: Seq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
+  def apply(s: collection.immutable.IndexedSeq[AbstractInstance], st: Int, en: Int): InstanceSequence = {
     CrfInstance.diskCache match {
       case Some(filePath) =>
         val ofile = new java.io.File(filePath + "/" + icnt)
@@ -155,7 +155,7 @@ object InstSeq {
       case None => new MemoryInstanceSequence(s, st, en)
     }
   }
-  def apply(s: Seq[AbstractInstance]): InstanceSequence = apply(s, -1, -1)
+  def apply(s: collection.immutable.IndexedSeq[AbstractInstance]): InstanceSequence = apply(s, -1, -1)
   def apply[T](sg: SeqGen[T], s: SourceSequence[T]) = {
     new NonFactoredCachedSourceSequence(sg, s, -1, -1)
   }
@@ -190,7 +190,7 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
 
   type DeserializationT <: Deserialization
   type Src = ObsSource[Obs]
-  type Seqs = Seq[SourceSequence[Obs]]
+  type Seqs = collection.immutable.IndexedSeq[SourceSequence[Obs]]
 
   type FRepT <: FeatureRep[Obs]
   val frep: FRepT
@@ -331,12 +331,12 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
    */
   def toSources(d: DeserializationT): Seqs
 
-  def createSeqsWithInput(d: DeserializationT): Seq[InstanceSequence] = extractFeatures(toSources(d))
+  def createSeqsWithInput(d: DeserializationT): IndexedSeq[InstanceSequence] = extractFeatures(toSources(d))
 
-  def createSeqsWithInput(dseq: Seq[DeserializationT]): Seq[InstanceSequence] =
+  def createSeqsWithInput(dseq: IndexedSeq[DeserializationT]): IndexedSeq[InstanceSequence] =
     dseq flatMap { (d: DeserializationT) => createSeqsWithInput(d) }
 
-  private def gatherFiles: Seq[File] = {
+  private def gatherFiles: collection.immutable.IndexedSeq[File] = {
     opts.inputDir match {
       case Some(dirStr) =>
         val pat = opts.inputFilter match {
@@ -345,31 +345,31 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
           case None => new scala.util.matching.Regex(".*")
         }
         val dir = new File(dirStr)
-        dir.listFiles.toSeq filter
+        dir.listFiles.toIndexedSeq filter
           { f: File =>
             if (!f.isFile) false
             else pat.findFirstIn(f.toString) match { case Some(_) => true case None => false }
           }
       case None =>
         opts.inputFile match {
-          case Some(f) => Seq(new File(f))
+          case Some(f) => Vector(new File(f))
           case None =>
             throw new RuntimeException("Expecting input file")
         }
     }
   }
 
-  def createSourcesFromFiles: Seq[Seqs] = gatherFiles map toSources
+  def createSourcesFromFiles: collection.immutable.IndexedSeq[Seqs] = gatherFiles map toSources
 
   def countFeatureTypesFromFiles: Unit = gatherFiles foreach { f => countFeatureTypes(toSources(f)) }
 
-  def createInstancesFromFiles: Seq[InstanceSequence] = {
+  def createInstancesFromFiles: collection.immutable.IndexedSeq[InstanceSequence] = {
     if (opts.randomFeatures || opts.randomSupportedFeatures) countFeatureTypesFromFiles
     gatherFiles flatMap { f => extractFeatures(toSources(f)) }
   }
 
   //def createSeqsFromFiles : Seq[InstanceSequence] = extractFeaturesSeq(createSourcesFromFiles)
-  def createSeqsFromFiles: Seq[InstanceSequence] = {
+  def createSeqsFromFiles: collection.immutable.IndexedSeq[InstanceSequence] = {
     if (opts.multiLine) {
       val sbuf = new collection.mutable.ListBuffer[InstanceSequence]
       var nread = 1      
@@ -391,11 +391,11 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
           sbuf ++= instSeqs
         }
       }
-      sbuf.toSeq
+      sbuf.toIndexedSeq
     } else createInstancesFromFiles // this does each file separately which will be more efficient with disk caching
   }
 
-  def extractFeatures(spSeqs: Seqs): Seq[InstanceSequence]
+  def extractFeatures(spSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence]
 
   def countFeatureTypes(src: SourceSequence[Obs]): Unit = {}
 
@@ -405,7 +405,7 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
 
   // extract features seq is present here so that extractFeatures can be applied separately to each "document"
   // so that document-specific global information related to "displaced features" can be retained and properly flushed
-  def extractFeaturesSeq(sourcePairSeqsSeq: Seq[Seqs]): Seq[InstanceSequence] = sourcePairSeqsSeq flatMap extractFeatures
+  def extractFeaturesSeq(sourcePairSeqsSeq: IndexedSeq[Seqs]): IndexedSeq[InstanceSequence] = sourcePairSeqsSeq flatMap extractFeatures
 
   // create a source - always have it be a beginning if the state corresponds to "otherIndex"
   protected def createSourceI(i: Int, o: Obs, b: Boolean, m: Option[Map[String, String]]) = frep.createSource(i, o, (b || (otherIndex match { case Some(oi) => oi == i case None => false })), m)
@@ -480,7 +480,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
   val boundaries = opts.boundaries
   this.addBeginStates_=(!opts.noBegin)
 
-  private def extractSemiCrfFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  private def extractSemiCrfFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     val insts = sourcePairSeqs map
       { dseq =>
         var sid = -1
@@ -503,7 +503,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
     }
   }
 
-  def extractFeaturesDirect(dseq: SourceSequence[Obs]): Seq[AbstractInstance] = {
+  def extractFeaturesDirect(dseq: SourceSequence[Obs]): collection.immutable.IndexedSeq[AbstractInstance] = {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -542,7 +542,7 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
 
   // note that this extraction is done over a document's worth of sequences
   // relevant for document-level feature handling
-  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     CrfInstance.numLabels_=(lAlphabet.size)
     if ((opts.randomFeatures || opts.randomSupportedFeatures) && (opts.numRandomFeatures < 10)) {
       // in this case, we'd like to use random/hashed features, but should count the number of feature types
@@ -572,7 +572,7 @@ abstract class DirectTrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], op
   val boundaries = opts.boundaries
   this.addBeginStates_=(!opts.noBegin)
 
-  def extractFeaturesDirect(dseq: SourceSequence[Obs]): Seq[AbstractInstance] = {
+  def extractFeaturesDirect(dseq: SourceSequence[Obs]): collection.immutable.IndexedSeq[AbstractInstance] = {
     var sid = -1
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
       if (dseq(i).beg) sid += 1
@@ -599,7 +599,7 @@ abstract class DirectTrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], op
 
   // note that this extraction is done over a document's worth of sequences
   // relevant for document-level feature handling
-  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     if ((opts.randomFeatures || opts.randomSupportedFeatures) && (opts.numRandomFeatures < 10) ) {
       sourcePairSeqs foreach countFeatureTypes
     }
@@ -638,7 +638,7 @@ abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], op
     InstSeq(iseq, dseq.st, dseq.en)
   }
 
-  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     if (opts.numRandomFeatures > 0) { // create instance sequences that only contain ObsSource
       sourcePairSeqs map { dseq => InstSeq(this, dseq) }
     } else
@@ -698,7 +698,7 @@ abstract class NonFactoredDecodingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], va
     InstSeq(iseq, dseq.st, dseq.en)
   }
 
-  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] =
+  def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] =
     sourcePairSeqs map { dseq => extractFeatures(dseq) }
 
 }
@@ -724,8 +724,9 @@ abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], 
     InstSeq(iseq, seq.st, seq.en)
   }
 
-  def extractFeatures(sourcePairSeqs: Seqs): Seq[InstanceSequence] = {
+  def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] = {
     frep.resetDisplacement
     sourcePairSeqs map { extractFeatures(_) }
   }
+  
 }

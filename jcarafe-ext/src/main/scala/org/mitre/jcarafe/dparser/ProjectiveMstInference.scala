@@ -99,7 +99,7 @@ abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extend
   /**
    * These are the model parameters
    */
-  val lambdas: Array[Double] = Array.fill(nfs)(0.0)
+  val lambdas: collection.mutable.IndexedSeq[Double] = Array.fill(nfs)(0.0)
   val numParams = nfs
   val gradient: Array[Double] = Array.fill(nfs)(0.0)
   val featureExpectations = Array.fill(nfs)(0.0)
@@ -170,7 +170,7 @@ abstract class ProjectiveMstCrf(val nfs: Int, val gPrior: Double = 100.0) extend
     sll - logzx
   }
 
-  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: Array[Double], pos: Int, lab: Int) = {
+  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: collection.mutable.IndexedSeq[Double], pos: Int, lab: Int) = {
     val klen = instFeatures.length
     val apos = pos + 1 // to handle addition of "root"
 
@@ -204,7 +204,7 @@ abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, model
 
   val quiet = false
 
-  val lambdas: Array[Double] = Array.fill(nfs)(0.0)
+  val lambdas: collection.mutable.IndexedSeq[Double] = Array.fill(nfs)(0.0)
   val numParams = nfs
   val gradient: HashMap[Int, DoubleCell] = new HashMap[Int, DoubleCell]()
   val periodSize = opts.psaPeriodSize
@@ -223,7 +223,7 @@ abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, model
   val eta = initialLearningRate
   var curPos: Int = 0
 
-  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: Array[Double], pos: Int, lab: Int) = {
+  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: collection.mutable.IndexedSeq[Double], pos: Int, lab: Int) = {
     val klen = instFeatures.length
     val apos = pos + 1 // to handle addition of "root"
 
@@ -328,7 +328,7 @@ class ProjectiveMstInference(crf: CoreModel) extends DecodingAlgorithm(crf) {
 
   val lambdas = crf.params
 
-  protected def updateScores(scoreVec: Array[Double], instFeatures: Array[Feature], lambdas: Array[Double], pos: Int) = {
+  protected def updateScores(scoreVec: Array[Double], instFeatures: Array[Feature], lambdas: collection.mutable.IndexedSeq[Double], pos: Int) = {
     val apos = pos + 1
     val klen = instFeatures.length
     var k = 0; while (k < klen) {
@@ -344,7 +344,7 @@ class ProjectiveMstInference(crf: CoreModel) extends DecodingAlgorithm(crf) {
 
   def getCopyOf = new ProjectiveMstInference(this.crf)
 
-  def assignBestSequence(iseq: Seq[AbstractInstance]): Double = {
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]): Double = {
     val sl = iseq.length
     //val sMat = Array.fill(sl + 1, sl + 1)(0.0)
     val sMat = Array.tabulate(sl + 1) { r => if (r == 0) Array.fill(sl + 1)(-Double.MaxValue) else Array.tabulate(sl + 1) { s => if (r == s) -Double.MaxValue else 0.0 } }
@@ -473,7 +473,7 @@ class EisnerInference {
 
 trait ParMstCrf extends ProjectiveMstCrf {
 
-  def getWorker(lambdas: Array[Double], nfs: Int, gPrior: Double): ProjectiveMstCrf
+  def getWorker(lambdas: collection.mutable.IndexedSeq[Double], nfs: Int, gPrior: Double): ProjectiveMstCrf
 
   def getGradient(numProcesses: Int, seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = {
     val accessors = seqAccessor.splitAccessor(numProcesses).toArray
@@ -500,7 +500,7 @@ trait ParMstCrf extends ProjectiveMstCrf {
 
 class ProjectiveMstCrfParallel(numPs: Int, nfs: Int, gPrior: Double = 100.0) extends ProjectiveMstCrf(nfs, gPrior) with ParMstCrf with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(ls: Array[Double], nfs: Int, Prior: Double) = {
+  def getWorker(ls: collection.mutable.IndexedSeq[Double], nfs: Int, Prior: Double) = {
     new ProjectiveMstCrf(nfs, gPrior) {
       override val lambdas = ls
       def train(a: AccessSeq[AbstractInstance]) = throw new RuntimeException("Class doesn't support training")

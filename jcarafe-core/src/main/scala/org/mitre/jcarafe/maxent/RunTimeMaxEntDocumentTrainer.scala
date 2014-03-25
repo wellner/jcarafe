@@ -16,7 +16,7 @@ class RunTimeMaxEntDocumentTrainer extends MaxEntTrainer(RunTimeOptions) {
   lazy val evaluator = getEvaluator 
   
   def getEvaluator = {
-    val accessSeq = new MaxEntMemoryAccessSeq(Seq(new MemoryInstanceSequence(instBuffer.toSeq)))
+    val accessSeq = new MaxEntMemoryAccessSeq(Vector(new MemoryInstanceSequence(instBuffer.toVector)))
     val evaluator = new Evaluator(opts, sGen)
     evaluator.addInstances(accessSeq.getSeqs(0))
     evaluator
@@ -54,7 +54,7 @@ class RunTimeMaxEntDocumentTrainer extends MaxEntTrainer(RunTimeOptions) {
   
   def trainModelToDecoder = {
     val me = getMeEstimator
-    val accessSeq = new MaxEntMemoryAccessSeq(Seq(new MemoryInstanceSequence(instBuffer.toSeq)))
+    val accessSeq = new MaxEntMemoryAccessSeq(Vector(new MemoryInstanceSequence(instBuffer.toIndexedSeq)))
     val coreModel = me.train(accessSeq, opts.maxIters)
     val m = new MaxEntModel(sGen.getLAlphabet, coreModel, sGen.frep.fMap, sGen.getInducedFeatureMap)
     RunTimeMaxEntDocumentDecoder(m)

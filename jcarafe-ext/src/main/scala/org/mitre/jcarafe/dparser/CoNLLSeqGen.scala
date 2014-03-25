@@ -73,7 +73,7 @@ trait CoNLLSeqGen extends SeqGen[String] {
         sourceBuffer += new SourceSequence(seq)
       }
     }
-    sourceBuffer.toSeq
+    sourceBuffer.toVector
   }
 
   def initialize() : Unit = throw new RuntimeException("Unsupported method: initialize")

@@ -93,7 +93,7 @@ trait SemiCrf extends Crf {
     }
   }
   
-  override protected def backwardPass(iseq:Seq[AbstractInstance]) = {
+  override protected def backwardPass(iseq: Seq[AbstractInstance]) = {
     val len = iseq.length
     setArrayTo(beta(len),0.0) 
     var i = len - 1 // end of array,
@@ -136,7 +136,7 @@ abstract class DenseSemiCrf(nls: Int, nfs: Int, segSize: Int, gPrior: Double) ex
     llMod
   }
   
-  override protected def forwardPass(iseq:Seq[AbstractInstance]) = {
+  override protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     setArrayTo(alpha(0), 0.0)
     var i = 1
@@ -182,7 +182,7 @@ abstract class DenseSemiCrf(nls: Int, nfs: Int, segSize: Int, gPrior: Double) ex
     seqLogLi
   }
   
-  override def gradOfSeq(iseq:Seq[AbstractInstance]) : Double = {
+  override def gradOfSeq(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
     reset(true,iseq.length) // full reset
     var xx = 0
     while (xx < nfs) { featureExpectations(xx) = -Double.MaxValue; xx += 1 }
@@ -200,7 +200,7 @@ abstract class DenseSemiCrf(nls: Int, nfs: Int, segSize: Int, gPrior: Double) ex
 
 abstract class StochasticSemiCrf(nls: Int, nfs: Int, segSize: Int, opts: Options) extends StochasticCrf(nls,nfs,segSize,opts) with SemiCrf {
 
-  override def forwardPass(iseq:Seq[AbstractInstance]) = {
+  override def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     setArrayTo(alpha(0), 0.0)
     var i = 1

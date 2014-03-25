@@ -220,7 +220,7 @@ abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts
 
   val empiricalDist = opts.empDistTrain
 
-  override def forwardPass(iseq: Seq[AbstractInstance]) = {
+  override def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
@@ -312,14 +312,14 @@ abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts
   }
 }
 
-abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
+abstract class DenseGeneralizedEMCrf(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
   extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, 0, 0) with GeneralizedEMCrf {
 
   def this(nls: Int, nfs: Int, segSize: Int, opts: Options) = this(Array.fill(nfs)(0.0), nls, nfs, segSize, opts)
 
   val empiricalDist = opts.empDistTrain
 
-  override def forwardPass(iseq: Seq[AbstractInstance]) = {
+  override def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
@@ -366,7 +366,7 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
     seqLogLi
   }
 
-  override def gradOfSeq(iseq: Seq[AbstractInstance]): Double = {
+  override def gradOfSeq(iseq: collection.immutable.IndexedSeq[AbstractInstance]): Double = {
     reset(false, iseq.length)
     var xx = 0
     while (xx < nfs) { featureExpectations(xx) = 0.0; xx += 1 }
@@ -385,13 +385,13 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
   }
 }
 
-class DenseGeneralizedEMCrfWorker(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
+class DenseGeneralizedEMCrfWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
   extends DenseGeneralizedEMCrf(lambdas, nls, nfs, segSize, opts) with DenseWorker
 
 class DenseParallelGeneralizedEMCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, opts: Options) extends DenseGeneralizedEMCrf(nls, nfs, segSize, opts)
   with ParCrf[DenseGeneralizedEMCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(lambdas: Array[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
+  def getWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new DenseGeneralizedEMCrfWorker(lambdas, nls, nfs, segSize, opts)
   }
 

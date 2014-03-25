@@ -41,7 +41,7 @@ trait PostJsonSeqGen extends SeqGen[Array[PostTok]] {
       val tbuf = new ArrayBuffer[PostTok]
       toks foreach {case Tok(t) => tbuf += new PostTok(t) case _ => }				
       createSource(an.typ,tbuf.toArray)}
-    Seq(new SourceSequence(seq))
+    Vector(new SourceSequence(seq))
   }
 
   def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = {

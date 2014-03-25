@@ -85,6 +85,6 @@ trait PostTextSeqGen extends FactoredSeqGen[Array[String]] with XmlConversions {
         case _ => 
     }
     val tb = tbuf.toIndexedSeq
-    List(new SourceSequence(tbuf.toSeq))
+    Vector(new SourceSequence(tbuf.toVector))
   }
 }

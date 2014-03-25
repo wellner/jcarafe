@@ -17,11 +17,11 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
    */
   val sGen: TrSeqGen
 
-  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None): Unit
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None): Unit
 
-  def trainingRoutine(seqs: Seq[InstanceSequence]): Unit
+  def trainingRoutine(seqs: collection.immutable.IndexedSeq[InstanceSequence]): Unit
 
-  def trainFromSeqs(seqs: Seq[SourceSequence[Obs]]) = {
+  def trainFromSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]]) = {
     val aSeqs = sGen.extractFeatures(seqs)
     trainingRoutine(aSeqs)
   }
@@ -31,12 +31,12 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
    * XX - use default parameters here
    */
   def train(): Unit = {
-    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles // this has to happen before generating CRF  
+    val seqs: collection.immutable.IndexedSeq[InstanceSequence] = sGen.createSeqsFromFiles // this has to happen before generating CRF  
     trainingRoutine(seqs)
   }
 
   def xValidate(): Unit
-  def xValidateFromSeqs(seqs: Seq[SourceSequence[Obs]]) : Unit
+  def xValidateFromSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]]) : Unit
 }
 
 trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
@@ -102,20 +102,22 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
   }
 
   def xValidate(): Unit = {
-    val seqs: Seq[InstanceSequence] = sGen.createSeqsFromFiles
+    val seqs: collection.immutable.IndexedSeq[InstanceSequence] = sGen.createSeqsFromFiles
     val crf = getCrf()
     if (adjust) crf.adjustible_=(true)
     val nf = opts.xValFolds.getOrElse(10)
     xValidate(sGen,crf,new MemoryAccessSeq(seqs, opts.seed), opts.maxIters, nf)
   }
   
-  def xValidateFromSeqs(seqs: Seq[SourceSequence[Obs]]) = {
+  def xValidateFromSeqs(seqs: collection.immutable.IndexedSeq[SourceSequence[Obs]]) = {
     val aSeqs = sGen.extractFeatures(seqs)
     val crf = getCrf()
     if (adjust) crf.adjustible_=(true)
     val nf = opts.xValFolds.getOrElse(10)
     xValidate(sGen,crf,new MemoryAccessSeq(aSeqs, opts.seed), opts.maxIters, nf)
   }
+  
+  
   
   def printHeader(seqs: Seq[InstanceSequence]) : Unit = {
     println("Processed " + seqs.length + " sequences . . . beginning parameter estimation..\n")
@@ -129,7 +131,7 @@ trait LinearCRFTraining[Obs] extends Trainer[Obs] with SeqXValidator {
     
   }
   
-  def trainingRoutine(seqs: Seq[InstanceSequence]) = {    
+  def trainingRoutine(seqs: collection.immutable.IndexedSeq[InstanceSequence]) = {    
     val dCrf: Crf = getCrf(opts.empDistTrain)
     if (adjust) dCrf.adjustible_=(true)
     val aseqs = if (opts.partialLabels && false) {
@@ -161,7 +163,7 @@ abstract class FactoredTrainer[O](opts: Options) extends Trainer[O](opts) with L
         sGen.frep.faMap.asInstanceOf[RandomLongAlphabet])
   }
 
-  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs, opts.seed)
     val coreModel = dCrf.train(accessSeq, opts.maxIters, modelIterFn)
     val decoder = Viterbi(false,1,coreModel,true)
@@ -227,7 +229,7 @@ abstract class GenericNonFactoredTrainer[O](adj: Boolean, opts: Options) extends
   
   def xValidate() : Unit
   
-  def trainModel(dCrf: Trainable[AbstractInstance], seqs: Seq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
+  def trainModel(dCrf: Trainable[AbstractInstance], seqs: collection.immutable.IndexedSeq[InstanceSequence], modelIterFn: Option[(CoreModel, Int) => Unit] = None) = {
     val accessSeq = new MemoryAccessSeq(seqs, opts.seed)
     val coreModel = dCrf.train(accessSeq, opts.maxIters, modelIterFn)
     val fm: LongAlphabet = sGen.frep.faMap

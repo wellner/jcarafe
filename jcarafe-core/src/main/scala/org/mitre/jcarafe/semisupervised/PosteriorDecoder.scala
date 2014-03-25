@@ -94,9 +94,9 @@ class PosteriorCrf(nls: Int, nfs: Int, segSize: Int) extends DenseCrf(nls, nfs, 
     }
   }
 
-  override protected def forwardPass(iseq: Seq[AbstractInstance]) = {
+  override protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
-    var i = 0
+    var i = 0 
     while (i < iseq.length) {
       val instFeatures = iseq(i).getCompVec
       val label = iseq(i).label
@@ -112,7 +112,7 @@ class PosteriorCrf(nls: Int, nfs: Int, segSize: Int) extends DenseCrf(nls, nfs, 
     seqLogLi
   }
 
-  def marginalsOfSeq(iseq: Seq[AbstractInstance]): Unit = {
+  def marginalsOfSeq(iseq: collection.immutable.IndexedSeq[AbstractInstance]): Unit = {
     val ilen = iseq.length
     if (ilen > 0) {
       reset(false, ilen)

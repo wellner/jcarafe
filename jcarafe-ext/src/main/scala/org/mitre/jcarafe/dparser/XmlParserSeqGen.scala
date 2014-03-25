@@ -32,7 +32,7 @@ trait XmlParserSeqGen extends SeqGen[String] {
         case a => getSequence(a.child)}}
   
   private def sourceSeqsOfDeserialized(tlists: NodeSeq) : Seqs = 
-    tlists flatMap {(ns:Node) =>
+    tlists.toVector flatMap {(ns:Node) =>
       ns match {
         case Elem(_,l,_,_,c @ _*) if l == "s" => List(new SourceSequence(getSequence(c)))
         case a => sourceSeqsOfDeserialized(a.child)}}

@@ -5,7 +5,7 @@ import org.mitre.jcarafe.util.Options
 
 abstract class DenseCRFConfidences(model: CoreModel, val testLL: Boolean = false) extends DenseCrf(model) {
 
-  override protected def forwardPass(iseq:Seq[AbstractInstance]) = {
+  override protected def forwardPass(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     var seqLogLi = 0.0
     var i = 0
     while (i < iseq.length) {
@@ -42,7 +42,7 @@ abstract class DenseCRFConfidences(model: CoreModel, val testLL: Boolean = false
     seqLogLi
   }  
 
-  override def gradOfSeq(iseq:Seq[AbstractInstance]) : Double = {
+  override def gradOfSeq(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
     reset(false,iseq.length)
     var xx = 0
     while (xx < nfs) { featureExpectations(xx) = 0.0; xx += 1 }

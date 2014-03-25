@@ -23,7 +23,7 @@ trait CoNLLSeqGenLabel extends CoNLLSeqGen {
         sourceBuffer += new SourceSequence(seq)
       }
     }
-    sourceBuffer.toSeq
+    sourceBuffer.toVector
   }
 
   override def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]) : DeserializationT = {
