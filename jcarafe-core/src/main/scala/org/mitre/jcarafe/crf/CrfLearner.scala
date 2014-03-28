@@ -304,7 +304,7 @@ trait PsaLearnerWithL1[T] extends SparseTrainable[T] with CrfLearner {
           i += 1
         }
         print(".")
-      } else if (((t + 1) % n) == 0) Array.copy(lambdas, 0, params_n, 0, numParams)
+      } else if (((t + 1) % n) == 0) Array.copy(lambdas.toArray, 0, params_n, 0, numParams)
       t += 1
       if ((t % accessSeq.length) == 0 && (t > 0)) println("Epoch " + (t / accessSeq.length) + " complete (of " + maxEpochs + ")")
       if (epochLL > 0.001) println("Log-likelihood for Epoch: " + epochLL)
@@ -388,7 +388,7 @@ trait PsaLearner[T] extends SparseTrainable[T] with CrfLearner {
           i += 1
         }
         if (!quiet) print(".")
-      } else if (((t + 1) % n) == 0) Array.copy(lambdas, 0, params_n, 0, numParams)
+      } else if (((t + 1) % n) == 0) Array.copy(lambdas.toArray, 0, params_n, 0, numParams)
       t += 1
       
       if (!quiet && ((t % accessSeq.length) == 0 && (t > 0))) {
