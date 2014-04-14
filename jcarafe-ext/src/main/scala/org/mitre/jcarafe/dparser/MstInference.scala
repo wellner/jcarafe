@@ -15,7 +15,7 @@ abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTra
   /**
    * These are the model parameters
    */
-  val lambdas: collection.mutable.IndexedSeq[Double] = Array.fill(nfs)(0.0)
+  val lambdas: Array[Double] = Array.fill(nfs)(0.0)
   val numParams = nfs
   val gradient: Array[Double] = Array.fill(nfs)(0.0)
   val invSigSqr = 1.0 / gPrior
@@ -98,7 +98,7 @@ abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTra
     Some(-logLi)           
   }
 
-  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: collection.mutable.IndexedSeq[Double], pos: Int, takeExp: Boolean, lab: Int) = {
+  protected def updateScores(scoreMat: Array[Array[Double]], instFeatures: Array[Feature], lambdas: Array[Double], pos: Int, takeExp: Boolean, lab: Int) = {
     val klen = instFeatures.length
     forIndex(klen) {k =>
       val inst = instFeatures(k)
@@ -120,7 +120,7 @@ class MstMAPInference(crf: CoreModel) extends DecodingAlgorithm(crf) {
   
   val lambdas = crf.params
 
-  protected def updateScores(scoreVec: Array[Double], instFeatures: Array[Feature], lambdas: collection.mutable.IndexedSeq[Double], pos: Int) = {
+  protected def updateScores(scoreVec: Array[Double], instFeatures: Array[Feature], lambdas: Array[Double], pos: Int) = {
     val klen = instFeatures.length
     val scoreSize = scoreVec.length
     forIndex(klen) {k =>

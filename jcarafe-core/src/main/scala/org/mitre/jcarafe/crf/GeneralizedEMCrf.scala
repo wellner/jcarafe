@@ -312,7 +312,7 @@ abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts
   }
 }
 
-abstract class DenseGeneralizedEMCrf(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
+abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
   extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, 0, 0) with GeneralizedEMCrf {
 
   def this(nls: Int, nfs: Int, segSize: Int, opts: Options) = this(Array.fill(nfs)(0.0), nls, nfs, segSize, opts)
@@ -385,13 +385,13 @@ abstract class DenseGeneralizedEMCrf(lambdas: collection.mutable.IndexedSeq[Doub
   }
 }
 
-class DenseGeneralizedEMCrfWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
+class DenseGeneralizedEMCrfWorker(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, opts: Options)
   extends DenseGeneralizedEMCrf(lambdas, nls, nfs, segSize, opts) with DenseWorker
 
 class DenseParallelGeneralizedEMCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, opts: Options) extends DenseGeneralizedEMCrf(nls, nfs, segSize, opts)
   with ParCrf[DenseGeneralizedEMCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
+  def getWorker(lambdas: Array[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new DenseGeneralizedEMCrfWorker(lambdas, nls, nfs, segSize, opts)
   }
 

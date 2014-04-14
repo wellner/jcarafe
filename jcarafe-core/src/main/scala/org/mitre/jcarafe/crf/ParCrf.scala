@@ -12,17 +12,17 @@ trait DenseWorker extends DenseCrf {
   override def train(a:AccessSeq[AbstractInstance], x: Int, modelIterFn: Option[(CoreModel,Int) => Unit] = None) = throw new RuntimeException("Class doesn't support training")
 }
 
-class DenseCrfWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int,nfs: Int,segSize: Int,gPrior: Double) 
+class DenseCrfWorker(lambdas: Array[Double], nls: Int,nfs: Int,segSize: Int,gPrior: Double) 
 extends DenseCrf(lambdas,nls,nfs,segSize,gPrior,0,0) with DenseWorker
 
 
-class NeuralDenseCrfWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int,nfs: Int,segSize: Int,gPrior: Double, nNfs: Int, nGates: Int, opts: Options) 
+class NeuralDenseCrfWorker(lambdas: Array[Double], nls: Int,nfs: Int,segSize: Int,gPrior: Double, nNfs: Int, nGates: Int, opts: Options) 
 extends NeuralDenseCrf(lambdas, nls, nfs, segSize, opts, nNfs,nGates) with DenseWorker
 
 
 trait ParCrf[T <: DenseCrf] extends DenseCrf {
 
-  def getWorker(lambdas: collection.mutable.IndexedSeq[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) : T
+  def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) : T
   
   implicit val ec = ExecutionContext.Implicits.global
   
@@ -51,7 +51,7 @@ trait ParCrf[T <: DenseCrf] extends DenseCrf {
 class DenseParallelCrf(numPs: Int, nls: Int, nfs: Int, segSize: Int, gPrior: Double) extends DenseCrf(nls,nfs,segSize,gPrior)
 with ParCrf[DenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
   
-  def getWorker(lambdas: collection.mutable.IndexedSeq[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
+  def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new DenseCrfWorker(lambdas,nls,nfs,segSize,gPrior)
   }
 
@@ -68,7 +68,7 @@ class NeuralDenseParallelCrf(numPs: Int,
 extends NeuralDenseCrf(nls,nfs,segSize,opts,nNfs,nGates)
 with ParCrf[NeuralDenseCrfWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(lambdas: collection.mutable.IndexedSeq[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
+  def getWorker(lambdas: Array[Double],nls: Int, nfs: Int, ss: Int, gPrior: Double) = {
     new NeuralDenseCrfWorker(lambdas, nls, nfs, ss, gPrior, nNfs, nGates, opts)
   }
 
