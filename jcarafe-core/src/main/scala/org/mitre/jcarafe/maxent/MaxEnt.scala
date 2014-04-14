@@ -130,7 +130,7 @@ class MaxEntFeatureType(val fid: Int) extends FeatureType(0L, false, 0)
  */
 trait MaxEntCore {
 
-  private def denseDotProduct(offset: Int, lab: Int, denseVec: collection.mutable.IndexedSeq[Double], sparseFeatures: Array[CompactFeature]) = {
+  private def denseDotProduct(offset: Int, lab: Int, denseVec: Array[Double], sparseFeatures: Array[CompactFeature]) = {
     var r = 0.0
     var i = 0
     val sl = sparseFeatures.length
@@ -147,7 +147,7 @@ trait MaxEntCore {
    * Gets the normalized scores for each class outcome for a particular instance given the current
    * parameters, <i>lambdas</i>, and the features associated with the instance, <i>sparseFeatures</i>
    */
-  def classScoresNormalized(nls: Int, predNFS: Int, lambdas: collection.mutable.IndexedSeq[Double], sparseFeatures: Array[CompactFeature]) = {
+  def classScoresNormalized(nls: Int, predNFS: Int, lambdas: Array[Double], sparseFeatures: Array[CompactFeature]) = {
     val unScores = for (i <- 0 until nls) yield { denseDotProduct(i * predNFS, i, lambdas, sparseFeatures) }
     var sum = 0.0
     val mx = unScores.foldLeft(-scala.Double.MaxValue) { (ac, v) => if (v > ac) v else ac }
@@ -159,13 +159,13 @@ trait MaxEntCore {
   }
 }
 
-class DenseMaxEntWorker(override val lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, gPrior: Double)
+class DenseMaxEntWorker(override val lambdas: Array[Double], nls: Int, nfs: Int, gPrior: Double)
   extends MaxEnt(nls, nfs, gPrior) with DenseWorker
 
 class DenseParallelMaxEnt(numPs: Int, nls: Int, nfs: Int, gPrior: Double) extends MaxEnt(nls, nfs, gPrior)
   with ParCrf[DenseMaxEntWorker] with CondLogLikelihoodLearner[AbstractInstance] {
 
-  def getWorker(lambdas: collection.mutable.IndexedSeq[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) =
+  def getWorker(lambdas: Array[Double], nls: Int, nfs: Int, ss: Int, gPrior: Double) =
     new DenseMaxEntWorker(lambdas, nls, nfs, gPrior)
 
   override def getGradient(seqAccessor: AccessSeq[AbstractInstance]): Option[Double] = getGradient(numPs, seqAccessor)

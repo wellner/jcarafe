@@ -9,7 +9,7 @@ import org.mitre.jcarafe.util.{ Options, SparseVector, SparseVectorAsMap }
 import cern.colt.map.OpenIntDoubleHashMap
 
 trait Trainable[T] extends Serializable {
-  val lambdas: IndexedSeq[Double]
+  val lambdas: Array[Double]
   val numParams: Int
 
   def getGradient(instAccessor: AccessSeq[T]): Option[Double]
@@ -18,7 +18,7 @@ trait Trainable[T] extends Serializable {
 
   def getCoreModel(): CoreModel
 
-  def getLambdas: IndexedSeq[Double] = lambdas
+  def getLambdas: Array[Double] = lambdas
 
   def train(accessSeq: AccessSeq[T], num: Int = 200, mi: Option[(CoreModel, Int) => Unit] = None): CoreModel
 
@@ -47,7 +47,7 @@ trait SparseTrainable[T] extends Trainable[T] with Serializable {
   val pAlpha: Double
 }
 
-class CoreModel(val params: IndexedSeq[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) extends Serializable {
+class CoreModel(val params: Array[Double], val nfs: Int, val nls: Int, val nNfs: Int = 0, val nGates: Int = 0) extends Serializable {
   def print() = {
     println("NLS: => " + nls)
     println("NFS: => " + nfs)
@@ -131,7 +131,7 @@ class MemoryAccessSeq(iseqs: collection.immutable.IndexedSeq[InstanceSequence], 
  * @param nNfs      Number of neural gate input features (for NeuralCrf)
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
-abstract class Crf(val lambdas: IndexedSeq[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
+abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
   extends Trainable[AbstractInstance] with Serializable {
 
   val numParams = nfs
@@ -296,7 +296,7 @@ abstract class Crf(val lambdas: IndexedSeq[Double], val nls: Int, val nfs: Int, 
  * @param nNfs      Number of neural gate input features (for NeuralCrf)
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
-abstract class DenseCrf(lambdas: IndexedSeq[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int, nGates: Int)
+abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int, nGates: Int)
   extends Crf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
 
   def this(core: CoreModel) = this(core.params, core.nls, core.nfs, 1, 1E200, core.nNfs, core.nGates)
@@ -393,7 +393,7 @@ abstract class DenseCrf(lambdas: IndexedSeq[Double], nls: Int, nfs: Int, segSize
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  *
  */
-abstract class StochasticCrf(lambdas: IndexedSeq[Double],
+abstract class StochasticCrf(lambdas: Array[Double],
   nls: Int,
   nfs: Int,
   segSize: Int,
@@ -532,14 +532,14 @@ abstract class StochasticCrf(lambdas: IndexedSeq[Double],
 }
 
 class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0), nls, nfs, 1, 0.0, 0, 0) with Serializable {
-  var localParams: IndexedSeq[Double] = Array[Double]() // ugly way to do this
+  var localParams: Array[Double] = Array[Double]() // ugly way to do this
   override def getLambdas = localParams
 
   def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel, Int) => Unit] = None): CoreModel = {
     new CoreModel(getLambdas, nls, nfs)
   }
 
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: IndexedSeq[Double]): (Double, Array[Double]) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double]): (Double, Array[Double]) = {
     localParams = curLambdas
     val ll = gradOfSeq(s.iseq)
     (ll, gradient)
@@ -549,7 +549,7 @@ class DenseStatelessCrf(nls: Int, nfs: Int) extends DenseCrf(Array.fill(0)(0.0),
 class SparseStatelessCrf(nls: Int, nfs: Int, opts: Options = new Options) 
 extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializable {
 
-  var localParams: IndexedSeq[Double] = Array[Double]() // unfortunate way to have to do this
+  var localParams: Array[Double] = Array[Double]() // unfortunate way to have to do this
   override def getLambdas = localParams
   private var gradNormalizer = 0.0
 
@@ -572,7 +572,7 @@ extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializ
     new SparseVectorAsMap(s, mn)
   }
 
-  def getGradientSingleSequence(s: InstanceSequence, curLambdas: IndexedSeq[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
     localParams = curLambdas // set the parameters to those passed in via curLambdas
     val iseq = s.iseq
     val sl = iseq.length
@@ -688,7 +688,7 @@ object Crf {
    * @param ri - scores for just current state/position
    * @param mi - scores for currentstate and previous
    */
-  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: IndexedSeq[Double]) = {
+  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: Array[Double]) = {
     setMatrix(ri)
     setTensor(mi)
     val dlen = inst_features.length

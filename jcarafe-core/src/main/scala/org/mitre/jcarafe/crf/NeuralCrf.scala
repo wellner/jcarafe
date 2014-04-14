@@ -46,7 +46,7 @@ object NeuralCrf {
   }
 }
 
-abstract class NeuralDenseCrf(lambdas: collection.mutable.IndexedSeq[Double],
+abstract class NeuralDenseCrf(lambdas: Array[Double],
 		nls: Int, 
 				   nfs: Int, 
 				   segSize: Int, 
@@ -368,7 +368,7 @@ object NeuralStochasticCrf {
   type Matrix = Array[Array[Double]]
   type Tensor = Array[Matrix]
 
-  def computeScores(ri: Matrix, mi: Tensor, lambdas: collection.mutable.IndexedSeq[Double], acts: Array[Double], wActs: Array[Double], numFs: Int, 
+  def computeScores(ri: Matrix, mi: Tensor, lambdas: Array[Double], acts: Array[Double], wActs: Array[Double], numFs: Int, 
 		    gateIdx: Int, nls: Int, nGates: Int, nNfs: Int, inst_features: Array[Array[Feature]], takeExp: Boolean) = {
 
     Crf.setMatrix(ri)
@@ -414,7 +414,7 @@ object NeuralStochasticCrf {
     }
   }
   
-  def computeGateActivations(lambdas: collection.mutable.IndexedSeq[Double], acts: Array[Double], wActs: Array[Double], numFs: Int, 
+  def computeGateActivations(lambdas: Array[Double], acts: Array[Double], wActs: Array[Double], numFs: Int, 
 			     gateIdx: Int, nls: Int, nGates: Int, nNfs: Int, inst_features: Array[Array[Feature]]) {
     var i = 0
     while (i < acts.length) { acts(i) = 0.0; i += 1}

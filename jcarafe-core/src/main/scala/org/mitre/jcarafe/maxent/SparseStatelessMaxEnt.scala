@@ -35,7 +35,7 @@ class SparseStatelessMaxEnt(val nls: Int, val nfs: Int) extends MaxEntCore with 
     new SparseVectorAsMap(s, mn)
   }
   
-  def gradientOfSingleElement(el: AbstractInstance, lambdas: collection.mutable.IndexedSeq[Double], inv: Boolean = true) : (Double, SparseVectorAsMap) = {
+  def gradientOfSingleElement(el: AbstractInstance, lambdas: Array[Double], inv: Boolean = true) : (Double, SparseVectorAsMap) = {
     val localGrad : collection.mutable.Map[Int,Double] = HashMap[Int,Double]()
     var gr: Map[Int, DoubleCell] = Map[Int, DoubleCell]()
     val instFeatures: Array[CompactFeature] = el.getCompactVec
