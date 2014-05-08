@@ -127,6 +127,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
   
   def getComment(s: String) : Option[String] = {
     s.split('#').toList match {
+      case h :: Nil => None
       case h :: t => Some(t.foldLeft(""){case (ac,s) => ac + s})
       case _ => None
     }
