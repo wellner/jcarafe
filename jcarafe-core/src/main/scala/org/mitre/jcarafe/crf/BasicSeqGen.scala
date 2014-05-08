@@ -142,7 +142,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
       seq.iseq.foreach { sourceObj =>
         val curLine = dseq(c)        
         os.write(invLa(sourceObj.label).toString)
-        getComment(curLine) foreach {c => os.write(splitChar); os.write(c)}
+        getComment(curLine) foreach {c => os.write(splitChar); os.write("# "); os.write(c)}
         //os.write('\t')
         //os.write(curLine)
         os.write(nlSep)
