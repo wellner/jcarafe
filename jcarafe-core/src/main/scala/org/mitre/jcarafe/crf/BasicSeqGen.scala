@@ -16,6 +16,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
   val utf8_codec = scala.io.Codec("utf-8")
   
   private val LabRe = """([A-z]+)=([0-9\.]+)""".r
+  val splitChar = if (opts.useSpaces) ' ' else '\t'
 
   private def getLabelDistribution(lst: Array[String]) = {
     val buf = new collection.mutable.ListBuffer[(String, Double)]
@@ -62,7 +63,7 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
     var curAtts: Map[String, String] = Map.empty
     var curObs = ""
     var curLabel = ""
-    val splitChar = if (opts.useSpaces) ' ' else '\t'
+    
     d.elements.foreach { seq =>
       val tmpBuf = new ListBuffer[ObsSource[String]]
       seq foreach { line =>
@@ -123,6 +124,13 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
   }
 
   val nlSep = System.getProperty("line.separator")
+  
+  def getComment(s: String) : Option[String] = {
+    s.split('#').toList match {
+      case h :: t => Some(t.foldLeft(""){case (ac,s) => ac + s})
+      case _ => None
+    }
+  }
 
   def seqsToStream(dt: DeserializationT, seqs: Seq[InstanceSequence], ostr: java.io.OutputStream): Unit = {
     val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(ostr), "UTF-8")
@@ -132,12 +140,13 @@ trait BasicSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlCon
       val dseq = d(curSeqI)
       var c = 0
       seq.iseq.foreach { sourceObj =>
-        val curLine = dseq(c)
+        val curLine = dseq(c)        
         os.write(invLa(sourceObj.label).toString)
-        os.write('\t')
-        os.write(curLine)
-        c += 1
+        getComment(curLine) foreach {c => os.write(splitChar); os.write(c)}
+        //os.write('\t')
+        //os.write(curLine)
         os.write(nlSep)
+        c += 1        
       }
       os.write(nlSep)
       curSeqI += 1
