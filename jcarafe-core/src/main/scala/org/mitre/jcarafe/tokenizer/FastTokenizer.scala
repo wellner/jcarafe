@@ -4,8 +4,16 @@
 
 package org.mitre.jcarafe.tokenizer
 
-import org.mitre.jcarafe.lexer.{Token, GenTokerConstants, SimpleCharStream, GenToker, JsonToker, WhiteSpaceToker, 
-  JsonTokerConstants, WhiteSpaceTokerConstants}
+import org.mitre.jcarafe.lexer.{
+  Token,
+  GenTokerConstants,
+  SimpleCharStream,
+  GenToker,
+  JsonToker,
+  WhiteSpaceToker,
+  JsonTokerConstants,
+  WhiteSpaceTokerConstants
+}
 import org.mitre.jcarafe.util._
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -43,7 +51,7 @@ object FastTokenizer {
 
   var splittingAugmenter: Option[SplitTokenizerAugmenterPattern] = None
   var mergingAugmenter: Option[MergeTokenizerAugmenterPattern] = None
-  
+
   private def softEndPunct(s: String) = {
     (s equals ".") || (s equals "?") || (s equals "!") || (s equals "''")
   }
@@ -161,7 +169,7 @@ object FastTokenizer {
     }
     applyMergePatterns(tbuf)
   }
-  
+
   private def parseLoopNoTags(parser: WhiteSpaceToker, tbuf: ListBuffer[Element]) = {
     var c = true
     while (c) {
@@ -237,24 +245,25 @@ object FastTokenizer {
     os.write(s)
     if (at) os.write("</lex>")
   }
-  
-  def jsonTokenizeString(istr: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : String = {
+
+  def jsonTokenizeString(istr: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean): String = {
     val json = Json.constructJsonTypeOfString(istr)
     val njson = jsonTokenize(json, parseTags, zoneTags, whiteTok)
     Json.writeJsonToString(njson)
   }
-  
-  def jsonTokenizeString(istr: String, whiteTok: Boolean) : String = {
+
+  def jsonTokenizeString(istr: String, whiteTok: Boolean): String = {
     jsonTokenizeString(istr, false, None, whiteTok)
   }
 
-  private def jsonTokenize(json: JsonType, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : JsonType = {    
+  private def jsonTokenize(json: JsonType, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean): JsonType = {
     val orig_signal = json match {
       case JsObject(o) =>
         o("signal") match { case JsString(s) => s case _ => throw new RuntimeException("Expected signal to be a string") }
       case _ => throw new RuntimeException("No signal found")
     }
     val toks = new scala.collection.mutable.ListBuffer[JsArray]
+    val sentences = new scala.collection.mutable.ListBuffer[JsArray]
     val zoneSet: Tagset = zoneTags match { case Some(z) => z case None => new Tagset(Set(Label("zone", Map("region_type" -> "body")))) }
     val asets = json match { case JsObject(o) => try { o("asets") } catch { case _: Throwable => new JsArray(Nil) } case _ => JsArray(Nil) }
     val zones: List[Annotation] = getAnnotations(Some(orig_signal), asets, zoneSet) match {
@@ -265,6 +274,8 @@ object FastTokenizer {
     signals foreach {
       case (signal, an) =>
         var pos = an.st
+        var sentPos = an.st
+        var nonWhiteTokExists = false
         val tbuf = new scala.collection.mutable.ListBuffer[Element]
         if (parseTags) {
           val parser = new GenToker(new ByteArrayInputStream(signal.getBytes))
@@ -274,7 +285,7 @@ object FastTokenizer {
           }
         } else if (whiteTok) {
           val parser = new WhiteSpaceToker(new ByteArrayInputStream(signal.getBytes))
-          parseLoopNoTags(parser,tbuf)
+          parseLoopNoTags(parser, tbuf)
         } else {
           val parser = new JsonToker(new ByteArrayInputStream(signal.getBytes))
           splittingAugmenter match {
@@ -287,34 +298,47 @@ object FastTokenizer {
           var ll = 0
           tk match {
             case Ws(t) => ll = t.length
-            case EndWs(t) => ll = t.length
+            case EndWs(_) | SoftEndTok(_) => // in this case, we start a new sentence
+              ll = tk.getString.length
+              val curEnd = pos + ll
+              if (nonWhiteTokExists) {                
+                sentences += JsArray(List(JsInt(sentPos), JsInt(curEnd)))
+              }
+              sentPos = curEnd         
+              nonWhiteTokExists = false
             case t =>
               ll = t.getString.length
+              nonWhiteTokExists = true
               toks += JsArray(List(JsInt(pos), JsInt(pos + ll)))
-          }
+          }                    
           pos += ll
+        }
+        if (pos > sentPos) {
+          sentences += JsArray(List(JsInt(sentPos), JsInt(pos)))
         }
     }
     val newToks: JsonType = JsObject(Map("type" -> JsString("lex"), "attrs" -> JsArray(Nil),
       "annots" -> (JsArray(toks.toList))))
+    val newSents: JsonType = JsObject(Map("type" -> JsString("sentence"), "attrs" -> JsArray(Nil),
+        "annots" -> (JsArray(sentences.toList))))
     val newJsonObj = json match {
       case JsObject(obj) =>
         val a1 =
           (try { obj("asets") match { case JsArray(a) => a case _ => throw new RuntimeException("Invalid obj") } }
           catch { case e: java.util.NoSuchElementException => Nil case e: Throwable => throw e })
-        JsObject(obj.updated("asets", JsArray(newToks :: a1)))
+        JsObject(obj.updated("asets", JsArray((newSents :: newToks :: a1).reverse)))
       case a => a
     }
     newJsonObj
   }
-  
-  def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean) : Unit = {
+
+  def jsonTokenize(ifile: String, ofile: String, parseTags: Boolean, zoneTags: Option[Tagset], whiteTok: Boolean): Unit = {
     val json = Json.constructJsonType(ifile)
-    val njson : JsonType = jsonTokenize(json, parseTags, zoneTags, whiteTok)
-    Json.writeJson(njson, ofile)    
+    val njson: JsonType = jsonTokenize(json, parseTags, zoneTags, whiteTok)
+    Json.writeJson(njson, ofile)
   }
 
-  private def rawTokenize(ifile: String, os: java.io.OutputStreamWriter, whiteOnly : Boolean = false) = {
+  private def rawTokenize(ifile: String, os: java.io.OutputStreamWriter, whiteOnly: Boolean = false) = {
     val sr = new java.io.FileInputStream(ifile)
     val reader = new InputStreamReader(sr, "UTF-8")
     val parser = new GenToker(reader)
@@ -478,8 +502,7 @@ object FastTokenizer {
         if (whiteOnly)
           System.err.println("WARNING: white space tokenization ignored with split-merge token augmentation. Using standard base tokenization.")
         rawTokenizeWithSplitMerge(ifile, os)
-      }
-      else rawTokenize(ifile, os, whiteOnly)
+      } else rawTokenize(ifile, os, whiteOnly)
       os.close;
     }
 
@@ -502,7 +525,7 @@ object FastTokenizer {
         case None =>
           val regions = opts.getAll("--region")
           new Tagset(regions.foldLeft(Set.empty: Set[AbstractLabel]) { (ac, s) => ac + parseTagSpec(s) })
-      }    
+      }
     opts.get("--tokenizer-patterns") match {
       case Some(tfile) =>
         setTokenizerAugmenters(new java.io.File(tfile))
