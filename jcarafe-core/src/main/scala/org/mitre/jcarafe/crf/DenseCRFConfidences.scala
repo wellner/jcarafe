@@ -15,7 +15,7 @@ abstract class DenseCRFConfidences(model: CoreModel, val testLL: Boolean = false
       val prevLabel = if (i > 0) { if (testLL) iseq(i-1).orig else iseq(i-1).label } else -1
       computeScores(instFeatures,true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val instFeatures0 = instFeatures(0)

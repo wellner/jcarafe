@@ -17,7 +17,7 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
       
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val instFeatures0 = instFeatures(0)
@@ -64,7 +64,7 @@ abstract class KLDivMinimizingStochasticCrf(
       val label = iseq(i).label
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val nfeas = instFeatures(0).length

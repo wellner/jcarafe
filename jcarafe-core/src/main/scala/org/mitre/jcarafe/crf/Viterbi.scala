@@ -19,7 +19,8 @@ abstract class DecodingAlgorithm(val crf: CoreModel) {
   }
 }
 
-class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePosterior: Boolean = false) extends DecodingAlgorithm(crf) {
+class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePosterior: Boolean = false) 
+extends DecodingAlgorithm(crf) with PotentialScoring {
   def this(segSize: Int, crf: CoreModel) = this(false, segSize, crf)
   def this(dyn: Boolean, crf: CoreModel) = this(dyn, 1, crf) 
   def this(crf:CoreModel) = this(1,crf)
@@ -98,7 +99,7 @@ class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePos
 
   
   protected def computeScores(ri: Array[Array[Double]], mi: Array[Array[Array[Double]]], instFeatures: Array[Array[Feature]], takeExp: Boolean) : Unit = {
-    Crf.computeScores(ri,mi,instFeatures,takeExp,curNls,crf.params)
+    computeScores(ri,mi,instFeatures,takeExp,curNls,crf.params)
   }
 
   private def viterbiSearch(beamsize:Int, iseq:Seq[AbstractInstance]) = {
@@ -202,7 +203,7 @@ class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePos
   }
 }
 
-class NeuralViterbi(dynamic: Boolean, segSize: Int, crf: CoreModel) extends Viterbi(dynamic, segSize, crf) {
+class NeuralViterbi(dynamic: Boolean, segSize: Int, crf: CoreModel) extends Viterbi(dynamic, segSize, crf) with NeuralStochasticCrfScoring {
 
   val ngs          = crf.nGates * crf.nls
   val activations  = Array.fill(segSize,ngs)(0.0)
@@ -211,7 +212,7 @@ class NeuralViterbi(dynamic: Boolean, segSize: Int, crf: CoreModel) extends Vite
   val weightedActivationPartials = Array.fill(ngs)(0.0)
 
   override protected def computeScores(ri: Array[Array[Double]], mi: Array[Array[Array[Double]]], instFeatures: Array[Array[Feature]], takeExp: Boolean) : Unit = {
-    NeuralStochasticCrf.computeScores(ri,mi,crf.params,activations(0),weightedActivationPartials,numFs,gateIdx,crf.nls,crf.nGates,crf.nNfs,instFeatures,takeExp)
+    computeScores(ri,mi,crf.params,activations(0),weightedActivationPartials,numFs,gateIdx,crf.nls,crf.nGates,crf.nNfs,instFeatures,takeExp)
   }
 
   override def getCopyOf = new NeuralViterbi(this.dynamic, this.segSize, this.crf)

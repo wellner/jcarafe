@@ -102,7 +102,7 @@ class PosteriorCrf(nls: Int, nfs: Int, segSize: Int) extends DenseCrf(nls, nfs, 
       val label = iseq(i).label
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       Array.copy(newA, 0, curA, 0, curNls)
       assign(curA, (_ / scale(i)))

@@ -63,8 +63,8 @@ trait SemiCrf extends Crf {
   }
   
   def computeScoresBackwards (inst_features_array: Seq[Seq[Feature]], takeExp: Boolean) = {
-    Crf.setMatrix(ri)
-    Crf.setTensor(mi)
+    setMatrix(ri)
+    setTensor(mi)
     var d = 0; while (d < inst_features_array.length) {
       val inst_features = inst_features_array(d)
       var k = 0; while (k < inst_features.length) {

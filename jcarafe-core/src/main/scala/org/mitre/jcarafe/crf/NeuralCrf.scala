@@ -52,7 +52,7 @@ abstract class NeuralDenseCrf(lambdas: Array[Double],
 				   segSize: Int, 
 				   opts: Options,
 				   nNfs: Int,
-				   nGates: Int) extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, nNfs, nGates) {
+				   nGates: Int) extends DenseCrf(lambdas, nls, nfs, segSize, opts.gaussian, nNfs, nGates) with NeuralStochasticCrfScoring {
 
   def this(nls: Int, nfs: Int, segSize: Int, opts: Options, nNfs:Int = 0, nGates: Int = 2) = 
     this(Array.fill(nfs)(0.0), nls, nfs, segSize, opts, nNfs, nGates)
@@ -90,7 +90,7 @@ abstract class NeuralDenseCrf(lambdas: Array[Double],
       val label = iseq(i).label
       computeScores(instFeatures,true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val instFeatures0 = instFeatures(0)
@@ -143,7 +143,7 @@ abstract class NeuralDenseCrf(lambdas: Array[Double],
   }
 
   override def computeScores (inst_features: Array[Array[Feature]], takeExp: Boolean) = {
-    NeuralStochasticCrf.computeScores(ri,mi,lambdas,activations(0),weightedActivationPartials,numInputFeatures,gateWeightIdx,nls,nGates,nNfs,inst_features,takeExp)
+    computeScores(ri,mi,lambdas,activations(0),weightedActivationPartials,numInputFeatures,gateWeightIdx,nls,nGates,nNfs,inst_features,takeExp)
   }
 
 
@@ -164,7 +164,7 @@ abstract class NeuralStochasticCrf(nls: Int,
 				   segSize: Int, 
 				   opts: Options,
 				   nNfs: Int = 0,
-				   nGates: Int = 0) extends StochasticCrf(nls, nfs, segSize, opts, nNfs, nGates) {
+				   nGates: Int = 0) extends StochasticCrf(nls, nfs, segSize, opts, nNfs, nGates) with NeuralStochasticCrfScoring {
 
 
 
@@ -223,7 +223,7 @@ abstract class NeuralStochasticCrf(nls: Int,
 
       computeScores(instFeatures,true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val instFeatures0 = instFeatures(0)
@@ -337,7 +337,7 @@ abstract class NeuralStochasticCrf(nls: Int,
   }
 
   override def computeScores (inst_features: Array[Array[Feature]], takeExp: Boolean) = {
-    NeuralStochasticCrf.computeScores(ri,mi,lambdas,activations(0),weightedActivationPartials,numInputFeatures,
+    computeScores(ri,mi,lambdas,activations(0),weightedActivationPartials,numInputFeatures,
 				      gateWeightIdx,nls,nGates,nNfs,inst_features,takeExp)
   }
 }
@@ -363,16 +363,14 @@ with ParallelStochastic[NeuralStochasticCrf] {
 }
 */
 
-object NeuralStochasticCrf {
+trait NeuralStochasticCrfScoring extends PotentialScoring {
 
-  type Matrix = Array[Array[Double]]
-  type Tensor = Array[Matrix]
 
   def computeScores(ri: Matrix, mi: Tensor, lambdas: Array[Double], acts: Array[Double], wActs: Array[Double], numFs: Int, 
 		    gateIdx: Int, nls: Int, nGates: Int, nNfs: Int, inst_features: Array[Array[Feature]], takeExp: Boolean) = {
 
-    Crf.setMatrix(ri)
-    Crf.setTensor(mi)
+    setMatrix(ri)
+    setTensor(mi)
     val dlen = inst_features.length
     var d = 0; while (d < dlen) {
       val klen = inst_features(d).length

@@ -132,7 +132,7 @@ class MemoryAccessSeq(iseqs: collection.immutable.IndexedSeq[InstanceSequence], 
  * @param nGates    Number of neural gates per label (for NeuralCrf)
  */
 abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val segSize: Int, val gPrior: Double, val nNfs: Int, val nGates: Int)
-  extends Trainable[AbstractInstance] with Serializable {
+  extends Trainable[AbstractInstance] with PotentialScoring with Serializable {
 
   val numParams = nfs
 
@@ -161,16 +161,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
     System.err.println("\n\nEnsure the tagset/label set is properly defined!!")
     throw new RuntimeException("Crf requires 2 or more states/features.  Segsize = " + segSize)
   }
-  /**
-   * A matrix type as an array of arrays of <code>Double</code>s
-   */
-  type Matrix = Array[Array[Double]]
-
-  /**
-   * A tensor object as an array of <code>Matrix</code> objects
-   */
-  type Tensor = Array[Matrix]
-
+  
   /**
    * The value of the inverse square of the Gaussian prior
    */
@@ -242,8 +233,8 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
     }
   }
 
-  protected def computeScores(inst_features: Array[Array[Feature]], takeExp: Boolean) =
-    Crf.computeScores(ri, mi, inst_features, takeExp, curNls, getLambdas)
+  protected def computeScores(inst_features: Array[Array[Feature]], takeExp: Boolean) : Unit =
+    computeScores(ri, mi, inst_features, takeExp, curNls, getLambdas)
 
   protected def vecSum(vec: Array[Double]) = {
     var s = 0.0; var i = 0;
@@ -272,7 +263,7 @@ abstract class Crf(val lambdas: Array[Double], val nls: Int, val nfs: Int, val s
       computeScores(iseq(i).getCompVec, true)
       Array.copy(beta(i), 0, tmp, 0, curNls)
       assign1(tmp, ri(0), (_ * _))
-      Crf.matrixMult(mi(0), tmp, beta(i - 1), 1.0, 0.0, false)
+      matrixMult(mi(0), tmp, beta(i - 1), 1.0, 0.0, false)
       scale(i - 1) = vecSum(beta(i - 1))
       assign(beta(i - 1), (_ / scale(i - 1)))
       i -= 1
@@ -329,7 +320,7 @@ abstract class DenseCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int
       val label = iseq(i).label
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       var k = 0
       val instFeatures0 = instFeatures(0)
@@ -443,7 +434,7 @@ abstract class StochasticCrf(lambdas: Array[Double],
       val label = iseq(i).label
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
 
       var k = 0
@@ -608,19 +599,11 @@ extends StochasticCrf(Array.fill(0)(0.0), nls, nfs, 1, opts, 0, 0) with Serializ
   }
 }
 
-/**
- * A set of static methods used by Crf objects as well as by decoders (e.g. Viterbi)
- */
-object Crf {
+trait PotentialScoring {
   type Matrix = Array[Array[Double]]
   type Tensor = Array[Matrix]
-
-  def apply(core: CoreModel) = {
-    val crf = new DenseCrf(core) with CondLogLikelihoodLearner[AbstractInstance]
-
-  }
-
-  /*
+  
+    /*
    * In-place <i>dense</i> matrix multiplication using Arrays
    * @param mat - Input matrix
    * @param vec - Input column vector
@@ -688,7 +671,7 @@ object Crf {
    * @param ri - scores for just current state/position
    * @param mi - scores for currentstate and previous
    */
-  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: Array[Double]) = {
+  final def computeScores(ri: Matrix, mi: Tensor, inst_features: Array[Array[Feature]], takeExp: Boolean, nls: Int, lambdas: Array[Double]) : Unit = {
     setMatrix(ri)
     setTensor(mi)
     val dlen = inst_features.length
@@ -729,4 +712,15 @@ object Crf {
       }
     }
   }
+}
+
+/**
+ * A creation of Crf.
+ */
+object Crf {
+  def apply(core: CoreModel) = {
+    val crf = new DenseCrf(core) with CondLogLikelihoodLearner[AbstractInstance]
+    crf
+  }
+
 }

@@ -70,7 +70,7 @@ trait GeneralizedEMCrf extends Crf {
       computeScoresConstrained(iseq, i, true)
       Array.copy(conBeta(i), 0, tmp, 0, curNls)
       assign1(tmp, conRi(0), (_ * _))
-      Crf.matrixMult(conMi(0), tmp, conBeta(i - 1), 1.0, 0.0, false)
+      matrixMult(conMi(0), tmp, conBeta(i - 1), 1.0, 0.0, false)
       conScale(i - 1) = vecSum(conBeta(i - 1))
       assign(conBeta(i - 1), (_ / conScale(i - 1)))
       i -= 1
@@ -155,8 +155,8 @@ trait GeneralizedEMCrf extends Crf {
     val inst_features = curInst.getCompVec
     val curLabel = curInst.label
     val prevLabel = if (pos > 0) absInstSeq(pos - 1).label else -2
-    Crf.setMatrix(conRi)
-    Crf.setTensor(conMi)
+    setMatrix(conRi)
+    setTensor(conMi)
     updateScoreMatrices(absInstSeq, pos)
     // add constraints so that states and transitions incompatable with provided labels have a score of negative infinity
 
@@ -228,11 +228,11 @@ abstract class StochasticGeneralizedEMCrf(nls: Int, nfs: Int, segSize: Int, opts
       val label = iseq(i).label
       computeScoresConstrained(iseq, i, true)
       Array.copy(conCurA, 0, tmp, 0, curNls)
-      Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
+      matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
       assign1(conNewA, conRi(0), (_ * _))
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       // compute actual marginals over constrained sequence
       // these will be used to set the "empirical" feature counts
@@ -328,11 +328,11 @@ abstract class DenseGeneralizedEMCrf(lambdas: Array[Double], nls: Int, nfs: Int,
       val label = iseq(i).label
       computeScoresConstrained(iseq, i, true)      
       Array.copy(conCurA, 0, tmp, 0, curNls)
-      Crf.matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
+      matrixMult(conMi(0), tmp, conNewA, 1.0, 0.0, true)
       assign1(conNewA, conRi(0), (_ * _))
       computeScores(instFeatures, true)
       Array.copy(curA, 0, tmp, 0, curNls)
-      Crf.matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
+      matrixMult(mi(0), tmp, newA, 1.0, 0.0, true)
       assign1(newA, ri(0), (_ * _))
       // compute actual marginals over constrained sequence
       // these will be used to set the "empirical" feature counts
