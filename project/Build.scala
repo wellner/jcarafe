@@ -43,8 +43,9 @@ object JCarafeBuild extends Build {
     javaCCFiles in Compile <<= javaCCFilesTask,
     runJavaCC in Compile <<= srcGeneratorTask,
     libraryDependencies ++= Seq(
-      "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
-      "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
+      //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      "org.json4s" %% "json4s-jackson" % "3.2.6",
       "junit" % "junit" % "4.8.1" % "test",
       "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "com.twitter" % "chill_2.10" % "0.3.1"
@@ -55,8 +56,9 @@ object JCarafeBuild extends Build {
     name := "jcarafe-ext",
     mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger"),
     libraryDependencies ++= Seq(
-      "org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
-      "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
+      //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
+      "org.json4s" %% "json4s-jackson" % "3.2.6",
       "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
       "com.twitter" % "chill_2.10" % "0.3.1"
     )

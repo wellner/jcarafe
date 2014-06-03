@@ -17,7 +17,7 @@ case object JsNull extends JsonType
 
 object Json {
   
-  val mapper = new org.codehaus.jackson.map.ObjectMapper
+  val mapper = new com.fasterxml.jackson.databind.ObjectMapper
   
   def buildJson(x: Any) : JsonType = x match {
     case vl: String => JsString(vl)
@@ -77,7 +77,7 @@ object Json {
   }
 
   def writeJson(obj: JsonType, writer: java.io.Writer, close: Boolean = true) : Unit = {
-    val f = new org.codehaus.jackson.JsonFactory()
+    val f = new com.fasterxml.jackson.core.JsonFactory
     val g = f.createJsonGenerator(writer)
     def sendJson(obj: JsonType) : Unit = obj match {
       case JsObject(v) => 
@@ -102,7 +102,7 @@ object Json {
 
   def writeJsonToString(obj: JsonType) : String = {
     val sout = new java.io.StringWriter
-    val f = new org.codehaus.jackson.JsonFactory()
+    val f = new com.fasterxml.jackson.core.JsonFactory
     val g = f.createJsonGenerator(sout)
     def sendJson(obj: JsonType) : Unit = obj match {
       case JsObject(v) => 
