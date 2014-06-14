@@ -20,7 +20,7 @@ PARSER_END(JsonToker)
 
 TOKEN : /* OPERATORS */
 {
-    < ENDPUNCT: (([".","!","?"])+ | ".''" | "?''" | ".\"" | "?\"" | "!''" | "!\"") >
+    < ENDPUNCT: (([".","!","?"])+ | ".''" | "?''" | ".\"" | "?\"" | "!''" | "!\"" | "\u002e" | "\uff0e" | "\u06d4" | "\uff61") >
 |   < WHITEEND: (("\r")? "\n") (("\r")? "\n")+ >
 |   < ABBREV: ( "'s"|"n't"|"'d"|"'m"|"'re"|"'ll"|"'ve"
 	|"u.s."|"U.S."|"Mr."|"Ms."|"Dr."|"Gen."|"Mrs."|"Adm."|"Co."|"Inc."|"Ltd."|"Corp."|"Mass."|"Calif."|"MR."|"MRS."|"DR."|"MS."
