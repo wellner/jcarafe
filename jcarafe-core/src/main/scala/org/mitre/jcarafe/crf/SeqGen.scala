@@ -647,12 +647,17 @@ abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], op
 
 }
 
-abstract class DecodingSeqGen[Obs](model: Model, val decodingOpts: Options) extends SeqGen[Obs](decodingOpts) {
+abstract class DecodingSeqGen[Obs](
+    override val lAlphabet: Alphabet[AbstractLabel], 
+    override val recodeAlphabet: Alphabet[AbstractLabel], 
+    val decodingOpts: Options) extends SeqGen[Obs](decodingOpts) {
+  
+  def this(m: Model, dOpts: Options) = this(m.labelAlphabet, m.labelAlphabet, dOpts)
 
   import scala.collection.mutable.Map
 
-  override val lAlphabet = model.labelAlphabet
-  override val recodeAlphabet = model.labelAlphabet
+  //override val lAlphabet = model.labelAlphabet
+  //override val recodeAlphabet = model.labelAlphabet
 
   val boundaries = decodingOpts.boundaries
   def setBegin() = this.addBeginStates_=(true)
