@@ -385,7 +385,10 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
         val lines = src.getLines.toList
         lines foreach { l =>
           // extracting features immediately here will trigger disk-caching of source sequences as lines are read in, saving memory
-          val instSeqs = extractFeatures(toSources(deserializeFromString(l)))
+          val srcs = toSources(deserializeFromString(l))
+          val numLabels = lAlphabet.size
+          frep.setNumLabels(numLabels)
+          val instSeqs = extractFeatures(srcs)
           nread += 1
           if ((nread % 1000) == 0) println("Read " + nread + " serialized training documents")
           sbuf ++= instSeqs
@@ -420,7 +423,8 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
   def createSource(o: Obs, i: Map[String, String]) = createSourceI(-1, o, false, Some(i)) // label of -1 means that the label is missing/unknown
 
   def createDistributionalSource(dist: List[(AbstractLabel, Double)], obs: Obs, beg: Boolean, i: Map[String, String]): ObsSource[Obs] =
-    frep.createDistributionalSource(dist map { case (al, s) => (getIndex(al), s) }, obs, beg, Some(i))
+    frep.createDistributionalSource(dist map { case (al, s) =>
+      (getIndex(al), s) }, obs, beg, Some(i))
 
   // ---- Stuff for handling scoring/evaluation - possibly useful for Training time as well, so put this here rather than in DecodingSeqGen
   var totalTokCnt = 0

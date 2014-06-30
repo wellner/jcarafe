@@ -327,6 +327,7 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) extends Serializable {
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs]
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs]
   // these two cases are for recoding
+  def setNumLabels(v: Int) : Unit = {}
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]], st: Int, en: Int) = new RecodedObsSource(l, o, b, i, st, en)
   def createSource(l: Int, o: Obs, b: Boolean, st: Int, en: Int) = new RecodedObsSource(l, o, b, None, st, en)
 
@@ -360,6 +361,8 @@ abstract class FeatureRep[Obs](val semiCrf: Boolean) extends Serializable {
 abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](semi) {
 
   val mgr: FeatureManager[Obs]
+  
+  
 
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
     val src = new ObsSource(l, o, b, i)
@@ -567,7 +570,10 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(opts: Options) = this(opts, false, opts.semiCrf)
 
   val random = opts.randomFeatures
-  var numLabels = 0 // CrfInstance.numLabels
+  var numLabels = 0 
+  
+  override def setNumLabels(v: Int) : Unit = { numLabels = v }
+  //lazy val numLabels = mgr.
 
   var featureTypeSet: Set[Long] = Set() // keep track of all feature types to estimate # of random features dynamically
   lazy val numFeatureTypes = {

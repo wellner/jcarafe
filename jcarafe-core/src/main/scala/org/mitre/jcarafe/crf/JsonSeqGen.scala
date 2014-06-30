@@ -34,12 +34,12 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
    * that output types should be used as attributes
    */
   val asPreProc = false
-  
+
   /*
    * Check for whether all state are begin states.  If so, we should emit one 'phrase' for each state/position
    */
   lazy val allStatesBeginStates = {
-    lAlphabet.mp forall { case(l,i) => l match {case BeginState(_) => true case _ => false }}
+    lAlphabet.mp forall { case (l, i) => l match { case BeginState(_) => true case _ => false } }
   }
 
   def makeStackCurrent(st: Stack[Annotation], a: Annotation) = {
@@ -95,11 +95,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     val tokSet = new Tagset(Set(SLabel("lex")))
     val zoneSet = if (opts.zoneset.isEmpty) new Tagset(Set(Label("zone", Map("region_type" -> "body")))) else opts.zoneset
     val existingTokens = getAnnotations(Some(signal), asets, tokSet, true, true).sortWith(_ < _) // get tokens with _any_ attributes they may have
-    val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(Label("tok_posterior_dist",Map())))), true, true).sortWith(_ < _)
+    val tokenLabelDistributions = getAnnotations(Some(signal), asets, (new Tagset(Set(Label("tok_posterior_dist", Map())))), true, true).sortWith(_ < _)
     val zones = getAnnotations(None, asets, zoneSet) match {
       case Nil => List(new Annotation(0, signal.length, false, SLabel("zone"), None))
       case a => a
-    }    
+    }
     val preExistingTokens = if (tokenLabelDistributions.length > 1) tokenLabelDistributions else existingTokens
     val t_toks = if (opts.preProc || preProc) getTokensViaSignal(signal, zones) else sentenceSegmentTokenAnnotations(signal, preExistingTokens)
     val s_toks = t_toks.sortWith(_ < _) // sort ascending
@@ -110,7 +110,11 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     }
     val targetAnnots = getAnnotations(None, asets, opts.tagset)
     val stack = new scala.collection.mutable.Stack[Annotation]
-    stack pushAll (targetAnnots.sortWith(_ > _))
+    if (targetAnnots.length > 0) {
+      stack pushAll (targetAnnots.sortWith(_ > _))
+    } else {
+      stack pushAll (tokenLabelDistributions.sortWith(_ > _))
+    }
     (stack, toks.sortWith(_ < _), zones.sortWith(_ < _), signal)
   }
 
@@ -196,20 +200,20 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
   def seqsToWriter(d: DeserializationT, seqs: Seq[InstanceSequence], os: java.io.OutputStreamWriter, close: Boolean = true): Unit = {
     Json.writeJson(seqsToDeserialized(d, seqs).json, os, close)
   }
-  val digits = "(\\p{Digit}+)"    
-  
-  def parseEncodedAbstractLabel(s: String) : AbstractLabel = {
+  val digits = "(\\p{Digit}+)"
+
+  def parseEncodedAbstractLabel(s: String): AbstractLabel = {
     val BegLab = """B:([A-z]+)\(([A-z]+),([A-z]+)\)""".r
     val Lab = """([A-z]+)\(([A-z]+),([A-z]+)\)""".r
     val Simple = """([A-z]+)""".r
     s match {
-      case BegLab(n,a,v) => BeginState(Label(n,Map(a -> v)))
-      case Lab(n,a,v) => Label(n,Map(a -> v))
+      case BegLab(n, a, v) => BeginState(Label(n, Map(a -> v)))
+      case Lab(n, a, v) => Label(n, Map(a -> v))
       case Simple(s) => SLabel(s)
       case _ => throw new RuntimeException("Unparsable serialized label: " + s)
     }
   }
-  
+
   def toSources(d: DeserializationT): Seqs = {
     val (stack, toks, zones, signal) = gatherAnnots(d.json, opts)
     def seqOfTokArr(tarr: Array[Annotation]) = {
@@ -228,39 +232,42 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
         }
       }
       Vector.tabulate(tarr.length) { (i: Int) =>
-        val pt: Annotation = tarr(i)        
+        val pt: Annotation = tarr(i)
         val obs = pt.vl match { case Some(s) => s case None => "" }
         val ainfo: Map[String, String] = Map("st" -> pt.st.toString, "en" -> pt.en.toString)
-        val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }        
+        val info = pt.info match { case Some(m) => ainfo ++ m case None => ainfo }
         if (!(opts.empDistTrain) && !(opts.partialLabels) && addBeginStates && ((i > 0 && (!(pt.typ == SLabel("lex"))) && (!(tarr(i - 1).typ == pt.typ))) || i == 0 || pt.beg)) {
           createSource(getState(pt.typ, true), obs, pt.beg, info)
         } else {
           if (opts.partialLabels || opts.empDistTrain) {
             // select elements from 'info' map that correspond to labels/states as specified with tagset
-            val dist = info.toList.filter{case (l,s) =>
-              val abLab = parseEncodedAbstractLabel(l)              
-              opts.tagset.labelMatch(abLab.labelHead)}.map {case (l,s) => (parseEncodedAbstractLabel(l),s.toDouble)}            
+            val dist = info.toList.filter {
+              case (l, s) =>
+                val abLab = parseEncodedAbstractLabel(l)
+                opts.tagset.labelMatch(abLab.labelHead)
+            }.map { case (l, s) => (parseEncodedAbstractLabel(l), s.toDouble) }
             if (opts.partialLabels && !opts.empDistTrain) {
-              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
-              val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
-              createSource(mxVal._1, obs, pt.beg, Map())              
+              val il: AbstractLabel = new UncertainLabel // state-label designating uncertainty
+              val mxVal = dist.foldLeft((il, opts.partialThreshold)) { case ((ce, cv), (e, v)) => if (v > cv) (e, v) else (ce, cv) }
+              createSource(mxVal._1, obs, pt.beg, Map())
             } else if (opts.partialLabels && opts.empDistTrain) {
-              val il : AbstractLabel = new UncertainLabel // state-label designating uncertainty
+              val il: AbstractLabel = new UncertainLabel // state-label designating uncertainty
               if (opts.entropyThreshold) {
                 val entVal = getEntropy(dist.toMap)
                 if (entVal < opts.partialThreshold) {
-                  createDistributionalSource(dist,obs,true,Map())
-                } else createSource(il,obs,pt.beg,Map()) // use uncertain label
-              } else {                                                        
-              val mxVal = dist.foldLeft((il, opts.partialThreshold)){case ((ce,cv),(e,v)) => if (v > cv) (e,v) else (ce,cv)}
-              if (mxVal._2 > opts.partialThreshold) { // use distribution
-                createDistributionalSource(dist,obs,true,Map())
-              } else createSource(il,obs,pt.beg,Map()) // use uncertain label
+                  createDistributionalSource(dist, obs, true, Map())
+                } else createSource(il, obs, pt.beg, Map()) // use uncertain label
+              } else {
+                val mxVal = dist.foldLeft((il, opts.partialThreshold)) { case ((ce, cv), (e, v)) => if (v > cv) (e, v) else (ce, cv) }
+                if (mxVal._2 > opts.partialThreshold) { // use distribution
+                  
+                  createDistributionalSource(dist, obs, true, Map())
+                } else createSource(il, obs, pt.beg, Map()) // use uncertain label
               }
+            } else {
+              createDistributionalSource(dist, obs, true, Map())
             }
-            else createDistributionalSource(dist,obs,true,Map())
-          }
-          else createSource(pt.typ, obs, pt.beg, info)
+          } else createSource(pt.typ, obs, pt.beg, info)
         }
       }
     }
@@ -307,22 +314,23 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
 
   private def addTokenDistAnnotation(atbl: Map[AbstractLabel, ListBuffer[Annotation]], cp: AbstractInstance, st: Int, en: Int) = {
     var annotTbl = atbl
-    val tokPosteriorMap = 
+    val tokPosteriorMap =
       if (opts.oneHot)
-        lAlphabet.mp.foldLeft(Map(): Map[String, String]) { 
+        lAlphabet.mp.foldLeft(Map(): Map[String, String]) {
           case (ac, (lab, i)) =>
             val prob = if (i == cp.label) 1.0 else 0.0
-            ac + (lab.labelString -> prob.toString) }
-      else 
+            ac + (lab.labelString -> prob.toString)
+        }
+      else
         lAlphabet.mp.foldLeft(Map(): Map[String, String]) { case (ac, (lab, i)) => ac + (lab.labelString -> cp.conditionalProb(i).toString) }
     val tokPosteriors = new Annotation(st, en, false, Label("tok_posterior_dist", tokPosteriorMap), None)
     if (!annotTbl.contains(tokPosteriorAnnotationType)) annotTbl = annotTbl + (tokPosteriorAnnotationType -> new ListBuffer[Annotation])
     annotTbl(tokPosteriorAnnotationType) += tokPosteriors
     annotTbl
   }
-  
-  private def getStartEnd(info: Option[Map[String,String]]) = {
-    info match {case Some(i) => (i("st").toInt, i("en").toInt) case None => (-1,-1)}
+
+  private def getStartEnd(info: Option[Map[String, String]]) = {
+    info match { case Some(i) => (i("st").toInt, i("en").toInt) case None => (-1, -1) }
   }
 
   def seqsToAnnotations(d: DeserializationT, seqs: Seq[InstanceSequence]): scala.collection.immutable.Map[AbstractLabel, ListBuffer[Annotation]] = {
@@ -351,7 +359,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
           val lstr = lab.labelString
           var st = -1
           var en = -1
-          val (s,e) = getStartEnd(rawPairs(c).info)
+          val (s, e) = getStartEnd(rawPairs(c).info)
           st = s
           en = e
           if (opts.confidences) {
@@ -365,11 +373,13 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
             annotTbl(tokConfidenceAnnotationType) += tokConfidence
           } else if (opts.posteriors) {
             val cp = seq(c)
-            annotTbl ++= addTokenDistAnnotation(annotTbl,cp,st,en)
+            annotTbl ++= addTokenDistAnnotation(annotTbl, cp, st, en)
           }
           if (!(opts.posteriors) && !(lstr == "lex")) { // case where we output an identified phrase
-            st = rawPairs(c).info match { case Some(amap) =>
-              amap("st").toInt case None => st } // start of annotation
+            st = rawPairs(c).info match {
+              case Some(amap) =>
+                amap("st").toInt case None => st
+            } // start of annotation
             var curLab = normLab
             do {
               c += 1
@@ -379,12 +389,12 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
                 //val cp = seq(c)
                 //if (opts.posteriors) annotTbl ++= addTokenDistAnnotation(annotTbl,cp,s,e)                
               }
-            } while ((normLab_c >= 0) && (curLab == normLab) && (c < seq.length))            
-             // advance counter to the end of the phrase              
-             // LOGIC: don't loop this is a begin state that doesn't have an associated insider state
-             // that correspond to phrases
-             // If the current label matches the previous label (without the begin state), then we consider it
-             // and "inside" state and continue constructing the phrase.
+            } while ((normLab_c >= 0) && (curLab == normLab) && (c < seq.length))
+            // advance counter to the end of the phrase              
+            // LOGIC: don't loop this is a begin state that doesn't have an associated insider state
+            // that correspond to phrases
+            // If the current label matches the previous label (without the begin state), then we consider it
+            // and "inside" state and continue constructing the phrase.
             en = rawPairs(c - 1).info match { case Some(amap) => amap("en").toInt case None => (-1) }
             val annot = new Annotation(st, en, false, nlabState, None)
             val stateIndex = nlabState match {

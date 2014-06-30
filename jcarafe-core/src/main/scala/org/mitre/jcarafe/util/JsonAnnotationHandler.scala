@@ -35,7 +35,7 @@ object JsonAnnotationHandler {
               val hasSpan = o.get("hasSpan") match { case Some(JsFalse) => false case _ => true }
               o("attrs") match {
                 case JsArray(ar_p) =>
-                  val ar = getAttributeLabels(ar_p)
+                  val ar = getAttributeLabels(ar_p)                  
                   if (ar.length > 0) {
                     tagset.set.exists { al =>
                       al match {
