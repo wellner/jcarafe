@@ -1,6 +1,8 @@
 package org.mitre.jcarafe.crf
 
-import org.mitre.jcarafe.util.Options
+import org.mitre.jcarafe.util.{ Options, SparseVectorAsMap }
+
+import cern.colt.map.OpenIntDoubleHashMap
 
 abstract class KLDivMinimizingCrf(lambdas: Array[Double], nls: Int, nfs: Int, segSize: Int, gPrior: Double, nNfs: Int = 0, nGates: Int = 0) 
 extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
@@ -44,6 +46,61 @@ extends DenseCrf(lambdas, nls, nfs, segSize, gPrior, nNfs, nGates) {
     }
     seqLogLi
   }    
+}
+
+class SparseStatelessKLDivMinimizingCrf(
+    nls: Int,
+    nfs: Int,
+    segSize: Int,
+    opts: Options,
+    nNfs: Int = 0,
+    nGates: Int = 0
+    ) extends KLDivMinimizingStochasticCrf(nls, nfs, segSize, opts, nNfs, nGates) with Serializable {
+
+  var localParams: Array[Double] = Array[Double]() // unfortunate way to have to do this
+  override def getLambdas = localParams
+  private var gradNormalizer = 0.0
+  
+  def train(accessSeq: AccessSeq[AbstractInstance], max_iters: Int, modelIterFn: Option[(CoreModel, Int) => Unit] = None): CoreModel = {
+    new CoreModel(getLambdas, nls, nfs)
+  }
+  
+  def getSimpleGradient(gr: collection.mutable.Map[Int, DoubleCell], inv: Boolean = true, gboundary: Boolean = false): SparseVectorAsMap = {
+    val mn = new OpenIntDoubleHashMap
+    var s = 0
+    val params = getLambdas
+    gr foreach {
+      case (k, v) =>
+        s += 1;
+        val gComp = if (inv) (v.e - v.g) else (v.g - v.e)
+        // enforce upper and lower limits on gComp to avoid very large parameter updates 
+        val aComp = if (gboundary) (if (gComp > 100.0) 100.0 else if (gComp < -100.0) -100.0 else gComp) else gComp
+        mn.put(k, aComp)
+    }
+    new SparseVectorAsMap(s, mn)
+  }
+
+  def getGradientSingleSequence(s: InstanceSequence, curLambdas: Array[Double], inv: Boolean = true, gboundary: Boolean = false): (Double, SparseVectorAsMap) = {
+    localParams = curLambdas // set the parameters to those passed in via curLambdas
+    val iseq = s.iseq
+    val sl = iseq.length
+    var ll = 0.0
+    val params = getLambdas
+    gradient.clear // clear the 
+    if (sl > 0) {
+      reset(iseq.length)
+      backwardPass(iseq)
+      ll = forwardPass(iseq)
+      val pzx = vecSum(curA)
+      val zx = if (pzx < Double.MaxValue) pzx else Double.MaxValue
+      ll -= math.log(zx)
+      for (k <- 0 until iseq.length) ll -= math.log(scale(k))
+      for ((k, cell) <- gradient) {
+        cell.e_=(cell.e / zx) // normalize expectation and hold in expectation cell - will take difference with constraints in getSimpleGradient method          
+      }
+    }
+    (-ll, getSimpleGradient(gradient, inv, gboundary)) // get negative LL and inverted gradient for LBFGS optimization
+  }
 }
 
 abstract class KLDivMinimizingStochasticCrf(
