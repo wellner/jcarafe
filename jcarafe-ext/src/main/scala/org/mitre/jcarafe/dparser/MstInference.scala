@@ -116,7 +116,7 @@ abstract class MstCrf(val nfs: Int, val gPrior: Double = 100.0) extends DenseTra
 }
 
 
-class MstMAPInference(crf: CoreModel) extends DecodingAlgorithm(crf) {
+class MstMAPInference(crf: CoreModel) extends DecodingAlgorithm {
   
   val lambdas = crf.params
 

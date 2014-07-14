@@ -324,7 +324,7 @@ abstract class StochasticProjectiveMstCrf(val nfs: Int, val opts: Options, model
 
 }
 
-class ProjectiveMstInference(crf: CoreModel) extends DecodingAlgorithm(crf) {
+class ProjectiveMstInference(crf: CoreModel) extends DecodingAlgorithm {
 
   val lambdas = crf.params
 
