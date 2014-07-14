@@ -369,7 +369,7 @@ class MaxEntMemoryAccessSeq(iseqs: collection.immutable.IndexedSeq[InstanceSeque
  * structures.  In particular, we still use a sequence of instances, but we assume there is
  * not inter-dependence between instances (i.i.d.). 
 */
-class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) with MaxEntCore {
+class MaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm with MaxEntCore {
 
   val predNFS = crf.nfs / crf.nls
 

@@ -128,7 +128,7 @@ extends DecodingSeqGen[Array[RankReadInst]](m:Model,opts) with NonFactoredSeqGen
     sourcePairSeqs map {dseq => extractFeatures(dseq) }
 }
 
-class NonFactoredMaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm(crf) with NonFactoredMaxEntCore {
+class NonFactoredMaxEntDecodingAlgorithm(crf: CoreModel) extends DecodingAlgorithm with NonFactoredMaxEntCore {
   def getCopyOf = new NonFactoredMaxEntDecodingAlgorithm(crf)
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) = {
     iseq foreach {el =>

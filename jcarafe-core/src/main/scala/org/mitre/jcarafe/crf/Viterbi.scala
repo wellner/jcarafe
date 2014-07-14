@@ -10,32 +10,22 @@ object Viterbi {
     else new Viterbi(dynamic, ss, core, post)
 }
 
-abstract class DecodingAlgorithm(val crf: CoreModel) {
+abstract class DecodingAlgorithm {
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double
   def getCopyOf : DecodingAlgorithm
   def assignBestSequence(instSeq: InstanceSequence) : Unit = {
     val sp = assignBestSequence(instSeq.iseq)
     instSeq.seqPosteriorProbability_=(sp)
   }
+  
 }
 
-class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePosterior: Boolean = false) 
-extends DecodingAlgorithm(crf) with PotentialScoring {
-  def this(segSize: Int, crf: CoreModel) = this(false, segSize, crf)
-  def this(dyn: Boolean, crf: CoreModel) = this(dyn, 1, crf) 
-  def this(crf:CoreModel) = this(1,crf)
-
-  val posteriorCrf : Option[DenseCrf] = if (computePosterior) Some(new DenseCRFConfidences(crf) with CondLogLikelihoodLearner[AbstractInstance]) else None
-
-  def getCopyOf = new Viterbi(this.dynamic, this.segSize, this.crf)
-
-  var curNls = crf.nls
+abstract class AbstractViterbi(dynamic: Boolean, segSize: Int, nls: Int) extends DecodingAlgorithm with PotentialScoring {
   
-  CrfInstance.maxSegSize = segSize - 1 // need to set this "globally" for use in decoding, 0-based in CrfInstance
+  var curNls = nls
   
-  //var ri: Array[Array[Double]] = Array.fill(segSize,curNls)(0.0)
-  //var mi: Array[Array[Array[Double]]] = Array.fill(segSize,curNls,curNls)(0.0)
-    
+  val posteriorCrf : Option[DenseCrf]
+  
   class SeqLab(val label:Int, val pos:Int, var score:Double, var prev: Option[SeqLab]) {
     
     def this(i: Int, pp: Int) = this(i,pp,(Double.MinValue), None)
@@ -59,8 +49,7 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
         seqArr(i).clear()
         i += 1
       }
-    }
-    
+    }    
     private def insert(i:Int, sc: Double, prev:Option[SeqLab]) = {
       var k = size - 1
       while (k > i) {
@@ -69,8 +58,7 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
       }
       seqArr(i).score_=(sc)
       seqArr(i).prev_=(prev)
-    }
-    
+    }    
     private def findInsert(ipos:Int, sc: Double, prev: Option[SeqLab]) = {
       var halt = false
       var i = ipos
@@ -82,8 +70,7 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
         i += 1
       }
       i
-    }
-    
+    }    
     def addNew(other: Position, sc: Double) = {
       var i = 0
       var ipos = 0
@@ -96,13 +83,8 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
     def add(sc: Double) = findInsert(0,sc,None)
     def getScores = Array.tabulate(size){i => seqArr(i).score}
   }
-
   
-  protected def computeScores(ri: Array[Array[Double]], mi: Array[Array[Array[Double]]], instFeatures: Array[Array[Feature]], takeExp: Boolean) : Unit = {
-    computeScores(ri,mi,instFeatures,takeExp,curNls,crf.params)
-  }
-
-  private def viterbiSearch(beamsize:Int, iseq:Seq[AbstractInstance]) = {
+  protected def viterbiSearch(beamsize:Int, iseq:Seq[AbstractInstance], params: Array[Double]) = {
     if (dynamic) curNls = iseq.length // set current number of labels to size of sequence
     val ri: Array[Array[Double]] = Array.fill(segSize,curNls)(0.0)
     val mi: Array[Array[Array[Double]]] = Array.fill(segSize,curNls,curNls)(0.0)
@@ -114,7 +96,7 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
       val inst = iseq(i)
       val instFeatures = inst.getCompVec
       val label = inst.label
-      computeScores(ri, mi, instFeatures, false)
+      computeScores(ri, mi, instFeatures, false, curNls, params)
       var yi = 0
       while (yi < curNls) {
         bestAssignment(i)(yi).clear()
@@ -151,19 +133,11 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
     finalSeq
   }
   
-  /*
-  private def resize(l: Int) = {
-    curNls = l
-    ri = Array.fill(segSize,curNls)(0.0)
-    mi = Array.fill(segSize,curNls,curNls)(0.0)
-  }
-  */
-  
-  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance], params: Array[Double]) : Double = {
     //if (dynamic) resize(iseq.length)
     val sl = iseq.length
     if (sl > 0) {
-      val fsol = viterbiSearch(1, iseq)
+      val fsol = viterbiSearch(1, iseq, params)
       var yb: Option[SeqLab] = Some(fsol(0))
       var sid = 0
       var cont = true
@@ -201,6 +175,38 @@ extends DecodingAlgorithm(crf) with PotentialScoring {
         } else 0.0
       case None => 0.0}
   }
+}
+
+class Viterbi(val dynamic: Boolean, val segSize: Int, crf: CoreModel, computePosterior: Boolean = false) 
+extends AbstractViterbi(dynamic, segSize, crf.nls) with PotentialScoring {
+  def this(segSize: Int, crf: CoreModel) = this(false, segSize, crf)
+  def this(dyn: Boolean, crf: CoreModel) = this(dyn, 1, crf) 
+  def this(crf:CoreModel) = this(1,crf)
+
+  val posteriorCrf : Option[DenseCrf] = if (computePosterior) Some(new DenseCRFConfidences(crf) with CondLogLikelihoodLearner[AbstractInstance]) else None
+
+  def getCopyOf = new Viterbi(this.dynamic, this.segSize, this.crf)
+  
+  CrfInstance.maxSegSize = segSize - 1 // need to set this "globally" for use in decoding, 0-based in CrfInstance
+  
+  
+  protected def computeScores(ri: Array[Array[Double]], mi: Array[Array[Array[Double]]], instFeatures: Array[Array[Feature]], takeExp: Boolean) : Unit = {
+    computeScores(ri,mi,instFeatures,takeExp,curNls,crf.params)
+  }
+
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
+    assignBestSequence(iseq, crf.params)
+  }  
+}
+
+class StatelessViterbi(d: Boolean, ss: Int, n: Int) extends AbstractViterbi(d, ss, n) {
+  val posteriorCrf = None
+  
+  def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
+    throw new RuntimeException("Stateless Viterbi requires passing explicit parameters")
+  }
+  
+  def getCopyOf = new StatelessViterbi(this.d, this.ss, this.n)
 }
 
 class NeuralViterbi(dynamic: Boolean, segSize: Int, crf: CoreModel) extends Viterbi(dynamic, segSize, crf) with NeuralStochasticCrfScoring {
