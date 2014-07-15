@@ -199,7 +199,7 @@ extends AbstractViterbi(dynamic, segSize, crf.nls) with PotentialScoring {
   }  
 }
 
-class StatelessViterbi(d: Boolean, ss: Int, n: Int) extends AbstractViterbi(d, ss, n) {
+class StatelessViterbi(d: Boolean, ss: Int, n: Int) extends AbstractViterbi(d, ss, n) with Serializable {
   val posteriorCrf = None
   
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
