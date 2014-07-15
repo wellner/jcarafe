@@ -10,7 +10,7 @@ object Viterbi {
     else new Viterbi(dynamic, ss, core, post)
 }
 
-abstract class DecodingAlgorithm with Serializable {
+abstract class DecodingAlgorithm extends Serializable {
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double
   def getCopyOf : DecodingAlgorithm
   def assignBestSequence(instSeq: InstanceSequence) : Unit = {
