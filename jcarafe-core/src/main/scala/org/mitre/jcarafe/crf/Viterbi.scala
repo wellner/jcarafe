@@ -10,7 +10,7 @@ object Viterbi {
     else new Viterbi(dynamic, ss, core, post)
 }
 
-abstract class DecodingAlgorithm {
+abstract class DecodingAlgorithm extends Serializable {
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double
   def getCopyOf : DecodingAlgorithm
   def assignBestSequence(instSeq: InstanceSequence) : Unit = {
@@ -20,7 +20,7 @@ abstract class DecodingAlgorithm {
   
 }
 
-abstract class AbstractViterbi(dynamic: Boolean, segSize: Int, nls: Int) extends DecodingAlgorithm with PotentialScoring {
+abstract class AbstractViterbi(dynamic: Boolean, segSize: Int, nls: Int) extends DecodingAlgorithm with PotentialScoring with Serializable {
   
   var curNls = nls
   
@@ -199,7 +199,7 @@ extends AbstractViterbi(dynamic, segSize, crf.nls) with PotentialScoring {
   }  
 }
 
-class StatelessViterbi(d: Boolean, ss: Int, n: Int) extends AbstractViterbi(d, ss, n) {
+class StatelessViterbi(d: Boolean, ss: Int, n: Int) extends AbstractViterbi(d, ss, n) with Serializable {
   val posteriorCrf = None
   
   def assignBestSequence(iseq: collection.immutable.IndexedSeq[AbstractInstance]) : Double = {
