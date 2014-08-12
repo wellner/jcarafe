@@ -902,7 +902,7 @@ object FeatureManagerBuilder {
    */
   def getLexicon(opts: Options) = opts.lexDir map { d => new BloomLexicon(d) }
 
-  def getWordProperties(opts: Options) = opts.wordPropFile map { f => new WordProperties(f) }
+  def getWordProperties(opts: Options) = opts.wordPropFile map { f => WordProperties(f) }
 
   def getWordScores(opts: Options) = opts.wordScoreFile map { f => new WordScores(f) }
 
