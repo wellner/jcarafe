@@ -331,6 +331,11 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
   def toSources(d: DeserializationT): Seqs
 
   def createSeqsWithInput(d: DeserializationT): IndexedSeq[InstanceSequence] = extractFeatures(toSources(d))
+  
+  def gatherFeatureTables(d: DeserializationT) : Unit = {
+    val f = toSources(d)
+    f.seq foreach {s => processSupportingFeatures(s) }
+  }
 
   def createSeqsWithInput(dseq: IndexedSeq[DeserializationT]): IndexedSeq[InstanceSequence] =
     dseq flatMap { (d: DeserializationT) => createSeqsWithInput(d) }
@@ -404,6 +409,8 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
   def countFeatureTypes(spSeqs: Seqs): Unit = spSeqs.seq foreach countFeatureTypes
 
   def extractFeatures(src: SourceSequence[Obs]): InstanceSequence
+  
+  def processSupportingFeatures(src: SourceSequence[Obs]) : InstanceSequence
 
   // extract features seq is present here so that extractFeatures can be applied separately to each "document"
   // so that document-specific global information related to "displaced features" can be retained and properly flushed
@@ -504,6 +511,17 @@ abstract class TrainingSeqGen[Obs](fr: TrainingFactoredFeatureRep[Obs], opts: Op
       i += 1
       InstSeq(instSeq, dseq.st, dseq.en)
     }
+  }
+  
+  def processSupportingFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
+    var sid = -1
+    val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+      if (dseq(i).beg) sid += 1
+      val inst = frep.createInstance(dseq(i), sid)
+      frep.extractSupportedFeatures(inst, dseq, i)
+      inst
+    }
+    InstSeq(iseq,dseq.st, dseq.en)
   }
 
   def extractFeaturesDirect(dseq: SourceSequence[Obs]): collection.immutable.IndexedSeq[AbstractInstance] = {
@@ -721,6 +739,8 @@ abstract class FactoredDecodingSeqGen[Obs](fr: DecodingFactoredFeatureRep[Obs], 
 
   def getNumberOfFeatures = -1
   override def getNumberOfNeuralFeatures = -1
+  
+  def processSupportingFeatures(seq: SourceSequence[Obs]): InstanceSequence = throw new RuntimeException("not supported for decoding")
 
   def extractFeatures(seq: SourceSequence[Obs]): InstanceSequence = {
     val iseq = Vector.tabulate(seq.length) { (i: Int) =>

@@ -603,6 +603,32 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     } else new LongAlphabet
 
   val fsetMap: OpenLongObjectHashMap = initialModel match { case Some(m) => m.fsetMap case None => new OpenLongObjectHashMap() }
+  
+  def compose(other: TrainingFactoredFeatureRep[Obs]) : TrainingFactoredFeatureRep[Obs] = {
+    val composedFsetMap = new OpenLongObjectHashMap
+    val nFaMap = faMap ++ other.faMap
+    val keys = fsetMap.keys()
+    other.fsetMap.forEachPair(new cern.colt.function.LongObjectProcedure() {
+      def apply(l: Long, o: Any) = {
+        o match {
+          case v: FeatureType =>
+            val otherDetail = v.fdetail
+            val nFt = new FeatureType(l,v.edgep,v.segsize,v.fcat)            
+            val thisDetail = if (fsetMap.containsKey(l)) fsetMap.get(l).asInstanceOf[FeatureType].fdetail else Set[Feature]()            
+            (otherDetail union thisDetail) foreach {f => 
+              val nid = nFaMap.update(f.prv, f.cur, l) 
+              nFt add new Feature(f.prv, f.cur, nid)}  
+            composedFsetMap.put(l, nFt)
+          case _ => 
+        }
+        true
+      }
+    })        
+    new TrainingFactoredFeatureRep(mgr, opts) {
+      override lazy val faMap = nFaMap
+      override val fsetMap = composedFsetMap 
+    } 
+  }
 
   protected def addRandFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: Long, vl: Double): Unit = {
     if (yprv == (-2)) // indicates a state feature rather than transition feature
