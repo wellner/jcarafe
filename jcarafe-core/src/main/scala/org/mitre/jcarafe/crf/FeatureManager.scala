@@ -996,6 +996,22 @@ class StaticFeatureManagerBuilder[Obs](
         List(
           FeatureFn(nodeFn),
           FeatureFn(edgeFn),
+          FeatureFn(lexFn).over((-2 to 2)),
+          FeatureFn(wdFnNorm).over((-2 to 2)),
+          FeatureFn(wordPropertiesFn(false)) over (-2 to 2),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
+            )
+      case "en-pos-2" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
           FeatureFn(wdFn),
           FeatureFn(lexFn),          
           FeatureFn(lexFn).over((-1 to 1)),
