@@ -1002,6 +1002,8 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(wordPropertiesFn(6,false)).over((-2 to 2)),
           FeatureFn(wordPropertiesFn(8,false)).over((-2 to 2)),
           FeatureFn(wordPropertiesFn(false)).over((-2 to 2)),
+          FeatureFn(prefixFn(8)),
+          FeatureFn(suffixFn(8)),
           FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).over((-3 to 3)),
           FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram((1 to 2)),
           FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram((-2 to -1)),
