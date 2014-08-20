@@ -1034,7 +1034,46 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
           FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
             )
+
       case "en-pos-2" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn).over((-2 to 2)),
+          FeatureFn(wdFnNorm).over((-2 to 2)),
+          FeatureFn(downLexFn).ngram(None,(-1 to 0)),
+          FeatureFn(downLexFn).ngram(None,(0 to 1)),
+          FeatureFn("trans1",FeatureFn(downLexFn).over((-1 to 1)),true),
+          FeatureFn("trans2",FeatureFn(wdFnNorm).over((-1 to 1)),true),
+          FeatureFn(wdFnNorm).ngram(None,(-1 to 0)),
+          FeatureFn(wdFnNorm).ngram(None,(0 to 1)),
+          FeatureFn(wordPropertiesPrefixesFn(4,false)).over((-2 to 2)),
+          FeatureFn(wordPropertiesPrefixesFn(6,false)).over((-2 to 2)),
+          FeatureFn(wordPropertiesPrefixesFn(8,false)).over((-2 to 2)),
+          FeatureFn(wordPropertiesPrefixesFn(4,false)).ngram(None,(-1 to 0)),
+          FeatureFn(wordPropertiesPrefixesFn(6,false)).ngram(None,(-1 to 0)),
+          FeatureFn(wordPropertiesPrefixesFn(8,false)).ngram(None,(-1 to 0)),          
+          FeatureFn(wordPropertiesFn(false)).over((-2 to 2)),
+          FeatureFn(wordPropertiesFn(false)).ngram(None,(-1 to 0)),
+          FeatureFn(wordPropertiesFn(false)).ngram(None,(0 to 1)),
+          FeatureFn(prefixFn(8)),
+          FeatureFn(suffixFn(8)),
+          FeatureFn(regexpFn("Designate1","^Corp.*".r)).within((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^Inc.*".r)).within((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^Ltd.*".r)).within((1 to 4)),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).over((-3 to 4)),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram(None,(1 to 2)),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram(None,(-2 to -1)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-2 to 2)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-2 to 2)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
+            )
+
+      case "en-pos-3" =>        
         List(
           FeatureFn(nodeFn),
           FeatureFn(edgeFn),
