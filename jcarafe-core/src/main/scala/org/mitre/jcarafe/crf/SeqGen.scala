@@ -647,6 +647,10 @@ abstract class NonFactoredTrainingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], op
       true
     }
   }
+  
+  def processSupportingFeatures(dseq: SourceSequence[Obs]) : InstanceSequence = {
+    throw new RuntimeException("processSupportingFeatures not implemented for NonFactoredTrainingSeqGen")
+  }
 
   def extractFeatures(dseq: SourceSequence[Obs]): InstanceSequence = {
     var sid = -1
@@ -722,6 +726,10 @@ abstract class NonFactoredDecodingSeqGen[Obs](fr: NonFactoredFeatureRep[Obs], va
       inst: AbstractInstance
     }
     InstSeq(iseq, dseq.st, dseq.en)
+  }
+  
+  def processSupportingFeatures(dseq: SourceSequence[Obs]) : InstanceSequence = {
+    throw new RuntimeException("processSupportingFeatures not implemented for NonFactoredDecodingSeqGen")
   }
 
   def extractFeatures(sourcePairSeqs: Seqs): collection.immutable.IndexedSeq[InstanceSequence] =
