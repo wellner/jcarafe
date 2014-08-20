@@ -727,6 +727,14 @@ trait MaxEntSeqGenAttVal extends MaxEntSeqGen[List[(FeatureId, Double)]] {
     addInFeatures(inst, obs)
     inst: AbstractInstance
   }
+  
+  def processSupportingFeatures(dseq: SourceSequence[List[(FeatureId, Double)]]): InstanceSequence = {
+    val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
+      val inst = frep.createMEInstance(dseq(i).label, dseq(i).label, 1.0)
+      inst: AbstractInstance
+    }
+    InstSeq(iseq)
+  }
 
   def extractFeatures(dseq: SourceSequence[List[(FeatureId, Double)]]): InstanceSequence = {
     val iseq = Vector.tabulate(dseq.length) { (i: Int) =>
