@@ -998,7 +998,7 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(edgeFn),
           FeatureFn(downLexFn).over((-2 to 2)),
           FeatureFn(wdFnNorm).over((-2 to 2)),
-          FeatureFn("trans1",FeatureFn(wdFnNorm).over((-1 to 1)),true),
+          //FeatureFn("trans1",FeatureFn(downLexFn).over((-1 to 1)),true),
           FeatureFn(wdFnNorm).ngram(None,(-1 to 0)),
           FeatureFn(wdFnNorm).ngram(None,(0 to 1)),
           FeatureFn("clusterTr1",FeatureFn(wordPropertiesPrefixesFn(4,false)),true),

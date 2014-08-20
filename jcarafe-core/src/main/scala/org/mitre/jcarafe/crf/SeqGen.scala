@@ -194,7 +194,6 @@ abstract class SeqGen[Obs](val opts: Options) extends Serializable {
 
   type FRepT <: FeatureRep[Obs]
   val frep: FRepT
-  //val lAlphabet : Alphabet[AbstractLabel]
   val lAlphabet =
     if (opts.partialLabels) new AlphabetWithSpecialCases(false, { x: AbstractLabel => x.uncertain })
     else new Alphabet[AbstractLabel]
