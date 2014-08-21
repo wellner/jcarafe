@@ -609,7 +609,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
     val nFaMap = faMap
     fsetMap.forEachPair(new cern.colt.function.LongObjectProcedure() {
       def apply(l: Long, o: Any) = {
-        if (!other.fsetMap.contains(l)) {
+        if (!other.fsetMap.containsKey(l)) {
           composedFsetMap.put(l,o)
         }
         true
