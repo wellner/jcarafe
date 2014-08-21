@@ -38,7 +38,8 @@ class ProjectiveDependencyParser(argv: Array[String]) extends TaggerTask[String]
     val mgr = new DynamicDepParserFeatureManager(opts.nonFactoredFeatureSpec.get,nstates)
     mgr.wdProps match {
       case None => opts.wordPropFile match {case Some(f) => mgr.wdProps_=(Some(WordProperties(f))) case None => } case Some(_) => }
-    val fr = new NonFactoredFeatureRep[String](opts,mgr,false,opts.numStates.getOrElse(0),true)   
+
+    val fr = new NonFactoredFeatureRep[String](opts,mgr,false,opts.numStates.getOrElse(0),true)
     //val sGen = new NonFactoredTrainingSeqGen[String] (fr, opts) with XmlParserSeqGen
     val sGen = new NonFactoredTrainingSeqGen[String] (fr, opts) with CoNLLSeqGen
     override val modelIterate : Option[(CoreModel,Int) => Unit] = 
