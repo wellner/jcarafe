@@ -42,10 +42,12 @@ class Feature(val prv: Int, val cur: Int, val fid: Int, val nfid: Int = -1) exte
   def value = 1.0 // 1.0 by default
   def getName = fid.toString
   override def equals(other: Any): Boolean = other match {
-    case that: Feature => fid == that.fid && nfid == that.nfid && cur == that.cur
+    case that: Feature => fid == that.fid && nfid == that.nfid && cur == that.cur && prv == that.prv
     case _ => false
   }
-  override def hashCode: Int = if (nfid >= 0) mix(mix(fid.toLong, nfid.toLong), cur.toLong).toInt else mix(fid.toLong, cur.toLong).toInt
+  override def hashCode: Int = 
+    if (nfid >= 0) mix(mix(fid.toLong, nfid.toLong), cur.toLong).toInt 
+    else mix(fid.toLong, mix(cur.toLong, prv.toLong)).toInt
   override def toString = "feature = " + prv + "," + cur + "," + fid + "," + nfid
   def getId = fid.toLong
 }
@@ -621,7 +623,9 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
           case v: FeatureType =>
             val otherDetail = v.fdetail
             val nFt = new FeatureType(l,v.edgep,v.segsize,v.fcat)            
-            val thisDetail = if (fsetMap.containsKey(l)) fsetMap.get(l).asInstanceOf[FeatureType].fdetail else Set[Feature]()            
+            val thisDetail = if (fsetMap.containsKey(l)) fsetMap.get(l).asInstanceOf[FeatureType].fdetail else Set[Feature]()      
+            otherDetail foreach {f => nFaMap.update(f.prv, f.cur, l)}
+            thisDetail foreach {f => nFaMap.update(f.prv, f.cur, l)}
             (otherDetail union thisDetail) foreach {f => 
               val nid = nFaMap.update(f.prv, f.cur, l) 
               nFt add new Feature(f.prv, f.cur, nid)}  
