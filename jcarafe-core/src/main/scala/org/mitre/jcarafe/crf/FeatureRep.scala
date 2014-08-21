@@ -606,8 +606,15 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   
   def compose(other: TrainingFactoredFeatureRep[Obs]) : TrainingFactoredFeatureRep[Obs] = {
     val composedFsetMap = new OpenLongObjectHashMap
-    val nFaMap = faMap ++ other.faMap
-    val keys = fsetMap.keys()
+    val nFaMap = faMap
+    fsetMap.forEachPair(new cern.colt.function.LongObjectProcedure() {
+      def apply(l: Long, o: Any) = {
+        if (!other.fsetMap.contains(l)) {
+          composedFsetMap.put(l,o)
+        }
+        true
+      }
+    })
     other.fsetMap.forEachPair(new cern.colt.function.LongObjectProcedure() {
       def apply(l: Long, o: Any) = {
         o match {
