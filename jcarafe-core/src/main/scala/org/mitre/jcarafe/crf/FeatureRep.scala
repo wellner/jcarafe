@@ -608,11 +608,17 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   
   def compose(other: TrainingFactoredFeatureRep[Obs]) : TrainingFactoredFeatureRep[Obs] = {
     val composedFsetMap = new OpenLongObjectHashMap
-    val nFaMap = faMap
+    val nFaMap = new LongAlphabet
     fsetMap.forEachPair(new cern.colt.function.LongObjectProcedure() {
       def apply(l: Long, o: Any) = {
         if (!other.fsetMap.containsKey(l)) {
-          composedFsetMap.put(l,o)
+          val v = o.asInstanceOf[FeatureType]
+          val nFt = new FeatureType(l, v.edgep, v.segsize, v.fcat)
+          v.fdetail foreach {f =>
+            val nid = nFaMap.update(f.prv, f.cur, l)
+            nFt add new Feature(f.prv, f.cur, nid)
+            }
+          composedFsetMap.put(l,nFt)
         }
         true
       }
@@ -624,8 +630,6 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
             val otherDetail = v.fdetail
             val nFt = new FeatureType(l,v.edgep,v.segsize,v.fcat)            
             val thisDetail = if (fsetMap.containsKey(l)) fsetMap.get(l).asInstanceOf[FeatureType].fdetail else Set[Feature]()      
-            otherDetail foreach {f => nFaMap.update(f.prv, f.cur, l)}
-            thisDetail foreach {f => nFaMap.update(f.prv, f.cur, l)}
             (otherDetail union thisDetail) foreach {f => 
               val nid = nFaMap.update(f.prv, f.cur, l) 
               nFt add new Feature(f.prv, f.cur, nid)}  
