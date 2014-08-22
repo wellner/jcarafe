@@ -986,12 +986,13 @@ class StaticFeatureManagerBuilder[Obs](
         List(
           FeatureFn(nodeFn),
           FeatureFn(edgeFn),
-          FeatureFn(wdFn),
+          FeatureFn(wdFn),          
           FeatureFn(lexFn),
           FeatureFn(wdFn).ngram(None, (-1 to 0)),
           FeatureFn(lexFn).over((-1 to 1)),
           FeatureFn(wdFn).over((-2 to 2)),
           FeatureFn(wordPropertiesFn(false)) over (-2 to 2))
+          
       case "en-pos" =>        
         List(
           FeatureFn(nodeFn),

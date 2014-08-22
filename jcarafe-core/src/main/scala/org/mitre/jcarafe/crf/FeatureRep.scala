@@ -668,6 +668,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       if (yp >= 0) {
         val fid = ft.fcat match { case NNFeature => -1 case _ => faMap.update(yprv, yp, fname) }
         val nfid = ft.fcat match { case StdFeature => -1 case _ => neuralFaMap.update(yp, fname) }
+        //println("Adding " + fname + " => (" +yprv+","+yp+","+fid+")")
         ft add new Feature(yprv, yp, fid, nfid)
       }
       if (!supporting) inst add new ValuedFeatureType(vl, ft)
@@ -735,10 +736,13 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, false)
       mgr.fnList foreach { fn =>
         val freturn: FeatureReturn = fn(d, dseq, pos)
+        
         if (!freturn.edgeP || (pos > 0)) {
-          freturn.features foreach { f => addFeature(d, inst, (if (freturn.edgeP) yprv else (-1)), yp, f, true, freturn.fcat) }
-          if (freturn.displaced) updateDisplaceableFeatures(dseq, pos, freturn)
+          freturn.features foreach { f =>
+            addFeature(d, inst, (if (freturn.edgeP) yprv else (-2)), yp, f, false, freturn.fcat) }
         }
+        if (freturn.displaced) updateDisplaceableFeatures(dseq, pos, freturn)
+
       }
     }
   }
@@ -782,7 +786,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
       }
     } else {
       val yp = dseq(pos).label
-      for (d <- 0 to upTo) {
+      for (d <- 0 to upTo) {            
         val yprv = if (pos - d > 0) dseq(pos - d - 1).label else (-1)
         addDisplacedFeatures(inst, d, dseq, pos, yp, yprv, static)        
         mgr.fnList foreach { fn =>
@@ -790,7 +794,9 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
           if (!fresult.edgeP || (pos > 0)) {
             fresult.features foreach { f =>
               if (static) addFeatureStatic(d, inst, f)
-              else addFeature(d, inst, (if (fresult.edgeP) yprv else (-2)), yp, f, false, fresult.fcat)
+              else {
+                addFeature(d, inst, (if (fresult.edgeP) yprv else (-2)), yp, f, false, fresult.fcat)
+              }
             }
             if (fresult.displaced) updateDisplaceableFeatures(dseq, pos, fresult)
           }
