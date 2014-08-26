@@ -374,12 +374,12 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
 
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource(l, o, b, None)
   def createInstance(src: ObsSource[Obs], sid: Int = (-1)): CrfInstance = {
-    val ci = new CrfInstance(src.label, src.label, sid)
+    val ci = new CrfInstance(src.label, src.label, sid, useCache)
     for (i <- 0 until CrfInstance.numLabels) ci.setConditionalProb(i, src.conditionalProb(i))
     ci
   }
-  def createInstance(l: Int, o: Int, sId: Int) = new CrfInstance(l, o, sId)
-  def createInstance(l: Int, o: Int) = new CrfInstance(l, o, -1)
+  def createInstance(l: Int, o: Int, sId: Int) = new CrfInstance(l, o, sId, useCache)
+  def createInstance(l: Int, o: Int) = new CrfInstance(l, o, -1, useCache)
 
   private def setLex(src: ObsSource[Obs], o: Obs) = {
     mgr.lex foreach { lex =>

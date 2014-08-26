@@ -24,7 +24,6 @@ class PosteriorTaggerTask(opts: Options) extends StdTaggerTask(opts) {
     decoder.setDecoder(true)
     decoder
   }
-
 }
 
 object PosteriorTaggerTaskMain {
