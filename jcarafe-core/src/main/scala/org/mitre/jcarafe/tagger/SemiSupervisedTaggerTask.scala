@@ -29,8 +29,7 @@ class SemiSupervisedTaggerTask(val origOptions: Options) extends StdTaggerTask(o
       curDecodingOpts.train = false
       curDecodingOpts.inputDir = origOptions.unlabeledInputDir
       println("Running decoder with model file: " + curDecodingOpts.model.getOrElse("NONE"))
-      val posteriorTagger = new PosteriorTaggerTask(curDecodingOpts)
-      org.mitre.jcarafe.crf.CrfInstance.useCache = false
+      val posteriorTagger = new PosteriorTaggerTask(curDecodingOpts)      
       posteriorTagger.process()
       val newModelName = origOptions.model map {n => n + ".SS" + i.toString}
       prevModel = newModelName

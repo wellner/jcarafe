@@ -30,7 +30,6 @@ class PosteriorTaggerTask(opts: Options) extends StdTaggerTask(opts) {
 object PosteriorTaggerTaskMain {
   def main(argv: Array[String]) = {
     val t = new PosteriorTaggerTask(argv)
-    org.mitre.jcarafe.crf.CrfInstance.useCache = false
     t.process()
   }
 }

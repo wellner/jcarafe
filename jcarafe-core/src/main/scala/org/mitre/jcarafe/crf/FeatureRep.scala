@@ -364,7 +364,7 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
 
   val mgr: FeatureManager[Obs]
   
-  
+  val useCache : Boolean
 
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = {
     val src = new ObsSource(l, o, b, i)
@@ -467,6 +467,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
 
   def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManagerBuilder[Obs](opts, m, pre), opts, m)
 
+  val useCache = false
   var randomModel = (model.isInstanceOf[RandomStdModel])
   CrfInstance.randomFeatures = randomModel
   CrfInstance.numLabels = model.getLabelAlphabet.size
@@ -571,6 +572,7 @@ class TrainingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
   def this(mgr: FeatureManager[Obs], opts: Options) = this(mgr, opts, false, opts.semiCrf)
   def this(opts: Options) = this(opts, false, opts.semiCrf)
 
+  val useCache = !(opts.noCache)
   val random = opts.randomFeatures
   var numLabels = 0 
   
@@ -827,6 +829,7 @@ class NonFactoredFeatureRep[Obs](val opts: Options, val mgr: NonFactoredFeatureM
   def this(mgr: NonFactoredFeatureManager[Obs], ml: Int) = this(mgr, false, ml, false)
 
   val random = opts.numRandomFeatures > 0
+  val useCache = !(opts.noCache)
   def createSource(l: Int, o: Obs, b: Boolean, i: Option[Map[String, String]]): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, i)
   def createSource(l: Int, o: Obs, b: Boolean): ObsSource[Obs] = new ObsSource((l min maxLab), o, b, None)
 

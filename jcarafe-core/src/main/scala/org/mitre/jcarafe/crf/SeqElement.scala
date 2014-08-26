@@ -68,7 +68,7 @@ abstract class AbstractInstance(label: Int, val orig: Int, var segId: Int) exten
   
 }
 
-class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends AbstractInstance(label, orig, segId) {
+class CrfInstance(label: Int, orig: Int, segId: Int, useCache: Boolean = true, cv: Option[Array[Array[Feature]]] = None) extends AbstractInstance(label, orig, segId) {
 
   type FType = AbstractValuedFeatureType
 
@@ -77,7 +77,7 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
   var dimension1 = -1
   def getCompactVec = throw new RuntimeException("Unimplemented")
   def getCompVec: Array[Array[Feature]] =
-    if (CrfInstance.useCache) {
+    if (useCache) {
       if ((!CrfInstance.training && CrfInstance.maxSegSize < 1))
         Array(seg1Features.toArray) // case where we're decodign with standard CRFs
       else
@@ -94,7 +94,7 @@ class CrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feat
 
   // this speeds things up a bit for non-Semi CRF
   override def add(ft: FType) : Unit =
-    if (CrfInstance.useCache && (CrfInstance.maxSegSize < 1) && !CrfInstance.training) {
+    if (useCache && (CrfInstance.maxSegSize < 1) && !CrfInstance.training) {
       ft.getFeatures foreach { fc => seg1Features += fc }
     } else {
       super.add(ft) // semi-CRF case and/or for training
@@ -136,7 +136,7 @@ object CompiledCrfInstance {
   }
 }
 
-class SelfInducibleCrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends CrfInstance(label, orig, segId, cv) {
+class SelfInducibleCrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Array[Array[Feature]]] = None) extends CrfInstance(label, orig, segId, true, cv) {
   var selfUserFeatures: Set[Long] = Set()
 
   override def addSelf(l: Long): Unit = selfUserFeatures += l
@@ -144,7 +144,6 @@ class SelfInducibleCrfInstance(label: Int, orig: Int, segId: Int, cv: Option[Arr
 }
 
 object CrfInstance {
-  var useCache = true
   var training = false
   var maxSegSize = 0 // this is "0" based - so 0 means segment size 1 observation, 1 is size 2, etc.
   var diskCache: Option[String] = None

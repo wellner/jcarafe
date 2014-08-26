@@ -31,6 +31,7 @@ abstract class Trainer[Obs](val adjust: Boolean, val opts: Options) {
    * XX - use default parameters here
    */
   def train(): Unit = {
+    
     val seqs: collection.immutable.IndexedSeq[InstanceSequence] = sGen.createSeqsFromFiles // this has to happen before generating CRF  
     trainingRoutine(seqs)
   }
