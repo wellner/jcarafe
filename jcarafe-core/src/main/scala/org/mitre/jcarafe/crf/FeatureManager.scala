@@ -1082,7 +1082,7 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(wdShape).over((-1 to 1)),
           FeatureFn(wordPropertiesPrefixesFn(4,false)),
           FeatureFn(wordPropertiesPrefixesFn(6,false)),
-          FeatureFn(wordPropertiesFn(false)),
+          FeatureFn(wordPropertiesFn(false))
             )
       case "wd-only" =>
         List(
