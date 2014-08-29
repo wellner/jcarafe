@@ -819,6 +819,18 @@ abstract class FeatureManagerBuilder[Obs](
 
   def wdLen(s: Int, sarr: SourceSequence[Obs], pos: Int) =
     new FeatureReturn("wdLen", (sarr(pos).obs.toString.length.toDouble))
+  
+  def wdShape(s: Int, sarr: SourceSequence[Obs], pos: Int) = {    
+    val str = sarr(pos).obs.toString    
+    val carr = Array.tabulate(str.length){i =>
+      val c = str(i)
+      if (c.isUpper) 'X'
+      else if (c.isLower) 'x'
+      else if (c.isDigit) 'd'
+      else c
+    }
+    new FeatureReturn(carr.toString())
+  }
 
   private def genSelfFeatures(fn: Fn, name: Long, imap: InducedFeatureMap, s: Int, sarr: SourceSequence[Obs], pos: Int) = {
     val fres = fn(s, sarr, pos).features
@@ -885,7 +897,6 @@ abstract class FeatureManagerBuilder[Obs](
       else pre + "RightMoreThan-" + 12
     new FeatureReturn(fs)
   }
-
 }
 
 object FeatureManagerBuilder {
@@ -999,41 +1010,31 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(edgeFn),
           FeatureFn(downLexFn).over((-2 to 2)),
           FeatureFn(wdFnNorm).over((-2 to 2)),
-          FeatureFn(downLexFn).ngram(None,(-1 to 0)),
-          FeatureFn(downLexFn).ngram(None,(0 to 1)),
-          FeatureFn("transLex1",FeatureFn(downLexFn).over((-1 to 1)),true),
           FeatureFn("transWd1",FeatureFn(wdFnNorm).over((-1 to 1)),true),
           FeatureFn(wdFnNorm).ngram(None,(-1 to 0)),
           FeatureFn(wdFnNorm).ngram(None,(0 to 1)),
-          FeatureFn("clusterTr1",FeatureFn(wordPropertiesPrefixesFn(4,false)),true),
-          FeatureFn("clusterTr2",FeatureFn(wordPropertiesPrefixesFn(6,false)),true),
-          FeatureFn("clusterTr3",FeatureFn(wordPropertiesPrefixesFn(8,false)),true),
+          FeatureFn(wdShape).over((-1 to 1)),
           FeatureFn(wordPropertiesPrefixesFn(4,false)).over((-2 to 2)),
           FeatureFn(wordPropertiesPrefixesFn(6,false)).over((-2 to 2)),
-          FeatureFn(wordPropertiesPrefixesFn(8,false)).over((-2 to 2)),
-          FeatureFn(wordPropertiesPrefixesFn(4,false)).ngram(None,(-1 to 0)),
-          FeatureFn(wordPropertiesPrefixesFn(6,false)).ngram(None,(-1 to 0)),
-          FeatureFn(wordPropertiesPrefixesFn(8,false)).ngram(None,(-1 to 0)),          
-          FeatureFn(wordPropertiesPrefixesFn(4,false)).ngram(None,(0 to 1)),
-          FeatureFn(wordPropertiesPrefixesFn(6,false)).ngram(None,(0 to 1)),
-          FeatureFn(wordPropertiesPrefixesFn(8,false)).ngram(None,(0 to 1)),          
           FeatureFn(wordPropertiesFn(false)).over((-2 to 2)),
-          FeatureFn(wordPropertiesFn(false)).ngram(None,(-1 to 0)),
-          FeatureFn(wordPropertiesFn(false)).ngram(None,(0 to 1)),
           FeatureFn(prefixFn(8)),
           FeatureFn(suffixFn(8)),
-          FeatureFn(regexpFn("Designate1","^Corp.*".r)).within((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Inc.*".r)).within((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Ltd.*".r)).within((1 to 4)),
-          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).over((-3 to 4)),
-          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram(None,(1 to 2)),
-          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)).ngram(None,(-2 to -1)),
-          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-2 to 2)),
-          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-2 to 2)),
+          FeatureFn(regexpFn("Designate1","^Corp.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^Inc.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^Ltd.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^Llc.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^CORP.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^INC.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^LTD.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("Designate1","^LLC.*".r)).over((1 to 4)),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
           FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
           FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
           FeatureFn(regexpFn("HASDASH",".*-.*".r)).over(-1 to 1),
           FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("ALLNONALPHA","^[^A-z]+$".r)),
           FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
             )
 
