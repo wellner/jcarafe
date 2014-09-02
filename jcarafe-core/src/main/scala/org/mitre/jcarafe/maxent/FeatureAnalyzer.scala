@@ -97,6 +97,7 @@ object AnalyzeFeatures {
     val opts = new MEOptions(argv)
     val analyzer = new FeatureAnalyzer(opts)
     FeatureId.maintainMapping_=(true)
+    FeatureId.useFeatureClasses_=(true)
     analyzer.analyzeFeatures()
   }
 }
