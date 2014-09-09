@@ -33,6 +33,7 @@ class TokenizerOptions extends CommandLineHandler {
   "--region" multi "Region to tokenize"
   "--regionset" desc "File containing region specifications"
   "--tokenizer-patterns" desc "File with split-merge tokenization post-processing patterns"
+  "--multi-line" flag "Process multiple documents in a single file in JSON format"
 }
 
 object CharStr {
@@ -337,7 +338,8 @@ object FastTokenizer {
     val njson: JsonType = jsonTokenize(json, parseTags, zoneTags, whiteTok)
     Json.writeJson(njson, ofile)
   }
-
+  
+  
   private def rawTokenize(ifile: String, os: java.io.OutputStreamWriter, whiteOnly: Boolean = false) = {
     val sr = new java.io.FileInputStream(ifile)
     val reader = new InputStreamReader(sr, "UTF-8")
@@ -493,9 +495,17 @@ object FastTokenizer {
     r
   }
 
-  def processFile(jsonP: Boolean, ifile: String, ofile: String, parseTags: Boolean = false, zoneSet: Option[Tagset], whiteOnly: Boolean = false) =
+  def processFile(jsonP: Boolean, ifile: String, ofile: String, parseTags: Boolean = false, zoneSet: Option[Tagset], whiteOnly: Boolean = false, multiLine: Boolean = false) =
     if (jsonP) {
-      jsonTokenize(ifile, ofile, parseTags, zoneSet, whiteOnly)
+      if (multiLine) {
+        val src = scala.io.Source.fromFile(ifile)("UTF-8")
+        val os = new java.io.PrintWriter(new java.io.File(ifile))
+        src.getLines() foreach {line =>
+          val out = jsonTokenizeString(line, parseTags, zoneSet, whiteOnly)
+          os.write(out); os.write('\n')
+          }
+        os.close()
+      } else jsonTokenize(ifile, ofile, parseTags, zoneSet, whiteOnly)
     } else {
       val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(ofile)), "UTF-8")
       if (splittingAugmenter.isDefined || mergingAugmenter.isDefined) {
@@ -534,7 +544,9 @@ object FastTokenizer {
     opts.get("--input-file") match {
       case Some(ifile) =>
         val ofile = opts.get("--output-file") match {
-          case Some(ofile) => processFile(jsonP, ifile, ofile, handleTags, Some(zoneset), whiteOnly)
+          case Some(ofile) =>
+            val multiLine = (opts.check("--multi-line"))
+            processFile(jsonP, ifile, ofile, handleTags, Some(zoneset), whiteOnly, multiLine)
           case None => println("Output file expected"); sys.exit(2)
         }
       case None =>
