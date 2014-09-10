@@ -499,7 +499,7 @@ object FastTokenizer {
     if (jsonP) {
       if (multiLine) {
         val src = scala.io.Source.fromFile(ifile)("UTF-8")
-        val os = new java.io.PrintWriter(new java.io.File(ifile))
+        val os = new java.io.PrintWriter(new java.io.File(ofile))
         src.getLines() foreach {line =>
           val out = jsonTokenizeString(line, parseTags, zoneSet, whiteOnly)
           os.write(out); os.write('\n')

@@ -21,6 +21,54 @@ object JsonAnnotationHandler {
     }
     atts.reverse // ORDER -MUST- BE PRESERVED HERE
   }
+  
+  def getAnnotationsV2(signal: Option[String], js: JsonType, tagset: Tagset, asPreProc: Boolean = false, justLabel: Boolean = false, toks: Boolean = false): List[Annotation] =
+    js match {
+    case JsArray(arr) =>
+      val entityASet = arr.filter { case JsObject(o) => o.get("type") match {case Some(JsString("ENTITY")) => true case _ => false} case _ => false }
+      entityASet flatMap { aset =>
+        aset match {
+          case JsObject(o) =>
+            val s_attsKeys = o("attrs") match { case JsArray(ar_p) => getAttributeLabels(ar_p) case _ => Nil }
+            o("annots") match {
+                case JsArray(arr) =>
+                  val annotBuf = new scala.collection.mutable.ListBuffer[Annotation]
+                  arr.foreach { el =>
+                    el match {
+                      case JsArray(JsInt(st) :: JsInt(en) :: id :: attvlsP) => // case where annotation has an attribute
+                        val attvls: List[String] = attvlsP map { case JsString(s1) => s1 case _ => "--" }
+                        val attVlMap = (s_attsKeys zip attvls).foldLeft(Map(): Map[String, String]) { _ + _ }
+                        val matchingTagSpecs = tagset.set.filter { 
+                          case Label(s,ats) => 
+                            ((attVlMap.exists{case (a,v) => v == s}) &&
+                            (ats forall {case (a,v) => attVlMap.contains(a)} ) )
+                          case SLabel(s) => attVlMap.contains(s)
+                          case _ => false
+                        }
+                        matchingTagSpecs foreach { al =>
+                          al match {                        
+                          case Label(etype,a) =>                            
+                            val sAtt = s_attsKeys.find(s => al.hasAttributeWithWildCard(s).isDefined)
+                            val subType = sAtt map { at => (at,attVlMap(at)) }
+                            val vl = signal match { case Some(sig) => Some(sig.substring(st, en)) case None => None }
+                            subType match {
+                              case Some(stype) => annotBuf += new Annotation(st, en, false, Label(etype, Map(stype)), vl) 
+                              case None => annotBuf += new Annotation(st, en, false, SLabel(etype), vl, None)
+                            }
+                          case _ => throw new RuntimeException("MAT 2.0 annotation encoding currently requires non-simple tag specs")
+                        }
+                        }
+                      case _ => 
+                    }
+                  }
+                  annotBuf.toList
+                case _ => Nil
+            }
+          case _ => Nil
+        }        
+      }
+    case _ => Nil
+  }
   /*
    * This gathers annotations over the MAT-JSON defined schema.
    */

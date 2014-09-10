@@ -108,7 +108,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case ts =>
         mergeAnnotations(s_toks, ts)
     }
-    val targetAnnots = getAnnotations(None, asets, opts.tagset)
+    val targetAnnots = if (opts.mat2) getAnnotationsV2(None, asets, opts.tagset) else getAnnotations(None, asets, opts.tagset)
     val stack = new scala.collection.mutable.Stack[Annotation]
     if (targetAnnots.length > 0) {
       stack pushAll (targetAnnots.sortWith(_ > _))
@@ -414,8 +414,8 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     }
     annotTbl
   }
-
-  def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT = {
+  
+  def seqsToDeserializedV1(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT = {
     val annotTbl = seqsToAnnotations(d, seqs)
     val jsonPhrases: List[JsonType] =
       (annotTbl map {
@@ -447,5 +447,51 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
       case a => a
     }
     new JsonSeqDeserialization(jsonObj)
+  }
+  
+  def seqsToDeserializedV2(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT = {
+    /*
+     * This is a hack that will assume annotations are of type ENTITY and that the label is EntityType
+     */ 
+    val annotTbl = seqsToAnnotations(d, seqs)
+    val attKeys = List("MentionType")
+    /*
+     *  
+     */ 
+    val annots = annotTbl flatMap {
+      case (entityType, annots) =>
+        entityType match {
+          case Label(etype,stype) =>        
+            annots.toList map { a: Annotation =>
+                  a.typ match {
+                    case Label(et, atts) =>
+                      val attvals = attKeys map { k => JsString(atts(k)) }
+                      JsArray(JsInt(a.st.toInt) :: JsInt(a.en.toInt) :: JsNull :: JsString(et) :: attvals)
+                    case _ => throw new RuntimeException("Incompatible annotation")
+                  }
+            }
+          case _ => Nil }                
+    }
+    
+    
+    val jsonPhrases: List[JsonType] =
+      List(JsObject(Map("type" -> JsString("ENTITY"), 
+                  "attrs" -> JsArray(JsObject(Map("type" -> JsString("string"), "name" -> JsString("EntityType"), "aggregation" -> JsNull)) ::
+                      (attKeys map { subType => JsObject(Map("type" -> JsString("string"), "name" -> JsString(subType), "aggregation" -> JsNull)) } )),
+                "annots" -> JsArray(annots.toList))))
+    val jsonObj = d.json match {
+      case JsObject(obj) =>
+        val a1 =
+          (try { obj("asets") match { case JsArray(a) => a case _ => throw new RuntimeException("Invalid obj") } }
+          catch { case e: java.util.NoSuchElementException => Nil case e: Throwable => throw e })
+        JsObject(obj.updated("asets", JsArray(jsonPhrases ::: a1)))
+      case a => a
+    }
+    new JsonSeqDeserialization(jsonObj)
+  }
+  
+  def seqsToDeserialized(d: DeserializationT, seqs: Seq[InstanceSequence]): DeserializationT = {
+    if (opts.mat2) seqsToDeserializedV2(d, seqs)
+    else seqsToDeserializedV1(d, seqs)
   }
 }	

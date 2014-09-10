@@ -161,6 +161,7 @@ class OptionHandler(params: Array[String], check: Boolean) extends BaseOptionHan
   "--partial-threshold"  desc "Empirical posterior distribution threshold for partially-labeled training"
   "--use-entropy-threshold"  flag "Use entropy instead of mode prob. mass as threshold criterion"  
   "--one-hot"            flag "Force posterior distributions to be 'one-hot' distributions based on Viterbi output"
+  "--mat2"               flag "In JSON mode, use MAT 2.0 format (experimental/in-flux)"
 }
 
 class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val processArgs: Boolean = true) extends Serializable {
@@ -295,6 +296,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var partialThreshold: Double        = optHandler.get("--partial-threshold") match {case Some(v) => v.toDouble case None => 0.8}
   var entropyThreshold                = optHandler.check("--use-entropy-threshold")
   var oneHot : Boolean                = optHandler.check("--one-hot")
+  var mat2 : Boolean                  = optHandler.check("--mat2")
   
   def setInto(no: Options) = {
     no.CValue_=(CValue)
@@ -371,6 +373,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
     no.partialThreshold_=(partialThreshold)
     no.entropyThreshold_=(entropyThreshold)
     no.oneHot_=(oneHot)
+    no.mat2_=(mat2)
   }
   
   def copy() : Options = {
