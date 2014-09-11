@@ -529,6 +529,8 @@ abstract class FeatureManagerBuilder[Obs](
 
   val selfWdCode: Long = IncrementalMurmurHash.hash("-selfWd-", 0)
   val wdScoreCode: Long = IncrementalMurmurHash.hash(":wdScore:", 0)
+  val wdShapeCode: Long = IncrementalMurmurHash.hash(":shape:", 0)
+  val nearCorpCode: Long = IncrementalMurmurHash.hash(":nearCorp:", 0)
 
   /**
    * Computes a feature as the current observation
@@ -821,15 +823,37 @@ abstract class FeatureManagerBuilder[Obs](
     new FeatureReturn("wdLen", (sarr(pos).obs.toString.length.toDouble))
   
   def wdShape(s: Int, sarr: SourceSequence[Obs], pos: Int) = {    
-    val str = sarr(pos).obs.toString    
-    val carr = Array.tabulate(str.length){i =>
+    val str = sarr(pos).obs.toString()
+    val ln = str.length
+    val shapeFeature = BuiltFeature(wdShapeCode)
+    var i = 0; while (i < ln) {
       val c = str(i)
-      if (c.isUpper) 'X'
-      else if (c.isLower) 'x'
-      else if (c.isDigit) 'd'
-      else c
+      if (c.isUpper) shapeFeature @@ 'X'
+      else if (c.isLower) shapeFeature @@ 'x'
+      else if (c.isDigit) shapeFeature @@ 'd'
+      else shapeFeature @@ c
+      i += 1
     }
-    new FeatureReturn(carr.toString())
+    new FeatureReturn(shapeFeature)
+  }
+
+  private def isCorpAbbrev(s: String) = {
+    s match {
+      case "Corp." | "Ltd." | "Co." | "Inc." | "Cos." | "CORP." | "LTD." | "CO." | "INC." | "Corp" | "Ltd" | "Co" | "Inc" | "CORP" | "LTD" | "CO" | "INC" => true
+      case _ => false
+    }
+  }
+  /*
+   * Check whether current word is capitalized and a corp abbrev appears in the right context (1-3 words away)
+   */
+  def nearCorpAbbrev(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val sl = sarr.length
+    if (sarr(pos).obs.toString()(0).isUpper) {
+      if ((((pos + 1) < sl) && isCorpAbbrev(sarr(pos+1).obs.toString)) ||
+          (((pos + 2) < sl) && isCorpAbbrev(sarr(pos+2).obs.toString)) ||
+          (((pos + 3) < sl) && isCorpAbbrev(sarr(pos+3).obs.toString)) ) new FeatureReturn(nearCorpCode)
+      else new FeatureReturn
+    } else new FeatureReturn
   }
 
   private def genSelfFeatures(fn: Fn, name: Long, imap: InducedFeatureMap, s: Int, sarr: SourceSequence[Obs], pos: Int) = {
@@ -997,10 +1021,8 @@ class StaticFeatureManagerBuilder[Obs](
         List(
           FeatureFn(nodeFn),
           FeatureFn(edgeFn),
-          FeatureFn(wdFn),          
-          FeatureFn(lexFn),
           FeatureFn(wdFn).ngram(None, (-1 to 0)),
-          FeatureFn(lexFn).over((-1 to 1)),
+          FeatureFn(downLexFn).over((-1 to 1)),
           FeatureFn(wdFn).over((-2 to 2)),
           FeatureFn(wordPropertiesFn(false)) over (-2 to 2))
           
@@ -1019,14 +1041,7 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(wordPropertiesFn(false)),
           FeatureFn(prefixFn(8)),
           FeatureFn(suffixFn(8)),
-          FeatureFn(regexpFn("Designate1","^Corp.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Inc.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Ltd.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Llc.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^CORP.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^INC.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^LTD.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^LLC.*".r)).over((1 to 4)),
+          FeatureFn(nearCorpAbbrev),
           FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
           FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
           FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
@@ -1044,21 +1059,14 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(edgeFn),
           FeatureFn(downLexFn),
           FeatureFn(wdFn).over((-2 to 2)),
-          FeatureFn("transWd1",FeatureFn(wdFnNorm),true),
+          FeatureFn("transWd1",FeatureFn(wdFn),true),
           FeatureFn(wdFn).ngram(None,(-1 to 0)),
           FeatureFn(wdFn).ngram(None,(0 to 1)),
           FeatureFn(wdShape).over((-1 to 1)),
           FeatureFn(wordPropertiesPrefixesFn(4,false)),
           FeatureFn(wordPropertiesPrefixesFn(6,false)),
           FeatureFn(wordPropertiesFn(false)),
-          FeatureFn(regexpFn("Designate1","^Corp.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Inc.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Ltd.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^Llc.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^CORP.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^INC.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^LTD.*".r)).over((1 to 4)),
-          FeatureFn(regexpFn("Designate1","^LLC.*".r)).over((1 to 4)),
+          FeatureFn(nearCorpAbbrev),
           FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
           FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
           FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
@@ -1076,14 +1084,96 @@ class StaticFeatureManagerBuilder[Obs](
           FeatureFn(edgeFn),
           FeatureFn(downLexFn),
           FeatureFn(wdFn).over((-2 to 2)),
-          FeatureFn("transWd1",FeatureFn(wdFnNorm),true),
+          FeatureFn("transWd1",FeatureFn(wdFn),true),
           FeatureFn(wdFn).ngram(None,(-1 to 0)),
           FeatureFn(wdFn).ngram(None,(0 to 1)),
           FeatureFn(wdShape).over((-1 to 1)),
-          FeatureFn(wordPropertiesPrefixesFn(4,false)),
-          FeatureFn(wordPropertiesPrefixesFn(6,false)),
-          FeatureFn(wordPropertiesFn(false))
+          FeatureFn(nearCorpAbbrev),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("ALLNONALPHA","^[^A-z]+$".r)),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
             )
+      case "en-pos-4" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn("transWd1",FeatureFn(wdFn),true),
+          FeatureFn(wdShape).over((-1 to 1)),
+          FeatureFn(nearCorpAbbrev),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("ALLNONALPHA","^[^A-z]+$".r)),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
+            )
+
+      case "en-pos-5" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(wdShape).over((-1 to 1)),
+          FeatureFn(nearCorpAbbrev),
+          FeatureFn(regexpFn("INITCAP","^[A-Z].*".r)),
+          FeatureFn(regexpFn("INITCAP_ALPHA","^[A-Z][a-z]*$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("ALLCAPS","^[A-Z]+$".r)).over((-1 to 1)),
+          FeatureFn(regexpFn("CAPSMIX","^[A-z]+$".r)),
+          FeatureFn(regexpFn("HASDIGIT",".*[0-9].*".r)),
+          FeatureFn(regexpFn("HASDASH",".*-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("INITDASH","^-.*".r)).over(-1 to 1),
+          FeatureFn(regexpFn("ALLNONALPHA","^[^A-z]+$".r)),
+          FeatureFn(regexpFn("PUNCT","^[^A-z0-9]+$".r))
+            )
+
+      case "en-pos-6" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(wdShape).over((-1 to 1)),
+          FeatureFn(nearCorpAbbrev)
+            )
+
+      case "en-pos-7" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(nearCorpAbbrev)
+            )
+
+      case "en-pos-8" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(downLexFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(wdShape).over((-1 to 1))
+            )
+
+      case "en-pos-9" =>        
+        List(
+          FeatureFn(nodeFn),
+          FeatureFn(edgeFn),
+          FeatureFn(wdFn).over((-2 to 2)),
+          FeatureFn(wdShape).over((-1 to 1))
+            )
+
       case "wd-only" =>
         List(
             FeatureFn(nodeFn),
