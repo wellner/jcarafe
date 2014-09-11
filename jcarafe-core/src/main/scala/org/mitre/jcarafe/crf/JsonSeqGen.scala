@@ -475,7 +475,7 @@ trait JsonSeqGen extends SeqGen[String] with FactoredSeqGen[String] {
     
     
     val jsonPhrases: List[JsonType] =
-      List(JsObject(Map("type" -> JsString("ENTITY"), 
+      List(JsObject(Map("hasID" -> JsTrue, "type" -> JsString("ENTITY"), 
                   "attrs" -> JsArray(JsObject(Map("type" -> JsString("string"), "name" -> JsString("EntityType"), "aggregation" -> JsNull)) ::
                       (attKeys map { subType => JsObject(Map("type" -> JsString("string"), "name" -> JsString(subType), "aggregation" -> JsNull)) } )),
                 "annots" -> JsArray(annots.toList))))
