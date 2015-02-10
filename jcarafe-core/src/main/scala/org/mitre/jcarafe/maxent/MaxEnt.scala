@@ -1179,8 +1179,8 @@ object MaxEntClassifierMain {
   }
 }
 
-class RuntimeMaxEntTrainer(opts: Options, var gp: Double = 10.0) extends MaxEntTrainer {
-  def this(gp: Double) = this(new Options(), gp)
+class RuntimeMaxEntTrainer(mo: MEOptions, var gp: Double = 10.0) extends MaxEntTrainer(mo) {
+  def this(gp: Double) = this(new MEOptions(), gp)
   import scala.collection.JavaConversions._
   import MaxEntSerializer._
 

@@ -37,7 +37,7 @@ class DATagger(argv: Array[String]) extends TaggerTask[Array[String]](argv) {
     val builder = new PostFeatureManagerBuilder(model.fspec)
     val mgr = builder.getFeatureManager
     //mgr.lex_=(model.lex)
-      val fr = new DecodingFactoredFeatureRep[Array[String]](mgr, opts, model)
+      val fr = new DecodingFactoredFeatureRep[Array[String]](mgr, opts, model, false)
 	  val sGen : FactoredDecodingSeqGen[Array[String]] =
 		  new FactoredDecodingSeqGen[Array[String]] (fr, model,opts) with DATextSeqGen with SeqGenScorer[Array[String]]
       setDecoder(true)

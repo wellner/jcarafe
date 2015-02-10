@@ -24,8 +24,8 @@ object JCarafeBuild extends Build {
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
-    version := "0.9.94-SNAPSHOT",
-    scalaVersion := "2.10.4",
+    version := "0.9.95-SNAPSHOT",
+    scalaVersion := "2.11.5",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
     publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
@@ -45,10 +45,12 @@ object JCarafeBuild extends Build {
     libraryDependencies ++= Seq(
       //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
       //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
-      "org.json4s" %% "json4s-jackson" % "3.2.6",
+      "org.json4s" %% "json4s-jackson" % "3.2.11",
       "junit" % "junit" % "4.8.1" % "test",
-      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
-      "com.twitter" % "chill_2.10" % "0.3.1"
+      "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
+      //"tv.cntt" % "chill-scala" % "1.2"
+      //"org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+      "com.twitter" % "chill_2.11" % "0.5.2"
     )
   )
 
@@ -58,9 +60,10 @@ object JCarafeBuild extends Build {
     libraryDependencies ++= Seq(
       //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
       //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
-      "org.json4s" %% "json4s-jackson" % "3.2.6",
-      "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
-      "com.twitter" % "chill_2.10" % "0.3.1"
+      "org.json4s" %% "json4s-jackson" % "3.2.11",
+      "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
+      "com.twitter" % "chill_2.11" % "0.5.2"
+      //"tv.cntt" % "chill-scala" % "1.2"
     )
   )
 

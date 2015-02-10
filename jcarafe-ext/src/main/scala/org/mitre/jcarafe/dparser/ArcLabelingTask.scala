@@ -18,7 +18,7 @@ class ArcLabeler(argv: Array[String]) extends TaggerTask[String](argv) {
   lazy val decoder = new StdDecoder(opts) {
     val builder = new ArcLabelingFeatureManagerBuilder[String](opts.featureSpec.get)
     val mgr = builder.getFeatureManager
-    val fr = new DecodingFactoredFeatureRep[String](mgr,opts,model)
+    val fr = new DecodingFactoredFeatureRep[String](mgr,opts,model,false)
     val sGen = new FactoredDecodingSeqGen[String](fr,model,opts) with CoNLLSeqGenLabel
   }
 

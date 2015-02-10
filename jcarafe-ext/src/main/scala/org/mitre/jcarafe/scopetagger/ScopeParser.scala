@@ -63,7 +63,7 @@ class ScopeParser(opts: Options) extends StdTaggerTask(opts) {
     new StdDecoder(opts) {
       val builder = new ScopeFeatureManagerBuilder(model.fspec)
       val mgr = builder.getFeatureManager
-      val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model)
+      val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model, false)
       val eval = opts.evaluate.isDefined
       val sGen : FactoredDecodingSeqGen[String] = 
 	if (eval) new FactoredDecodingSeqGen[String] (fr, model,opts) with ScopeSeqGen with SeqGenScorer[String]
@@ -249,7 +249,7 @@ class ScopeDecoder(scopeModel: String, opts: Options) extends FactoredDecoder[St
   val model = readModel(scopeModel)
   val builder = new ScopeFeatureManagerBuilder(model.fspec)
   val mgr = builder.getFeatureManager
-  val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model)
+  val fr = new DecodingFactoredFeatureRep[String](mgr, opts, model, false)
   val sGen : FactoredDecodingSeqGen[String] = new FactoredDecodingSeqGen[String] (fr, model,opts) with ScopeJsonSeqGen with SeqGenScorer[String]
   setDecoder(true)
 }

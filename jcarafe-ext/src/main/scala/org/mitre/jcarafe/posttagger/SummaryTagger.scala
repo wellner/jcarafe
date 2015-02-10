@@ -39,7 +39,7 @@ class SummaryTagger(argv: Array[String]) extends TaggerTask[Array[String]](argv)
     val builder = new PostFeatureManagerBuilder(model.fspec)
     //mgr.lex_=(model.lex)
     val mgr = builder.getFeatureManager
-    val fr = new DecodingFactoredFeatureRep[Array[String]](mgr, opts, model)
+    val fr = new DecodingFactoredFeatureRep[Array[String]](mgr, opts, model, false)
     opts.priorAdjust match {case Some(v) => model.adjustParameter(org.mitre.jcarafe.crf.IncrementalMurmurHash.hash(":U:",0),Label("Post",Map("summary" -> "no")),v) case None => }
     val sGen : FactoredDecodingSeqGen[Array[String]] =
       new FactoredDecodingSeqGen[Array[String]] (fr, model,opts) with SummarizationTextSeqGen with SeqGenScorer[Array[String]]

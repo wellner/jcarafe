@@ -69,7 +69,7 @@ case class Label(val l: String, val atts: Map[String,String]) extends AbstractLa
   }
 }
 
-case class UncertainLabel extends AbstractLabel {
+case class UncertainLabel() extends AbstractLabel {
   override val uncertain = true
   def assoc(s:String) = "Uncertain"
   val labelHead = "Uncertain"

@@ -463,9 +463,9 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
  * @param maxSegSize - passed to super constructor
  * @author Ben Wellner
 */
-class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, model: StdModel, preDecoder: Boolean = false) extends FactoredFeatureRep[Obs]((model.segSize > 1)) {
+class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Options, model: StdModel, preDecoder: Boolean) extends FactoredFeatureRep[Obs]((model.segSize > 1)) {
 
-  def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManagerBuilder[Obs](opts, m, pre), opts, m)
+  def this(opts: Options, m: StdModel, pre: Boolean = false) = this(FeatureManagerBuilder[Obs](opts, m, pre), opts, m, pre)
 
   val useCache = false
   var randomModel = (model.isInstanceOf[RandomStdModel])
@@ -544,7 +544,7 @@ class DecodingFactoredFeatureRep[Obs](val mgr: FeatureManager[Obs], opts: Option
 }
 
 class SelfInducibleDecodingFactoredFeatureRep[Obs](mgr: FeatureManager[Obs], opts: Options, model: StdModel)
-  extends DecodingFactoredFeatureRep[Obs](mgr, opts, model) {
+  extends DecodingFactoredFeatureRep[Obs](mgr, opts, model,false) {
   def this(opts: Options, m: StdModel) = this(FeatureManagerBuilder.createForSelfTraining[Obs](opts, m), opts, m)
 
   override def createInstance(l: Int, o: Int, sId: Int) = new SelfInducibleCrfInstance(l, o, sId)
