@@ -63,6 +63,7 @@ class FeatureAnalyzer(opts: MEOptions) {
     val invLaMap = sGen.invLa
     val sortedLaMap = invLaMap.toList.sortWith({ case ((v1, _), (v2, _)) => v1 < v2 })
     val featureMis: IndexedSeq[(Double, Int, Int, List[(Int, Int)], IndexedSeq[Double])] =
+
       for (i <- 0 until (sGen.getNumberOfFeatures / sGen.getNumberOfStates)) yield {
         val ar = Array.fill(dim)(0)
         input.zipWithIndex foreach {

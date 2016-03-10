@@ -424,8 +424,8 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
   protected def addFeature(ss: Int, inst: CrfInstance, yprv: Int, yp: Int, fname: BuiltFeature, supporting: Boolean = false, fcat: FeatureCat = StdFeature): Unit = {
     addFeature(ss, inst, yprv, yp, fname.get, fname.value, supporting, fcat)
   }
-
-  val displacedMap = new collection.mutable.HashMap[Obs, FeatureReturn]
+    
+  val displacedMap = new collection.mutable.HashMap[Obs, Set[BuiltFeature]]
   val disInt = IncrementalMurmurHash.hash("DIS", 0)
 
   def resetDisplacement: Unit = displacedMap.clear
@@ -433,19 +433,23 @@ abstract class FactoredFeatureRep[Obs](semi: Boolean) extends FeatureRep[Obs](se
   protected def updateDisplaceableFeatures(dseq: SourceSequence[Obs], pos: Int, fresult: FeatureReturn) = {
     if (fresult.features.length > 0) {
       val obs = dseq(pos).obs
-      val r = displacedMap.get(obs) match { case Some(r) => r case None => new FeatureReturn }
-      val nr = r.join(fresult)
-      nr.displaced_=(true)
-      displacedMap.put(obs, fresult)
+      //println("Adding displaced feature on token " + obs + " => " + fresult)
+      // this needs to ADD feature to a set of displaced features related to this token
+      val existingSet = displacedMap.getOrElse(obs, Set())
+      val frFeatures = fresult.features
+      displacedMap.put(obs, existingSet ++ frFeatures)
     }
   }
 
   protected def addDisplacedFeatures(inst: CrfInstance, d: Int, dseq: SourceSequence[Obs], pos: Int, yp: Int, yprv: Int, static: Boolean) = {
     val obs = dseq(pos).obs
     displacedMap.get(obs) match {
-      case Some(fr) =>
+      case Some(fbs) =>
+        val fr = new FeatureReturn(fbs.toList, false, false)
+        fr.displaced_=(true)
         fr.update(disInt) // make features displaced
         fr.features foreach { f =>
+         //println("ACTUAL add displacement on str = " + obs + " is => " + f)
           if (static) addFeatureStatic(d, inst, f) else addFeature(d, inst, (if (fr.edgeP) yprv else (-1)), yp, f, false, fr.fcat)
         }
       case None =>

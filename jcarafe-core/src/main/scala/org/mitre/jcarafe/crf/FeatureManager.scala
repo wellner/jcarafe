@@ -17,7 +17,13 @@ class BuiltFeature(var value: Double) extends Serializable {
   import IncrementalMurmurHash._
   def this() = this(1.0)
   var hv: Long = 0L // feature id hash value, built incrementally
-
+  
+  override def hashCode() = hv.toInt
+  override def equals(other: Any) = other match {
+    case bf: BuiltFeature => this.hashCode() == bf.hashCode()
+    case _ => false
+  }
+  
   def @@(l: Char) = {
     hv = mix(hv, l.toByte)
     this
@@ -296,7 +302,15 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
   def displaced: FeatureFn[Obs] = {
     val rref = this
     new FeatureFn[Obs](n + ">>displaced<<") {
-      def apply(s: Int, d: SourceSequence[Obs], p: Int) = displacedFeatureFn(rref)(s, d, p)
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = displacedFeatureFn(rref, Set())(s, d, p)
+    }
+  }
+  
+  def displaced(s: Seq[String]): FeatureFn[Obs] = {
+    val rref = this
+    val posCodes = s map {s => IncrementalMurmurHash.hash(s)}
+    new FeatureFn[Obs](n + ">>displaced<<") {
+      def apply(s: Int, d: SourceSequence[Obs], p: Int) = displacedFeatureFn(rref, posCodes.toSet)(s, d, p)
     }
   }
 
@@ -429,10 +443,12 @@ abstract class FeatureFn[Obs](val n: String) extends Serializable {
     */
   }
 
-  def displacedFeatureFn(fn: FeatureFn[Obs])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    val fr = fn(s, sarr, pos)
-    fr.displaced_=(true)
-    fr
+  def displacedFeatureFn(fn: FeatureFn[Obs], partOfSpeeches: Set[Long])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    if (partOfSpeeches.isEmpty || partOfSpeeches.contains(sarr(pos).posCode)) {
+      val fr = fn(s, sarr, pos)
+      fr.displaced_=(true)
+      fr
+    } else new FeatureReturn
   }
 
 }

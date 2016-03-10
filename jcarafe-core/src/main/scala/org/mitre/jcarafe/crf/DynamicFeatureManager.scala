@@ -91,6 +91,7 @@ class DynamicFeatureManagerBuilder[Obs](
     ("(" ~ fullExpr ~ ")" ~ ("ngram"|"N-") ~ rangeExpr ~ opt("SUCCEED")) ^^ {case (_~l~_~_~r~o) => l.ngram(o,r:_*)} |
     ("(" ~ fullExpr ~ ")" ~ ("within"|"W-") ~ rangeExpr) ^^ {case (_~l~_~_~r) => l.within(r:_*)} |
     ("(" ~ fullExpr ~ ")" ~ ("over"|"@-") ~ rangeExpr) ^^ {case (_~l~_~_~r) => l.over(r:_*)} |
+    ("(" ~ fullExpr ~ ")" ~ ("displaced") ~ capStringExpr) ^^ { case (_~l~_~_~posTags) => l.displaced(posTags) } |
     ("(" ~ fullExpr ~ ")" ~ ("displaced")) ^^ { case (_~l~_~_) => l.displaced } |
     ("(" ~ fullExpr ~ ")" ~ ("self"|"<>") ~ fname ~ opt(rangeExpr)) ^^ { case (_~l~_~_~r~s) => s match {case None => l.self(r) 
 												      case Some(s) => l.self(r,s:_*) }} |
@@ -145,10 +146,12 @@ class DynamicFeatureManagerBuilder[Obs](
   def rangeExpr : Parser[Seq[Int]] = basRangeExpr | toRangeExpr
   def basRangeExpr : Parser[Seq[Int]] = "(" ~> repsep(intVal,",") <~ ")" ^^ {_.toSeq}
   def toRangeExpr : Parser[Seq[Int]] = "(" ~> intVal ~ "to" ~ intVal <~ ")" ^^ {case(f~_~t) => (f to t).toSeq} 
+  def capStringExpr : Parser[Seq[String]] = "(" ~> repsep(capStringVal, ",") <~ ")" ^^ {_.toSeq}
   def intVal : Parser[Int] = """-?[0-9]+""".r ^^ {_.toInt}
   def trueVal : Parser[Boolean] = "true" ^^ {_ => true}
   def falseVal : Parser[Boolean] = "false" ^^ {_ => false}
   def boolVal : Parser[Boolean] = trueVal | falseVal
+  def capStringVal : Parser[String] = """[A-Z]+""".r ^^ {a => a}
 
   def parseIt(r: java.io.Reader) : List[FeatureFn[Obs]] = { 
     val res = parseAll(topExprs,new PagedSeqReader(PagedSeq.fromReader(r)))

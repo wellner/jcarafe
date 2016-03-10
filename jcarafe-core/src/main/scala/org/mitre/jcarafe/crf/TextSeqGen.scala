@@ -134,8 +134,8 @@ trait TextSeqGen extends SeqGen[String] with FactoredSeqGen[String] with XmlConv
           case HardEndTok(t) :: r =>
             if (opts.preProc && !withinTag) endSeq(Some(t), cont)
             gather(r, cont)
-          case EndWs(t) :: r => if (!withinTag) endSeq(None, cont); gather(r, cont)
-          case Ws(_) :: r => if (!withinTag && ((docPos - prevPos) > MAX_SEQ_LEN)) endSeq(None, cont); gather(r, cont)
+          case EndWs(t) :: r => if (opts.preProc && !withinTag) endSeq(None, cont); gather(r, cont)
+          case Ws(_) :: r => if (opts.preProc && !withinTag && ((docPos - prevPos) > MAX_SEQ_LEN)) endSeq(None, cont); gather(r, cont)
           case Tag(t, false) :: r => // note that closing lex tags won't reach this 
             val (l, atts) = getLabelAndAttrsFromTag(t)
             if (l != "lex") {
