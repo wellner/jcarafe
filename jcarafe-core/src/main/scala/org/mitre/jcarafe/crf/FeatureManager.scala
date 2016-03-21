@@ -534,6 +534,7 @@ abstract class FeatureManagerBuilder[Obs](
   val lexFn: Fn = _lexiconFn(false) _
   val downLexFn: Fn = _lexiconFn(true) _
   val caselessWdFn: Fn = _caselessWdFn _
+  
 
   val nodeFr = new FeatureReturn(":U:")
   val edgeFr = new FeatureReturn(":E:", true)
@@ -687,7 +688,17 @@ abstract class FeatureManagerBuilder[Obs](
     else new FeatureReturn
 
   def _lexiconFn(down: Boolean)(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
-    new FeatureReturn(sarr(pos).lexCodes map { v => BuiltFeature(v, denseFeatureWt) }, false)
+    if (down) {
+      lex match {
+        case Some(l) =>
+          l.get(sarr(pos).obs.toString.toLowerCase) match {
+            case Some(lms) => new FeatureReturn(lms map {BuiltFeature(_, denseFeatureWt)}, false) 
+            case None => new FeatureReturn
+          }          
+        case None => new FeatureReturn
+      }
+      
+    } else new FeatureReturn(sarr(pos).lexCodes map { BuiltFeature(_, denseFeatureWt) }, false)
     /*
     case Some(l) =>
       val s = if (down) sarr(pos).obs.toString.toLowerCase else sarr(pos).obs.toString
@@ -695,6 +706,29 @@ abstract class FeatureManagerBuilder[Obs](
        case None => new FeatureReturn}
     case None => new FeatureReturn
     */
+  }
+  
+  /**
+   * Add lexicon features, but only if it matches an allowed set of named lexicons
+   * Useful for displacing features or other more advanced uses of lexicons
+   */
+  def _filteredLexFn(down: Boolean, filter: Set[String])(s: Int, sarr: SourceSequence[Obs], pos: Int) = {
+    val filterHash = filter map {f => IncrementalMurmurHash.hash(f)}
+    if (down) {  
+      lex match {
+        case Some(l) => 
+          l.get(sarr(pos).obs.toString.toLowerCase) match {
+            case Some(lms) =>
+              // only add lexicon features contained in filter
+              val toAdd = lms.foldLeft(Nil:List[BuiltFeature]){case (ac, v) => if (filterHash.contains(v)) BuiltFeature(v, denseFeatureWt) :: ac else ac}
+              new FeatureReturn(toAdd, false) 
+            case None => new FeatureReturn
+          }
+        case None => new FeatureReturn
+      }
+    } else
+      new FeatureReturn((sarr(pos).lexCodes.foldLeft(Nil:List[BuiltFeature]) {
+        case (ac,v) => if (filterHash.contains(v)) BuiltFeature(v, denseFeatureWt) :: ac else ac}), false)
   }
 
   def wordPropertiesFn(down: Boolean)(s: Int, sarr: SourceSequence[Obs], pos: Int) = wdProps match {

@@ -91,7 +91,7 @@ class DynamicFeatureManagerBuilder[Obs](
     ("(" ~ fullExpr ~ ")" ~ ("ngram"|"N-") ~ rangeExpr ~ opt("SUCCEED")) ^^ {case (_~l~_~_~r~o) => l.ngram(o,r:_*)} |
     ("(" ~ fullExpr ~ ")" ~ ("within"|"W-") ~ rangeExpr) ^^ {case (_~l~_~_~r) => l.within(r:_*)} |
     ("(" ~ fullExpr ~ ")" ~ ("over"|"@-") ~ rangeExpr) ^^ {case (_~l~_~_~r) => l.over(r:_*)} |
-    ("(" ~ fullExpr ~ ")" ~ ("displaced") ~ capStringExpr) ^^ { case (_~l~_~_~posTags) => l.displaced(posTags) } |
+    ("(" ~ fullExpr ~ ")" ~ ("displaced") ~ stringExpr) ^^ { case (_~l~_~_~posTags) => l.displaced(posTags) } |
     ("(" ~ fullExpr ~ ")" ~ ("displaced")) ^^ { case (_~l~_~_) => l.displaced } |
     ("(" ~ fullExpr ~ ")" ~ ("self"|"<>") ~ fname ~ opt(rangeExpr)) ^^ { case (_~l~_~_~r~s) => s match {case None => l.self(r) 
 												      case Some(s) => l.self(r,s:_*) }} |
@@ -107,8 +107,12 @@ class DynamicFeatureManagerBuilder[Obs](
   def wdFnNormExpr : Parser[FeatureFn[Obs]]       = "wdNormFn" ^^ {_ => wdFnNorm _}
   def caseLessFnExpr : Parser[FeatureFn[Obs]]     = "caselessWdFn" ^^ {_ => caselessWdFn}
   def posFnExpr: Parser[FeatureFn[Obs]]           = "preLabFn" ^^ {_ => _preLabFn _}
-  def lexFnExpr : Parser[FeatureFn[Obs]]          = "lexFn" ^^ {_ => lexFn}
-  def downLexFnExpr : Parser[FeatureFn[Obs]]      = "downLexFn" ^^ {_ => downLexFn}
+  //def lexFnExpr : Parser[FeatureFn[Obs]]          = "lexFn" ^^ {_ => lexFn}
+  def lexFnExpr: Parser[FeatureFn[Obs]] =     
+     ("lexFn" ~ opt(stringExpr)) ^^ {case (_~Some(filter)) => _filteredLexFn(false,filter.toSet) _ case _ => lexFn}
+  //def downLexFnExpr : Parser[FeatureFn[Obs]]      = "downLexFn" ^^ {_ => downLexFn}
+  def downLexFnExpr: Parser[FeatureFn[Obs]] =     
+     ("downLexFn" ~ opt(stringExpr)) ^^ {case (_~Some(filter)) => _filteredLexFn(true,filter.toSet) _ case _ => downLexFn}
   def wdPropFnExpr : Parser[FeatureFn[Obs]]       = "wdPropFn" ^^ {_ => wordPropertiesFn(false) _ }
   def wdPropPrefixFnExpr : Parser[FeatureFn[Obs]] = "wdPropPrefixFn(" ~> intVal <~ ")" ^^ {v => wordPropertiesPrefixesFn(v,false) _ }
   def downWdPropFnExpr : Parser[FeatureFn[Obs]]   = "downWdPropFn" ^^ {_ => wordPropertiesFn(true) _ }
@@ -125,6 +129,7 @@ class DynamicFeatureManagerBuilder[Obs](
   def distToLeftExpr : Parser[FeatureFn[Obs]]     = "distToLeft(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => distanceToLeft(a,v) _ }
   def distToRightExpr : Parser[FeatureFn[Obs]]    = "distToRight(" ~> fname ~ "," ~ fname <~ ")" ^^ {case (a~_~v) => distanceToRight(a,v) _ }
   def sentPosExpr : Parser[FeatureFn[Obs]]        = "sentPos" ^^ {_ => sentPosition _}
+  
   
   def prefFnExpr : Parser[FeatureFn[Obs]]         = "prefixFn(" ~> intVal <~ ")" ^^ { v => prefixFn(v) _}
 
@@ -146,12 +151,12 @@ class DynamicFeatureManagerBuilder[Obs](
   def rangeExpr : Parser[Seq[Int]] = basRangeExpr | toRangeExpr
   def basRangeExpr : Parser[Seq[Int]] = "(" ~> repsep(intVal,",") <~ ")" ^^ {_.toSeq}
   def toRangeExpr : Parser[Seq[Int]] = "(" ~> intVal ~ "to" ~ intVal <~ ")" ^^ {case(f~_~t) => (f to t).toSeq} 
-  def capStringExpr : Parser[Seq[String]] = "(" ~> repsep(capStringVal, ",") <~ ")" ^^ {_.toSeq}
+  def stringExpr : Parser[Seq[String]] = "(" ~> repsep(stringVal, ",") <~ ")" ^^ {_.toSeq}
   def intVal : Parser[Int] = """-?[0-9]+""".r ^^ {_.toInt}
   def trueVal : Parser[Boolean] = "true" ^^ {_ => true}
   def falseVal : Parser[Boolean] = "false" ^^ {_ => false}
   def boolVal : Parser[Boolean] = trueVal | falseVal
-  def capStringVal : Parser[String] = """[A-Z]+""".r ^^ {a => a}
+  def stringVal : Parser[String] = """[A-z]+""".r ^^ {a => a}
 
   def parseIt(r: java.io.Reader) : List[FeatureFn[Obs]] = { 
     val res = parseAll(topExprs,new PagedSeqReader(PagedSeq.fromReader(r)))

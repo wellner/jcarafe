@@ -24,12 +24,19 @@ object JCarafeBuild extends Build {
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre",
-    version := "0.9.95-SNAPSHOT",
+    version := "0.9.96-SNAPSHOT",
     scalaVersion := "2.11.5",
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
-    publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
+    //publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
     //publishTo := Some("maven-proxy-releases" at "http://maven-proxy.mitre.org/artifactory/libs-releases-local"),
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ => false },
+    publishTo := Some("Artifactory Realm" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime),
+    resolvers += "Artifactory" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local/",
+    credentials += Credentials("Artifactory Realm", "artifacts.mitre.org", "wellner", "AP9dRJBjdWnjTcqPAkgkPouQ5kJ"),
+    scalacOptions += "-target:jvm-1.7",
     javacOptions ++= Seq("-source","1.7","-target","1.7")
   )
 

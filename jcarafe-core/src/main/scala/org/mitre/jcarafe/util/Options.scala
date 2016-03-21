@@ -230,6 +230,7 @@ class Options(val argv: Array[String], val optHandler: BaseOptionHandler, val pr
   var model : Option[String]          = optHandler.get("--model") 
 
   var lexDir : Option[String]         = optHandler.get("--lexicon-dir")
+  var dispLexDir : Option[String]         = optHandler.get("--displaced-lexicon-dir")
   var wordPropFile : Option[String]   = optHandler.get("--word-properties")
   var wordScoreFile : Option[String]   = optHandler.get("--word-scores")
   var preProc : Boolean               = !(optHandler.check("--no-pre-proc"))

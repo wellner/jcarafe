@@ -42,10 +42,10 @@ class HashLexicon(val dir: Option[java.io.File]) extends HashMap[String,List[Lon
     src foreach {l => 
       val els = l.split(' ') 
       forIndex(els.length){i =>	
-	if (i > 0) {
-	  val nm = name + i
-	  add(els(i),nm)}
-        add(els(i),name)}
-      }
+	      if (i > 0) {
+	        val nm = name + i
+	        add(els(i),nm)}
+          add(els(i),name)}
+        }
   }
 }
