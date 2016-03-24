@@ -23,9 +23,17 @@ object JCarafeBuild extends Build {
   val keyFile = new java.io.File("~/.ssh/id_rsa.pub")
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
-    organization := "org.mitre",
+    organization := "org.mitre.jcarafe",
     version := "0.9.96-SNAPSHOT",
-    scalaVersion := "2.11.5",
+    scalaVersion := "2.11.7",
+    crossScalaVersions := Seq("2.10.5","2.11.7"),
+    publishTo := {
+       val nexus = "https://oss.sonatype.org/"
+       if (isSnapshot.value)
+         Some("snapshots" at nexus + "content/repositories/snapshots")
+       else
+         Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    },
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
     //publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
@@ -33,11 +41,26 @@ object JCarafeBuild extends Build {
     publishMavenStyle := true,
     publishArtifact in Test := false,
     pomIncludeRepository := { _ => false },
-    publishTo := Some("Artifactory Realm" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime),
-    resolvers += "Artifactory" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local/",
-    credentials += Credentials("Artifactory Realm", "artifacts.mitre.org", "wellner", "AP9dRJBjdWnjTcqPAkgkPouQ5kJ"),
-    scalacOptions += "-target:jvm-1.7",
-    javacOptions ++= Seq("-source","1.7","-target","1.7")
+    licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    homepage := Some(url("https://github.com/project-mandolin/mandolin.git")),
+    pomExtra in Global := {
+      <scm>
+        <connection>scm:git:github.com:wellner/jcarafe.git</connection>
+        <url>git@github.com/wellner/jcarafe.git</url>
+      </scm>
+      <developers>
+        <developer>
+          <id>wellner</id>
+          <name>Ben Wellner</name>
+          <url>https://github.com/wellner/jcarafe.git</url>
+        </developer>
+      </developers>
+    },    
+    //publishTo := Some("Artifactory Realm" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime),
+    //resolvers += "Artifactory" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local/",
+    //credentials += Credentials("Artifactory Realm", "artifacts.mitre.org", "wellner", "AP9dRJBjdWnjTcqPAkgkPouQ5kJ"),
+    scalacOptions += "-target:jvm-1.8",
+    javacOptions ++= Seq("-source","1.8","-target","1.8")
   )
 
   def rootSettings =  sharedSettings ++ Seq(

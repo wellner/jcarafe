@@ -33,8 +33,6 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
     val dobj = sGen.deserializeFromString(s)
     val seqs = sGen.createSeqsWithInput(dobj)
     val viterbiInstance = Viterbi(dynamic, ss, model.crf, opts.posteriors)
-    println("decode to annots")
-
     seqs foreach viterbiInstance.assignBestSequence
     sGen.seqsToString(dobj, seqs)
   }
