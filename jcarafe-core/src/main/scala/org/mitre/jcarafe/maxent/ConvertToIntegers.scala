@@ -20,8 +20,16 @@ object ConvertToIntegers {
 	case lab :: features =>
 	  val nl = labAlphabet.update(lab)
 	  os.write(nl.toString)
-	  val indices = features map {f => alphabet.update(f) + 1}
-	  indices.sortWith(_ < _) foreach {f => os.write(' '); os.write(f.toString); os.write(":1.0")}
+	  val indices = features map {f =>
+	    val fs = f.split(':')
+	    if (fs.length > 1) ((alphabet.update(fs(0)) + 1), fs(1).toDouble)
+	    else ((alphabet.update(fs(0)) + 1), 1.0)}
+	  var curId = -1
+	  indices.sortWith(_._1 < _._1) foreach {case (f,v) =>
+	    if (f > curId) {
+   	      os.write(' '); os.write(f.toString); os.write(':'); os.write(v.toString)}
+	    curId = f
+	    }
 	  os.write('\n')
 	case _ => 
       }
