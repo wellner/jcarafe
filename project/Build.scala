@@ -35,14 +35,11 @@ object JCarafeBuild extends Build {
          Some("releases" at nexus + "service/local/staging/deploy/maven2")
     },
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
-    //resolvers += Resolver.url("Typesafe Release Repository",url("http://repo.typesafe.com/typesafe/releases/"))(Resolver.ivyStylePatterns),
-    //publishTo := Some(Resolver.sftp("Chatter Maven Repo", "hebron.mitre.org", "/afs/rcf/project/chatter/repo")), 
-    //publishTo := Some("maven-proxy-releases" at "http://maven-proxy.mitre.org/artifactory/libs-releases-local"),
     publishMavenStyle := true,
     publishArtifact in Test := false,
     pomIncludeRepository := { _ => false },
     licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
-    homepage := Some(url("https://github.com/project-mandolin/mandolin.git")),
+    homepage := Some(url("https://github.com/wellner/jcarafe.git")),
     pomExtra in Global := {
       <scm>
         <connection>scm:git:github.com:wellner/jcarafe.git</connection>
@@ -56,9 +53,6 @@ object JCarafeBuild extends Build {
         </developer>
       </developers>
     },    
-    //publishTo := Some("Artifactory Realm" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local;build.timestamp=" + new java.util.Date().getTime),
-    //resolvers += "Artifactory" at "https://artifacts.mitre.org/artifactory/java-libs-snapshot-local/",
-    //credentials += Credentials("Artifactory Realm", "artifacts.mitre.org", "wellner", "AP9dRJBjdWnjTcqPAkgkPouQ5kJ"),
     scalacOptions += "-target:jvm-1.8",
     javacOptions ++= Seq("-source","1.8","-target","1.8")
   )
@@ -73,14 +67,11 @@ object JCarafeBuild extends Build {
     javaCCFiles in Compile <<= javaCCFilesTask,
     runJavaCC in Compile <<= srcGeneratorTask,
     libraryDependencies ++= Seq(
-      //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
-      //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
-      "org.json4s" %% "json4s-jackson" % "3.2.11",
-      "junit" % "junit" % "4.8.1" % "test",
-      "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
-      //"tv.cntt" % "chill-scala" % "1.2"
-      //"org.scalatest" % "scalatest_2.10" % "2.0" % "test",
-      "com.twitter" % "chill_2.11" % "0.5.2"
+      "org.json4s" %% "json4s-jackson" % "3.3.0",
+      "junit" % "junit" % "4.12" % "test",
+      "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test",
+      "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
+      "com.twitter" % "chill_2.11" % "0.8.0"
     )
   )
 
@@ -88,12 +79,9 @@ object JCarafeBuild extends Build {
     name := "jcarafe-ext",
     mainClass in Compile := Some("org.mitre.jcarafe.tagger.GenericTagger"),
     libraryDependencies ++= Seq(
-      //"org.codehaus.jackson" % "jackson-core-asl" % "1.7.6",
-      //"org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.6",
-      "org.json4s" %% "json4s-jackson" % "3.2.11",
-      "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
-      "com.twitter" % "chill_2.11" % "0.5.2"
-      //"tv.cntt" % "chill-scala" % "1.2"
+      "org.json4s" %% "json4s-jackson" % "3.3.0",
+      "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test",
+      "com.twitter" % "chill_2.11" % "0.8.0"
     )
   )
 
