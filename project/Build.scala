@@ -24,7 +24,7 @@ object JCarafeBuild extends Build {
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.jcarafe",
-    version := "0.9.97-SNAPSHOT",
+    version := "0.9.97",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
     publishTo := {
