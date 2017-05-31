@@ -190,8 +190,10 @@ object FastTokenizer {
       val t: Token = parser.getNextToken()
       t.kind match {
         case JsonTokerConstants.EOF => c = false
-        case JsonTokerConstants.ENDPUNCT => tbuf append SoftEndTok(t.image)
-        case JsonTokerConstants.PUNCT => tbuf append Tok(t.image)
+        case JsonTokerConstants.ENDPUNCT =>
+	  tbuf append SoftEndTok(t.image)
+        case JsonTokerConstants.PUNCT =>
+	  tbuf append Tok(t.image)
         case JsonTokerConstants.TOK => tbuf append Tok(t.image)
         case JsonTokerConstants.ABBREV => tbuf append Tok(t.image)
         case JsonTokerConstants.WHITE => tbuf append Ws(t.image)
@@ -305,6 +307,7 @@ object FastTokenizer {
               if (nonWhiteTokExists) {                
                 sentences += JsArray(List(JsInt(sentPos), JsInt(curEnd)))
               }
+	      toks += JsArray(List(JsInt(pos), JsInt(pos + ll)))
               sentPos = curEnd         
               nonWhiteTokExists = false
             case t =>

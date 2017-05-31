@@ -45,7 +45,7 @@ class FeatureAnalyzer(opts: MEOptions) {
         jcnts = (i, jcnt) :: jcnts
         val pmi = if ((jointProb > 0.0) && (xProb > 0.0) && (yProb > 0.0)) log2((jointProb) / (xProb * yProb)) else 0.0
         mi += (jointProb * pmi)
-        (pmi / -(log2(math.max(xProb, yProb))))
+	(log2(xProb * yProb) / log2(jointProb)) - 1         // (pmi / -(log2(math.max(xProb, yProb))))
       }
     (mi, xsum, jcnts, perClassEntropies)
   }
