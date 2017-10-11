@@ -174,7 +174,7 @@ abstract class Decoder[Obs](dynamic: Boolean, opts: Options) {
       case Some(_) =>
         sGen.evaluateSequences(seqs)
       case None =>
-        println("")
+        //println("")
         outFile match { case Some(outFile) => sGen.seqsToFile(dobj, seqs, new java.io.File(outFile)) case None => throw new RuntimeException("Expected output directory") }
     }
   }
