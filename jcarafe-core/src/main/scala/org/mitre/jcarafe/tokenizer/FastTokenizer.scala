@@ -34,6 +34,7 @@ class TokenizerOptions extends CommandLineHandler {
   "--regionset" desc "File containing region specifications"
   "--tokenizer-patterns" desc "File with split-merge tokenization post-processing patterns"
   "--multi-line" flag "Process multiple documents in a single file in JSON format"
+  "--basic" flag "Process one file at a time, splitting sentences and white-space separating tokens"
 }
 
 object CharStr {
@@ -519,6 +520,44 @@ object FastTokenizer {
       os.close;
     }
 
+  val numRe = "[\\p{Punct}0-9]*[0-9][\\p{Punct}0-9]*".r
+
+  def prepToken(str: String) : (String, Boolean) = {
+    val numeric = numRe.findPrefixOf(str) match {case Some(s) => s.length == str.length case None => false}
+    if (numeric) ("-NUM-",true) else (str.toLowerCase, false)
+  }
+
+  def processLargeFileSimple(ifile: String, ofile: String) = {
+    val src = scala.io.Source.fromFile(ifile)("UTF-8")
+    val os = new java.io.OutputStreamWriter(new java.io.BufferedOutputStream(new java.io.FileOutputStream(ofile)), "UTF-8")
+    val punctRe = "\\p{Punct}+".r
+    src.getLines() foreach {line =>
+      val toks = parseStringNoTags(line)
+      val sbuf = new StringBuilder()
+      var atBegin = true
+      toks foreach {t =>
+        t match {
+	   case SoftEndTok(s) =>
+	     sbuf append ' '; sbuf append s; sbuf append '\n'; atBegin = true
+          case HardEndTok(s) =>
+	     sbuf append ' '; sbuf append s; sbuf append '\n'; atBegin = true
+        case Ws(s) => if (!atBegin) sbuf append s
+        case EndWs(s) => 
+        case t => 
+           val str1 = t.getString
+	   val (str,numeric) = prepToken(str1)
+           val punct = punctRe.findPrefixOf(str) match {case Some(s) => s.length == str.length case None => false}
+           if ((punct || numeric) && !atBegin) sbuf append ' '  // add a space         
+           sbuf append str
+           if (punct || numeric) sbuf append ' ' // another after punctuation
+           atBegin = false
+       }
+      }
+      os.write(sbuf.toString)
+    }
+    os.close()
+  }
+
   def setTokenizerAugmenters(f: java.io.File) = {
     val (cat, patterns) = (new TokenizerPatternParser).parseFile(f)
     splittingAugmenter = patterns match { case Nil => None case a => Some(SplitTokenizerAugmenterPattern(a)) }
@@ -549,7 +588,8 @@ object FastTokenizer {
         val ofile = opts.get("--output-file") match {
           case Some(ofile) =>
             val multiLine = (opts.check("--multi-line"))
-            processFile(jsonP, ifile, ofile, handleTags, Some(zoneset), whiteOnly, multiLine)
+	    if (opts.check("--basic")) processLargeFileSimple(ifile, ofile)
+            else processFile(jsonP, ifile, ofile, handleTags, Some(zoneset), whiteOnly, multiLine)
           case None => println("Output file expected"); sys.exit(2)
         }
       case None =>

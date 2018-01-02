@@ -24,16 +24,12 @@ object JCarafeBuild extends Build {
 
   def sharedSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.mitre.jcarafe",
-    version := "0.9.98",
+    version := "0.9.99",
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.10.5","2.11.7"),
-    publishTo := {
-       val nexus = "https://oss.sonatype.org/"
-       if (isSnapshot.value)
-         Some("snapshots" at nexus + "content/repositories/snapshots")
-       else
-         Some("releases" at nexus + "service/local/staging/deploy/maven2")
-    },
+    publishTo := Some(       
+       if (isSnapshot.value) Opts.resolver.sonatypeSnapshots else Opts.resolver.sonatypeStaging
+    ),
     resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/snapshots/",
     publishMavenStyle := true,
     publishArtifact in Test := false,
